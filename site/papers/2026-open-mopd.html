@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open-MOPD · llm-wiki 速览</title>
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">Open-MOPD</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-u-opsd.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-videochat3.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>Open-MOPD</h1>
+        <p class="cover-full">Diagnosing and Fixing Capability Imbalance in Multi-Teacher On-Policy Distillation</p>
+        <p class="cover-essence">多个领域专家蒸馏进一个学生模型时，掉分的主因不是「教师们意见打架」，而是训练预算被系统性分错：每个域实际拿到的优化量 = token 数量 × reward 幅度 × reward 新鲜度，三样在三个时间尺度上全部失衡。三个机制逐一修复，提升回收率从 35.6% 修到 83.4%。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>清华 AIR × ByteDance Seed（SIA-Lab，Gao &amp; Chi 共同一作）</dd>
+          <dt>入库</dt><dd>2026-08-27</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/S2DP7DZX">Zotero</a> · <a href="https://arxiv.org/abs/2608.19098">arXiv</a> · <a href="https://bytedtsinghua-sia.github.io/Open-MOPD/">项目页</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">多教师蒸馏</span><span class="tag">预算分配</span><span class="tag">诊断实验</span><span class="tag">PPO</span><span class="tag">可复现</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>工业界大规模用 multi-teacher OPD（DeepSeek-V4 蒸 10+ 教师、Kimi K3 用 9 个），但没人回答过 naive 合并为什么掉分。用 oracle routing 受控实验切开混淆变量后：integration gap 3.50 分，naive 只拿回 35.6% 的提升，IF 域掉分是 math 的 3.3 倍。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>先枪毙流行嫌疑人 teacher conflict（三重证伪），锁定真凶「三层预算错配」：名额（token 数量）、汇率（reward 幅度）、财报时效（新鲜度），分别对应三个正交修复机制，可独立验证可叠加。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>回收率 35.6% → 83.4%（28.05 → 31.24，距三模型上界 88% 只剩一步）。代价：仅 3B、三域、oracle 路由验证，路由有误的场景未测。</p>
+          </div>
+        </div>
+        <p class="takeaway">OPD 的 loss 按 token 平均聚合，所以每个域的真实优化量不取决于喂了多少 prompt，而取决于 token 数量 × 幅度 × 新鲜度。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：先证伪 teacher conflict</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>三个 teacher 同源（同一 SFT checkpoint 分叉），直觉上很容易「打架」。三重检验全部否定：</p>
+        <table class="dtable">
+          <thead><tr><th>证据</th><th>数值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>token 级教师分歧 c_t</td><td class="num">全程均值 0.126 nat</td><td>冲突判据是 1 nat（概率比 e≈2.7），差一个数量级</td></tr>
+            <tr><td>高冲突 token 占比</td><td class="num">全程仅 0.62%</td><td>分歧最大的 IF 域也才 3.9%</td></tr>
+            <tr data-hi><td>决定性反事实实验</td><td class="num">mask 掉 top 1%~20% 高冲突 token</td><td>结果全部降分（−0.52~−0.83）：高分歧 token 不是噪声，可能携带领域信息</td></tr>
+          </tbody>
+        </table>
+        <p><strong>真凶是预算错配</strong>。类比三个部门共用培训预算的三件糟心事：名额分配 bug（math 响应 10,500 token，IF 才 409，长度差 25 倍；IF 占 20.3% 名额只分到 0.99% 预算）；汇率偷偷变（各域收敛速度不同，25 步内 IF 实际份额从 48.7% 滑到 9%）；用昨天的财报做今天的决策（rollout batch 复用 K=4 次，K=4 时 75.8% 的 token 已被 PPO clip）。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：三个失衡对应三个正交修复</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>机制</th><th>时间尺度</th><th>怎么做</th></tr></thead>
+          <tbody>
+            <tr data-hi>
+              <td>token-share balancing（修名额）</td>
+              <td class="num">batch 内</td>
+              <td>loss 按域加权：目标份额 ÷ 实际 token 份额，IF 每 token 放大约 48 倍精确补偿。不做过采样：要拿 1/3 预算 IF 得放大 33.6 倍，会挤掉 math/code 长链的监督密度</td>
+            </tr>
+            <tr data-hi>
+              <td>gap-following allocation（修汇率）</td>
+              <td class="num">训练全程</td>
+              <td>权重乘 (m_d/m_ref)^α，clamp [0.05, 20]。m_d = E|log π_ϕ − log π_θ| 是师生差距的<strong>直接读数</strong>不是代理：离 teacher 远的域多给预算，收敛的自动让出。<strong>方向反了会爆炸</strong>：反向归一化成正反馈环，step 74 训练崩溃</td>
+            </tr>
+            <tr data-hi>
+              <td>reward refresh（修时效）</td>
+              <td class="num">rollout 周期内</td>
+              <td>教师项一次 prefill 永久缓存；学生项的重算<strong>恰好免费</strong>（PPO 每次内更新本来就要算当前学生 logprob 做 importance ratio）。轨迹本身的陈旧只有重新 rollout 才能换（生成占一步 46.5% 最贵），refresh 不碰，剩余交给 PPO clip 兜底</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="takeaway">refresh 的零开销实证：dense reward 计算只占一步 2.2%，刷新前 27.8s / 后 27.3s，差异在步间波动内。开销不是新增，是搬了位置。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">35.6→83.4<small>%</small></div>
+            <div class="metric-label">提升回收率</div>
+            <div class="metric-why">距三模型上界 RouteOPD（88%）只剩一步</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">25<small>×</small></div>
+            <div class="metric-label">域间响应长度差</div>
+            <div class="metric-why">math 约 10,500 token，IF 约 409</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">0.99<small>%</small></div>
+            <div class="metric-label">IF 实际拿到的梯度 token 份额</div>
+            <div class="metric-why">它占 20.3% 的 prompt 名额</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">+0.81</div>
+            <div class="metric-label">reward refresh 白送的分</div>
+            <div class="metric-why">只要 K&gt;1 复用 batch 就有</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>消融阶梯（每行只改一件事）</th><th>总分</th><th>增量</th></tr></thead>
+          <tbody>
+            <tr><td>Naive M-OPD（K=1）</td><td class="num">28.05</td><td>基线</td></tr>
+            <tr><td>+ token-share balancing</td><td class="num">29.22</td><td>+1.17（几乎全来自 IF：43.64→47.53）</td></tr>
+            <tr><td>+ gap-following allocation</td><td class="num">29.94</td><td>+0.72</td></tr>
+            <tr data-hi><td>切到 K=4 + reward refresh（Open-MOPD）</td><td class="num">31.24</td><td>+0.81</td></tr>
+          </tbody>
+        </table>
+        <p>baseline：RFT 离线蒸馏 12.6%、单模型混合域 RL 49.3%、参数合并 ParamMerge-TA 71.7%（需同源 teacher，仍低于本文）。局限：仅 3B 规模、三域、oracle 标签路由，路由有误场景未验证；论文自设无 limitation 章节。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">反向归一化的正反馈环到底怎么崩的？（初答只说「把学好的带崩」，链条断了）</p>
+            <div class="qa-a"><p>崩的是<strong>预算分配本身发散</strong>：IF 最先接近 teacher，m̄ 缩小；反向规则把「gap 已经小」误读成「需要更多帮助」，权重从 24.4 涨到 80.9；更多预算收敛更快，m̄ 更小；每圈更极端无刹车，step 74 整体崩溃。gap-following 的正方向自带两层刹车：语义级（收敛域权重自动回落让出预算）+ 兜底级（clamp [0.05, 20] 防单域突变）。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">reward refresh 为什么零开销？（全文最大卡壳点，第一轮完全没理解）</p>
+            <div class="qa-a"><p>三句话拆到底：① reward 只有两个模型出场，教师冻结所以教师项一次 prefill 永久缓存；② 学生会变，但「当前学生 logprob」PPO 每次内更新<strong>本来就算出来了</strong>（importance ratio 必需），refresh 只是捡这个免费产出重建学生项，零额外 forward；③ 轨迹本身还是旧学生采样的，这层陈旧只有重新 rollout 才能换，refresh 不碰，剩余交给 clip 兜底。一句话：reward 两个组成项里陈旧的只有学生项，而学生项的重算成本恰好为零，refresh = 捡钱。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">为什么不直接过采样 IF，也不把 reward 幅度归一化掉？</p>
+            <div class="qa-a"><p>过采样：要拿 1/3 token 预算 IF 得放大 33.6 倍，math/code 长链 prompt 被挤到 0.7 倍，长链推理的监督密度没法维持；加权法保住 prompt 多样性（各域长度本就接近时，过采样与加权等价，退化无害）。不抹幅度：m̄ 不是噪声，它是「还差多少没学」的仪表盘，抹掉等于自毁 gap-following 的信号源。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">兑现钩子 · 正交切片</span>
+              <span><a href="2026-u-opsd.html">U-OPSD</a>：它管「单教师的信号从哪来」（无 GT 自蒸馏），本文管「多教师信号怎么分账」；组合成立：多个自蒸馏伪教师 + 本文三机制（只要 K&gt;1，refresh 白送 +0.81）</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">散度注记</span>
+              <span>U-OPSD 的前向 KL 是直接 loss（reverse 会复读塌缩）；本文 dense reward 是 reverse-KL 式形式但角色是 PPO 的 reward 信号（sg 停梯度 + clip 兜底），同方向不同框架不矛盾</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">未来钩子</span>
+              <span>AsyncOPD（refresh 灵感来源）/ DistiLLM 系列（散度设计）/ GKD（dense reward 进 PPO 槽位先例）入库时回链本页</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-open-mopd.md">wiki/papers/2026-open-mopd.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/S2DP7DZX">Zotero</a>（Gao2026）· AI Butler 预读笔记 itemKey <code>V4QD2H72</code> / <code>5TGI85P9</code>（summary 在 §4 截断，机制细节由原文 PDF 补齐）</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

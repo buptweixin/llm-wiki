@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VST · llm-wiki 速览</title>
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">VST</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-videochat3.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-genlip.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · ECCV 2026</p>
+        <h1>VST</h1>
+        <p class="cover-full">Video Streaming Thinking: VideoLLMs Can Watch and Think Simultaneously</p>
+        <p class="cover-essence">让 VideoLLM 边看边想：把 CoT 推理切碎塞进视频流片段间的「等待空档」里异步执行，写成文本笔记存进固定容量的长期记忆；用户提问时模型已经「想完了」，直接读笔记秒答，零额外查询延迟。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>华科 + 小米（Guan, Yin et al.）</dd>
+          <dt>入库</dt><dd>2026-08-17</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/6XPHGT5T">Zotero</a> · <a href="https://doi.org/10.48550/arXiv.2603.12262">DOI</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">流式视频</span><span class="tag">CoT 推理</span><span class="tag">双记忆系统</span><span class="tag">GRPO</span><span class="tag">低延迟</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>在线视频里「深度推理」和「实时响应」天然冲突：流式感知路线只管记忆不做显式推理，多跳时序问题拉胯；离线 CoT 搬过来则查询后才开始想，延迟 8.8s 直接不可用。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>像边看直播边做笔记：推理时机从「查询后」挪到「查询前」，每来一个 clip 就在片段间隙把想法写进 FIFO 文本记忆。提问时读笔记直接答。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>StreamingBench 79.5%（超 GPT-4o +6.2%）；QA 延迟 0.56s vs Video-R1 的 8.8s。代价：思考本身烧后台 token，文本记忆有损。</p>
+          </div>
+        </div>
+        <p class="takeaway">空档期思考被播放时间吸收：它增加的是后台算力，不是用户感知的响应延迟。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：双记忆系统与推理前置</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>联合概率被拆成两段：<strong>查询前</strong>逐段生成想法（当前片段 + 之前笔记 → 新想法），<strong>查询后</strong>直接作答（全部笔记 + 当前画面 → 答案，不再长推理）。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">短期</span>视觉缓冲：滑动窗口只留最近 L 个视觉 token</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">空档期</span>clip 间隙异步思考，生成想法 z（实测均值 7.0s &lt; 最小间隔 16s）</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">长期</span>文本记忆：FIFO 固定容量，淘汰最旧条目</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">提问</span>读笔记 + 当前画面，直接作答 0.56s</div>
+          </div>
+          <p class="fig-note">万一思考慢于 clip 间隔，回退到最近一次已完成的记忆状态作答：保证「不阻塞响应」，不保证「记忆一定最新」。</p>
+        </div>
+        <p>好处有二：推理算力分摊到播放期，查询不涨价；逐段想法天然对齐视频的时间因果性。数据是自造的 100K 严格因果 CoT（知识图谱抽三元组、DFS 采多跳证据链、五重过滤），因为现成离线 CoT 是「看完全片」的全局 hindsight 视角写的，thoughts 里偷藏后文信息，直接训会学成作弊。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：流式掩码与两阶段训练</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p><strong>流式注意力掩码</strong>（全篇最重要的训练技巧）：训练时强制模拟推理时的可见性。每个 token 只能看到最近 L 个<strong>视觉</strong> token，但所有历史<strong>文本</strong>（笔记、记忆）全部可见。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node" data-hi><span class="fig-node-tag">掩码规则①</span>不看未来：未来片段还没到，流式性本身决定，永远需要</div>
+            <div class="fig-node" data-hi><span class="fig-node-tag">掩码规则②</span>视觉只看最近 L 个：跟着推理架构走，架构变它就得跟着变</div>
+          </div>
+          <p class="fig-note">掩码既堵未来（防信息泄露），又堵漂移（训练可见性 = 推理可见性，否则训练看全片、推理看一段，分布不一致导致掉点）。</p>
+        </div>
+        <p><strong>VST-SFT</strong>：合成因果 CoT 数据做监督微调，学会「边看边写」协议；配合时序分段绕过上下文长度限制（段间靠记忆递归传递）。<strong>VST-RL</strong>：GRPO 每问采 8 条轨迹，奖励只看最终答案对不对，但组相对优势赋给轨迹内<strong>全部生成 token（含中间 thoughts）</strong>：答案对了思考就有功，信用间接传回推理步骤，逼模型写出真有用的思考而非废话。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">0.56<small>s vs 8.8s</small></div>
+            <div class="metric-label">QA 延迟（vs Video-R1）</div>
+            <div class="metric-why">15.7× 加速，和不推理几乎一样快</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">79.5<small>%</small></div>
+            <div class="metric-label">StreamingBench</div>
+            <div class="metric-why">超开源 SOTA +2.2，超 GPT-4o +6.2</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">41.9<small>%</small></div>
+            <div class="metric-label">VideoHolmes（离线多跳）</div>
+            <div class="metric-why">超 Video-R1 +5.4，离线也有竞争力</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">56.7<small>%</small></div>
+            <div class="metric-label">OVO Backward tracing</div>
+            <div class="metric-why">回溯早期事件，直接验证长期记忆有效</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>维度</th><th>结果</th><th>附注</th></tr></thead>
+          <tbody>
+            <tr><td>消融分工</td><td class="num">SFT 补 Backward +9.2 / RL 补 Forward +12.7</td><td>思考 4 步饱和；3B/7B/32B 全线一致提升</td></tr>
+            <tr data-hi><td>反直觉发现</td><td class="num">FIFO 更新策略「相对不重要」</td><td>关键是「有文本记忆」，不是记忆管理多精巧</td></tr>
+            <tr><td>代价</td><td class="num">思考烧额外 token</td><td>作者提 latent reasoning 为未来方向</td></tr>
+            <tr><td>失败模式</td><td class="num">早期证据被 FIFO 淘汰</td><td>细粒度时间跨度丢失、远距离弱线索关联失败</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">流式注意力掩码除了防信息泄露，还顺带解决了什么？（三次复测都没答全的点）</p>
+            <div class="qa-a">
+              <p><strong>训练与推理的架构一致性</strong>。不加掩码时训练能看全片、推理只能看滑动窗口，分布漂移导致掉点。焊住的框架：掩码是<strong>推理可见性的一面镜子</strong>，训练是彩排、推理是正式演出，彩排的可见性必须照演出来。</p>
+              <p>拆成两条规则：「不看未来」永远需要（流式性决定）；「视觉只看最近 L 个」完全跟着推理架构走（若推理改成全片可见或笔记 top-3 检索，这条就得相应改，留着反而自己制造新漂移）。</p>
+            </div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">长期记忆存的是「前序所有片段」吗？</p>
+            <div class="qa-a"><p>不是。FIFO 固定容量，只留最近若干条 thought，「最近的思想笔记」而非「全部历史」。旧记忆被挤出正是失败案例里早期证据丢失的根源。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">FIFO 明知有损，为何不换更大或可检索的记忆？</p>
+            <div class="qa-a"><p>固定容量 = token 预算可控 = 实时性（可检索记忆每步要检索全库，破坏「分摊」前提）；且消融显示管理策略本身相对不重要，换精巧管理收益不大。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">正交 · 可互补</span>
+              <span><a href="2026-videochat3.html">VideoChat3</a>：它管感知效率（编码器压 token + 状态机），VST 管认知时机（推理前置 + 文本记忆）；组合需统一调度响应时机</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">同域不同路线</span>
+              <span><a href="2026-video-o3.html">Video-o3</a>：VST 是推理前置（0.56s 查询即答），Video-o3 是推理时主动检索（10.2s 多轮找线索）；实时性 vs 多跳精度，可互补</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">baseline</span>
+              <span>Video-R1 / LongVILA-R1（查询后长 CoT）/ StreamForest / TimeChatOnline / Streamo / Dispider</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-vst.md">wiki/papers/2026-vst.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/6XPHGT5T">Zotero</a>（Guan2026）· AI Butler 预读笔记 itemKey <code>KFSX84T9</code> / <code>SW5CUJ2Z</code></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

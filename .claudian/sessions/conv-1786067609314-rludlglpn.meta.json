@@ -1,0 +1,29 @@
+{
+  "id": "conv-1786067609314-rludlglpn",
+  "providerId": "codex",
+  "title": "复习",
+  "titleGenerationStatus": "failed",
+  "createdAt": 1786067609321,
+  "lastActivityAt": 1786067636774,
+  "sessionId": "019fd9ec-ef55-76f1-b42f-535b4754fc73",
+  "selectedModel": "gpt-5.6-luna",
+  "providerState": {
+    "threadId": "019fd9ec-ef55-76f1-b42f-535b4754fc73",
+    "nativeConversationContextEstablished": true,
+    "sessionFilePath": "/Users/weixin/.codex/sessions/2026/08/07/rollout-2026-08-07T09-53-31-019fd9ec-ef55-76f1-b42f-535b4754fc73.jsonl",
+    "transcriptRootPath": "/Users/weixin/.codex/sessions",
+    "workspaceDependencyToolVersion": 1
+  },
+  "isPinned": false,
+  "isArchived": true,
+  "usage": {
+    "inputTokens": 21660,
+    "cacheCreationInputTokens": 0,
+    "cacheReadInputTokens": 20224,
+    "contextWindow": 258400,
+    "contextWindowIsAuthoritative": true,
+    "contextTokens": 21660,
+    "percentage": 8,
+    "model": "gpt-5.6-luna"
+  }
+}

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video-o3 · llm-wiki 速览</title>
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">Video-o3</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-last-vit.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-u-opsd.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · ICML 2026</p>
+        <h1>Video-o3</h1>
+        <p class="cover-full">Video-o3: Native Interleaved Clue Seeking for Long Video Multi-Hop Reasoning</p>
+        <p class="cover-essence">像侦探破案一样看视频：先粗扫全片，发现疑点主动「放大」某段细看，看完再决定继续找还是收网作答。找线索和答题在同一个共享上下文里交替进行，模型自己决定何时调工具、调哪里、用多少分辨率、何时停。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>南京大学 + 上海 AI Lab（Zeng, Zhang et al.）</dd>
+          <dt>入库</dt><dd>2026-08-17</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/FG746LWN">Zotero</a> · <a href="https://doi.org/10.48550/ARXIV.2601.23224">DOI</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">长视频推理</span><span class="tag">多跳推理</span><span class="tag">工具调用</span><span class="tag">原生交错</span><span class="tag">GRPO</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>长视频两个老毛病：均匀采样把稀疏关键证据淹没在冗余里（关键 2 秒占 10 分钟视频的极少数帧）；已有「找线索 + 答题」方案两阶段割裂，上下文不共享、手工规则控时机，做不了多线索联合推理。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>一个侦探全程同一个记忆：单一共享上下文里循环「思考 → 调 VideoCrop 裁剪放大 → 再思考」，工具调用由模型自己生成的文本触发（原生交错），配 TDAM 防注意力分散、VTGR 控效率。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>MLVU 72.1%、Video-Holmes 46.5% 均 SOTA；推理 10.2s 比解耦方法快 46%（共享上下文吃 KV Cache 增量计算红利）。代价：8 轮上限、工具单一。</p>
+          </div>
+        </div>
+        <p class="takeaway">「原生」的意思：工具调用不是外部脚本触发，而是模型自己生成的文本。模型必须自己学会何时调、调哪里、用多少分辨率、何时停。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：回合制找线索循环</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">输入</span>工具说明 + 问题 + 全局低分辨率视频</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">思考</span>&lt;think&gt;：分解问题，评估证据够不够</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">调工具</span>&lt;grounding&gt;：时间区间 + 分辨率（coarse/medium/fine）</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">执行</span>VideoCrop 裁剪，局部高分辨率片段拼回上下文</div>
+          </div>
+          <p class="fig-note">回到思考继续下一轮，或直接 &lt;answer&gt; 终止。评估上限 8 轮，视觉上下文上限 32k token。训练数据 Seeker-173K 自造：线索定位 → 有效性验证 → 轨迹生成 → 逻辑一致性检查。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：TDAM 与 VTGR，两个问题两个解法</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p>共享上下文的两个核心问题，各配一个解法：<strong>注意力分散</strong>（全局/局部/推理文本混杂，更严重的是 Fake Thinking：工具找对了证据，答题时却被全局模糊印象带跑，推理对了答错了）与<strong>上下文效率</strong>（每调一次工具 token 膨胀、不知何时停）。</p>
+        <table class="dtable">
+          <thead><tr><th>解法</th><th>针对</th><th>怎么做</th></tr></thead>
+          <tbody>
+            <tr data-hi>
+              <td>TDAM（SFT 阶段硬掩码）</td>
+              <td>注意力分散 + Fake Thinking</td>
+              <td>生成工具调用时禁看局部裁剪（只靠全局做定位规划）；生成最终答案时禁看全局（只靠工具局部证据作答）。只对 10% 数据加掩码：全加会丧失全局+局部综合能力（消融 20%/30% 反降）</td>
+            </tr>
+            <tr data-hi>
+              <td>VTGR（RL 阶段奖励）</td>
+              <td>上下文效率</td>
+              <td><code>R = r_a · (1 + β) + r_f</code>。β 由 Hybrid Clue Score（裁剪区间与真实证据的 IoU/IoP/IoG，奖「找得准」）乘 Turn Decay（轮数衰减，奖「找得快」）构成；答错则 β 不生效，over-turn 轨迹不产梯度</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">72.1<small>%</small></div>
+            <div class="metric-label">MLVU</div>
+            <div class="metric-why">超 VideoZoomer 的 65.2</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">46.5<small>%</small></div>
+            <div class="metric-label">Video-Holmes（多跳）</div>
+            <div class="metric-why">7B 档显著领先；LVBench 47.6%</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">10.2<small>s</small></div>
+            <div class="metric-label">MLVU 推理延迟</div>
+            <div class="metric-why">vs VideoChat-R1.5 的 18.9s，快 46%</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>维度</th><th>结果</th><th>附注</th></tr></thead>
+          <tbody>
+            <tr data-hi><td>消融：删 Hybrid Clue Score</td><td class="num">调用率 + 准确率同时暴跌</td><td>「找得准」的奖励是工具使用的动力源</td></tr>
+            <tr><td>消融：删 Turn Decay</td><td class="num">调用率升、准确率降</td><td>过度探索碎片化上下文</td></tr>
+            <tr><td>消融：省 SFT 冷启动</td><td class="num">RL 出现 dip-and-recover</td><td>SFT 教协议，RL 再自我改进</td></tr>
+            <tr><td>局限</td><td class="num">8 轮上限 / 工具单一</td><td>极长电影可能不够；只有 VideoCrop；Fake Thinking 未根治（TDAM 仅 10% 数据）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">共享上下文带来的两个核心问题分别是什么？各对应什么解法？</p>
+            <div class="qa-a"><p>(1) 注意力分散（全局/局部混杂 + Fake Thinking）→ TDAM 的 10% 硬掩码。(2) 上下文效率（token 膨胀 + 不知何时停）→ VTGR（Clue Score 奖裁得准、Turn Decay 惩轮数多）。<strong>两个问题两个解法是配对的</strong>。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">VST 和 Video-o3 的推理时机分别放在哪里？</p>
+            <div class="qa-a"><p>VST 在<strong>查询前</strong>（播放期边看边写笔记，查询到了读笔记秒答）；Video-o3 在<strong>查询后</strong>（拿到问题才在单一上下文里多轮调工具找线索）。一句话：VST 是「先把笔记做好，问就秒答」，Video-o3 是「拿到问题才去翻监控放大看」。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">两者组合后除了证据冲突，还会引入什么结构性问题？</p>
+            <div class="qa-a"><p>「查询即答」和「多轮探索后才答」在<strong>响应时机</strong>上逻辑冲突，需要设计统一调度（何时秒答、何时探索），和 VideoChat3 + VST 组合时遇到的是同一类问题。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">同域不同路线</span>
+              <span><a href="2026-vst.html">VST</a>：推理前置（0.56s 秒答，实时性）vs 推理时主动检索（10.2s 多跳精度）；文本记忆 + 工具裁剪可组合，但响应时机冲突需统一调度</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">视觉策略互补</span>
+              <span><a href="2026-videochat3.html">VideoChat3</a>：它靠编码器压缩 + 状态机决定「看多少像素」（感知效率），Video-o3 靠推理时工具调用决定「看哪里」（检索精度）</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">baseline</span>
+              <span>Qwen2.5-VL / Video-R1（文本 CoT）/ VideoChat-R1.5 / Video-RTS（解耦迭代）/ VideoZoomer / LOVE-R1</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-video-o3.md">wiki/papers/2026-video-o3.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/FG746LWN">Zotero</a>（zengVideoo3NativeInterleaved2026）· AI Butler 预读笔记 itemKey <code>7R3CXS5H</code> / <code>MT7328F2</code> / <code>3BIVY2LN</code></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

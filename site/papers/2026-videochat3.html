@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VideoChat3 · llm-wiki 速览</title>
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">VideoChat3</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-open-mopd.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-vst.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>VideoChat3</h1>
+        <p class="cover-full">VideoChat3: Fully Open Video MLLM for Efficient and Generalist Video Understanding</p>
+        <p class="cover-essence">4B 参数、全开源的 Video MLLM。主张「视频的时空冗余应该在视觉编码器里就压掉，而不是把一堆帧的 token 全塞给 LLM」：用被「撑成 3D」的视觉编码器（I3D-ViT）把视觉 token 砍掉 16 倍，再用「像人看直播」的状态机自适应分辨率处理流式视频。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>南京大学 / 上海 AI Lab / NTU / 北大（Li et al.）</dd>
+          <dt>入库</dt><dd>2026-07-27</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/E5RZINH5">Zotero</a> · <a href="https://doi.org/10.48550/arXiv.2607.14935">DOI</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">视频 MLLM</span><span class="tag">token 压缩</span><span class="tag">流式视频</span><span class="tag">状态机</span><span class="tag">全开源 4B</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>开源 Video MLLM 三通病：一个模型只擅长一种场景（泛化差）；帧数一多 token 爆炸、LLM 注意力二次方涨（算力吃不消）；强模型不放数据配方（半开源）。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>越早压缩越划算：用 I3D-ViT 把相邻帧冗余在<strong>视觉编码器内部</strong>消化掉（token ÷16），流式场景用「看直播」状态机按需切换分辨率（没料 224²，可能有料 448²）。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>4B 参数 18/19 项指标超 Qwen3-VL-4B；2048 帧延迟 20.4s vs 44.4s。代价：视觉编码器变重，短视频反而略慢，优势要视频够长才显现。</p>
+          </div>
+        </div>
+        <p class="takeaway">压缩要放在便宜的线性阶段（视觉编码器），不要拖到昂贵的二次方阶段（LLM 注意力）：视频越长，这笔搬家买卖越赚。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：I3D-ViT 的时间维压缩</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>老做法把视频稀疏抽帧、每帧独立编码：进模型前就丢了细粒度运动，且没利用相邻帧的大量重叠冗余。I3D-ViT 的做法是把「人跑步 4 连拍」先在段内互相看一眼（发现「背景没变，变的是腿」），再压成 1 个带运动信息的表示。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">STEP 1</span>切成每 T=4 帧一个 chunk</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">STEP 2</span>chunk 内联合时空 self-attention，冗余在编码器内部被消化</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">STEP 3</span>时间池化：T 帧压成 1</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">STEP 4</span>pixel shuffle 2×2 空间下采样</div>
+          </div>
+          <p class="fig-note">4（时间）× 4（空间）= 16× 压缩。技巧叫 <strong>inflate（膨胀）</strong>：不从零训 3D 编码器，而是拿预训练图像 ViT 把 2D 空间 attention「撑」成 3D 时空 attention，权重直接复用（致敬 I3D 卷积网络的 2D→3D 老套路）。</p>
+        </div>
+        <p>压缩比是<strong>机械性</strong>的（池化 + 下采样，与内容无关），算力永远省；而「池化前先做时空 attention」的全部意义是靠冗余保真，见卡壳点 Q2。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：Adaptive Frame Resolution 状态机</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p>像人看足球直播：中场倒脚半眯眼，前锋突破立刻瞪大眼。每个时间窗口处理完，模型吐一个<strong>状态 token</strong>（三选一），它一身兼两职：既是「要不要回答、何时回答」的决策，又是「下一窗口用多少像素」的控制信号。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">输入</span>时间窗口 k 的视觉证据</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">决策</span>吐一个状态 token（响应时机 + 像素预算）</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">输出</span>下一窗口的分辨率配额</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>状态</th><th>含义</th><th>下窗口像素预算</th></tr></thead>
+          <tbody>
+            <tr><td class="num">&lt;/Silence&gt;</td><td>没有相关证据，闭嘴继续看</td><td class="num">224²</td></tr>
+            <tr data-hi><td class="num">&lt;/Standby&gt;</td><td>可能有料但不够，准备细看</td><td class="num">448²</td></tr>
+            <tr><td class="num">&lt;/Response&gt;</td><td>证据够了，生成答案后回低预算</td><td class="num">224²</td></tr>
+          </tbody>
+        </table>
+        <p>训练技巧（state-transition mask）：所有状态 token 都算 loss，模型学成「永远闭嘴」；只算切换点，模型学会「从前一状态猜下一个」根本不看视频。解法：切换点全保留，保持点均匀采样同样多，最终有效监督 <code>Silence : Standby : Response = 2 : 2 : 1</code>。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">16<small>×</small></div>
+            <div class="metric-label">视觉 token 压缩比</div>
+            <div class="metric-why">时间 ÷4 × 空间 ÷4，在编码器内完成</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">18/19</div>
+            <div class="metric-label">指标超 Qwen3-VL-4B</div>
+            <div class="metric-why">同参数量的通用能力对垒</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">20.4<small>s vs 44.4s</small></div>
+            <div class="metric-label">2048 帧推理延迟（H200）</div>
+            <div class="metric-why">FLOPs 砍 60%+，显存省 26GB</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">35.5<small>vs 8.1</small></div>
+            <div class="metric-label">流式 OVO-Timing F1</div>
+            <div class="metric-why">状态机带来的响应时机优势</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>维度</th><th>结果</th><th>附注</th></tr></thead>
+          <tbody>
+            <tr data-hi><td>时间定位</td><td class="num">TimeLens +9.7 / VUE-TR +15.0</td><td>大幅领先专用模型</td></tr>
+            <tr><td>代价</td><td class="num">256 帧短视频反而略慢</td><td>编码器加了时空建模，优势要长视频才显现</td></tr>
+            <tr><td>局限</td><td class="num">ProactiveVQA 输 MMDuet-2</td><td>224² 监控下小尺度证据可能漏（见卡壳点）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">为什么在视觉编码器里压缩，而不是让 LLM 长上下文兜底？</p>
+            <div class="qa-a"><p>两种开销不对称：视觉编码器近似线性涨，LLM 注意力二次方涨。把压缩从贵的二次方阶段挪到便宜的线性阶段，视频越长越赚（256 帧时反而略慢，2048 帧才大幅反超）。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">相邻帧零冗余（纯噪声）时，16× 压缩还成立吗？</p>
+            <div class="qa-a"><p>分两层：算力层永远成立（池化是机械的，与内容无关）；质量层塌掉（池化前做时空 attention 的意义就是靠冗余在压缩中保真，零冗余时等于把 T 个无关场景硬塞进 1 个 token）。净结果：速度保住，精度塌掉。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">状态 token「合二为一」（响应时机 + 像素预算）vs 拆开，利弊是什么？</p>
+            <div class="qa-a"><p>合一的好处：监督信号白送（状态标签自带预算语义）、符合「扫无关低分辨率、见证据高分辨率细读」的直觉。隐患：224² 下小尺度证据可能看不见，模型永不进 Standby、永不放大、错过响应；一个 token 背两个目标梯度互相干扰；论文只消融了动态 vs 固定预算，<strong>没消融合并 vs 拆分</strong>。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">正交 · 可互补</span>
+              <span><a href="2026-vst.html">VST</a>：本文管感知效率（编码器压 token + 状态机），VST 管认知时机（推理前移 + 文本记忆），组合是未来方向</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">正交</span>
+              <span><a href="2026-genlip.html">GenLIP</a>：I3D-ViT 没讨论 ViT 本身怎么预训练，GenLIP 回答的正是这一层，训出的 ViT 可被 inflate 成 3D 用</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">baseline</span>
+              <span>Qwen3-VL-4B / Molmo2-4B / VideoChat-Flash-7B / InternVideo2.5-8B；前作 VideoChat-Flash（层级压缩）、VideoChat-R1（RL 微调）</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-videochat3.md">wiki/papers/2026-videochat3.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/E5RZINH5">Zotero</a>（liVideoChat3FullyOpen2026a）</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

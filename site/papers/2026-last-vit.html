@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LaSt-ViT · llm-wiki 速览</title>
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">LaSt-ViT</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-genlip.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-video-o3.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · CVPR 2026</p>
+        <h1>LaSt-ViT</h1>
+        <p class="cover-full">Vision Transformers Need More Than Registers</p>
+        <p class="cover-essence">ViT 偷懒：有全局注意力又只有图像级标签时，它发现用大量背景 patch 当「全局语义载体」就能把分类做对，根本不关心前景在哪，结果分类准但密集预测废。解法是用频域稳定性评分逼 CLS token 只从前景 patch 聚合信息。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>港大 + 中山大学（Shi, Yu, Yang）</dd>
+          <dt>入库</dt><dd>2026-08-17</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/XNL46XIR">Zotero</a> · <a href="https://doi.org/10.48550/arXiv.2602.22394">DOI</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">ViT</span><span class="tag">lazy aggregation</span><span class="tag">密集预测</span><span class="tag">频域分析</span><span class="tag">CLS token</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>ViT 当通用特征提取器时密集预测（分割/检测）不如 ConvNet：CLS 关注背景而非前景。旧解法要么治标（Register tokens，PiB 反降），要么拆东补西（窗口注意力，分类掉 8%），且没人搞清 artifact 为何产生。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>先诊断再开药：根因是「懒惰聚合」= 粗粒度监督 + 全局注意力，两者缺一不可。用频域稳定性评分识别前景 patch，通道级 Top-K 选择性聚合，逼 CLS 只从前景取信息。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>PiB 42.7→55.1；CLIP 零样本分割 VOC 17.1→72.4；12 个基准一致提升且分类精度不掉。零额外参数、零额外损失。</p>
+          </div>
+        </div>
+        <p class="takeaway">高范数 token 只是懒惰聚合的晚期症状，病因是 CLS 往背景跑：Register 把症状挪走，病还在，所以 PiB 反而从 42.7 掉到 41.5。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：懒惰聚合的两个驱动</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>类比偷懒的考官：ConvNet 每个学生只能看局部，必须认真看前景才能答对（笨但靠谱）；ViT 所有人能看全图，发现背景跟类别有统计相关，集体抄背景答案，总分很高但你问哪是猫全指向背景。两个诊断工具：<strong>Patch Score</strong>（CLS 与各 patch 的余弦相似度，看 CLS 到底看哪）、<strong>PiB</strong>（最高分 patch 落在前景框内的比例，量化病情）。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node" data-hi><span class="fig-node-tag">驱动 1</span>粗粒度监督：只有图像级标签，没有空间指导；背景 patch 远多于前景，靠背景投票就能降 loss</div>
+            <span class="fig-arrow">+</span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">驱动 2</span>全局注意力：给前景语义扩散到背景的通道</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">产物</span>懒惰聚合：CLS 拿背景当语义载体（PiB 仅 42.7%，ConvNet 68.4%）</div>
+          </div>
+          <p class="fig-note">两者缺一不可：光背景多没全局注意力扩散不了，光全局注意力没背景多也走不了捷径。三条证据：训练初期 PiB 就低（不是后期才崩）；遮掉最高分 50% patch 分类精度几乎不掉（高分 patch 是捷径）；换窗口注意力 PiB 升到 59.8 但分类掉 8%（全局注意力是帮凶，但砍掉得不偿失）。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：频域稳定性评分与 Top-K 聚合</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">STEP 1</span>每个 patch 的 D 维特征沿<strong>通道维</strong>做 1D FFT</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">STEP 2</span>高斯低通滤波后 IFFT 回来</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">STEP 3</span>稳定性分数 S = 滤波后特征 / 滤波前后差值。分数高 = 低频主导 = 大概率前景</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">STEP 4</span>每个通道独立选 Top-K 个 patch 取均值，作为该通道的 CLS 值</div>
+          </div>
+          <p class="fig-note">通道级独立选择意味着不同语义维度（颜色/纹理/形状）可以选不同前景区域。FFT 和 Top-K 都是确定性操作：零可学习参数、不改损失函数、Top-K 天然可微。</p>
+        </div>
+        <p>为什么「频域稳定」能分前景背景：<mark>通道维</mark>频域特性，不是空间连续性。前景物体在深层特征的通道维上语义一致（低频主导，低通后变化小）；背景混杂多结构（频谱丰富，低通后能量损失大）。直觉图像：通道维低频的图 ≈ 语义分割的输出图，同一类别同一颜色。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">17.1→72.4</div>
+            <div class="metric-label">CLIP ViT-L VOC 零样本分割 mIoU</div>
+            <div class="metric-why">+55.3，零样本分割暴涨</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">+25.2</div>
+            <div class="metric-label">DINO PiB（44.5→69.7）</div>
+            <div class="metric-why">自监督范式下的提升最大</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">12</div>
+            <div class="metric-label">基准一致提升</div>
+            <div class="metric-why">分类精度不掉，甚至略升</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">0</div>
+            <div class="metric-label">额外参数 / 额外损失</div>
+            <div class="metric-why">纯确定性操作，即插即用</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>维度</th><th>结果</th><th>附注</th></tr></thead>
+          <tbody>
+            <tr data-hi><td>PiB 三范式</td><td class="num">全监督 42.7→55.1 / DINO 44.5→69.7 / CLIP 39.8→50.1</td><td>跨判别式预训练范式通用</td></tr>
+            <tr><td>涌现分割</td><td class="num">全监督粗分割 mIoU 22.3→32.8</td><td>接近 DINO 自监督的 47.7，涌现属性不再自监督专属</td></tr>
+            <tr><td>反证</td><td class="num">加 Register 后 PiB 42.7→41.5</td><td>不是没提升，是反降：治标不治本的实证</td></tr>
+            <tr><td>局限</td><td class="num">K 值敏感（推荐约 50% patch 数）</td><td>风景/群体等无明确前景图、前景纹理极复杂时可能失效</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">懒惰聚合的两个驱动因素是什么？（复述时漏了第二个）</p>
+            <div class="qa-a"><p>驱动 1 = 粗粒度监督（只有图像级标签，没有 patch 级空间指导）；驱动 2 = 全局注意力（前景语义扩散到背景的通道）。缺一不可：窗口注意力实验（PiB 升但分类掉 8%）证明全局注意力是帮凶但砍掉得不偿失。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">Register tokens 为什么没用？</p>
+            <div class="qa-a"><p>实测加 Register 后 PiB 从 42.7 反降到 41.5。高范数只是晚期症状，Register 把症状挪走，病因（CLS 往背景跑）还在。「ViT needs more than registers」标题说的就是这个。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">频域稳定性区分前景背景的真正机制？</p>
+            <div class="qa-a"><p>是<strong>通道维</strong>频域特性，不是空间连续性。反向论证：空间维的低频是墙壁等平滑区域，恰恰是背景，不能当前景判据。通道维低频的直观图像 ≈ 语义分割输出图：同类语义在通道维上变化小。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">LaSt-ViT 只适用于对比学习吗？和 GenLIP 的解法能组合吗？</p>
+            <div class="qa-a"><p>不止：跨<strong>三种</strong>判别式预训练通用（标签监督、CLIP 文本监督、DINO 自监督），对比学习只是其一，准确叫法是「判别式预训练」（对应 GenLIP 的「生成式」）。能组合：Gated Attention 管信息<strong>分布</strong>（防少数 token 吸走），LaSt-ViT 管 CLS <strong>聚合</strong>（逼从前景取），作用在不同环节，正交可叠加。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">直接对接</span>
+              <span><a href="2026-genlip.html">GenLIP</a>：同为 ViT attention artifact。GenLIP 在生成式预训练发现 attention sink（少数 token 吸信息）用 Gated Attention 压制；LaSt-ViT 在判别式预训练发现 lazy aggregation（背景抢 CLS）用频域选择性聚合纠正</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">间接相关</span>
+              <span><a href="2026-videochat3.html">VideoChat3</a>：I3D-ViT 基座也可用 LaSt-ViT 的聚合方式改进密集特征</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">baseline</span>
+              <span>Register tokens（Darcet et al.）/ MaskCLIP / CLIPSelf / SCLIP（事后修正）/ 窗口注意力 / LOST</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-last-vit.md">wiki/papers/2026-last-vit.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/XNL46XIR">Zotero</a>（shiVisionTransformersNeed2026）· AI Butler 预读笔记 itemKey <code>VRCS23SC</code> / <code>PX2ZD5PZ</code></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

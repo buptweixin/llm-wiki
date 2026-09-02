@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>llm-wiki 速览 · 导航</title>
+  <link rel="stylesheet" href="assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+
+<div class="idx-wrap">
+  <header class="idx-header">
+    <h1>llm-wiki 速览</h1>
+    <p class="idx-sub">费曼式知识库的网页速览层：每篇 5~8 张纵向滑页，只放一句话本质、一页看懂、关键机制、关键数字、卡壳点。markdown 原页仍是唯一完整真源，每篇页脚可跳回。</p>
+  </header>
+
+  <div class="idx-tools">
+    <input class="idx-filter" type="search" placeholder="输入关键词过滤，如：attention / 蒸馏 / 流式" aria-label="过滤笔记">
+    <span class="idx-hint">7 篇 · 滑页内 ↑↓ 翻页 · 离线可用</span>
+  </div>
+
+  <section class="idx-group" data-group="papers">
+    <h2>论文 PAPERS</h2>
+    <div class="idx-entries">
+      <a class="entry" href="papers/2026-videochat3.html">
+        <div class="entry-title">VideoChat3 <span class="entry-date">2026-07-27</span></div>
+        <p class="entry-desc">4B 全开源 Video MLLM；核心是用 I3D-ViT（把图像 ViT 撑成 3D）在视觉编码器里把视频 token 压掉 16 倍，再用「像人看直播」的状态机自适应分辨率处理流式视频。</p>
+      </a>
+      <a class="entry" href="papers/2026-vst.html">
+        <div class="entry-title">VST <span class="entry-date">2026-08-17</span></div>
+        <p class="entry-desc">让 VideoLLM「边看边想」：把 CoT 推理切碎塞进视频流片段间的等待空档异步执行，写进 FIFO 文本长期记忆，用户提问时直接读笔记秒答（0.56s），推理算力分摊到播放期，零额外查询延迟。</p>
+      </a>
+      <a class="entry" href="papers/2026-genlip.html">
+        <div class="entry-title">GenLIP <span class="entry-date">2026-08-17</span></div>
+        <p class="entry-desc">让 ViT 直接「说话」：单个 Transformer + 自回归语言建模直接训视觉编码器从图像 token 预测文本 token（Prefix-LM Attention），不用对比学习也不用独立解码器；8B 样本超 SigLIP2（40B），Gated Attention 防 attention sink。</p>
+      </a>
+      <a class="entry" href="papers/2026-last-vit.html">
+        <div class="entry-title">LaSt-ViT <span class="entry-date">2026-08-17</span></div>
+        <p class="entry-desc">揭示 ViT「偷懒」根因（懒惰聚合：全局注意力 + 粗粒度监督下靠背景 patch 当 CLS 载体），用频域稳定性评分逼 CLS 只从前景 patch 聚合；跨标签/文本/自监督三种范式，12 基准一致提升，Register 只治标。</p>
+      </a>
+      <a class="entry" href="papers/2026-video-o3.html">
+        <div class="entry-title">Video-o3 <span class="entry-date">2026-08-17</span></div>
+        <p class="entry-desc">像侦探破案一样看视频：模型在单一共享上下文里多轮「找线索、裁剪放大、连逻辑、出答案」，工具调用由模型自己生成（原生交错）；TDAM 防 Fake Thinking，VTGR 控上下文效率；MLVU 72.1%、Video-Holmes 46.5%。</p>
+      </a>
+      <a class="entry" href="papers/2026-u-opsd.html">
+        <div class="entry-title">U-OPSD <span class="entry-date">2026-08-19</span></div>
+        <p class="entry-desc">首个完全无外部监督的 on-policy 自蒸馏：模型自己做 8 遍题，多数投票伪解当教师特权上下文，只在答错 rollout 上逐 token 前向 KL 蒸馏「看过答案的自己」；非思考模式反而超过有 GT 的 OPSD（+3.2%/+2.3%）。</p>
+      </a>
+      <a class="entry" href="papers/2026-open-mopd.html">
+        <div class="entry-title">Open-MOPD <span class="entry-date">2026-08-27</span></div>
+        <p class="entry-desc">多专家蒸不进一个学生的病根不是教师打架（证伪实验：conflict mask 全降分），而是 token 级优化预算三层错配：长度差 25 倍吃掉短响应域的 token 份额 + 收敛速度差导致预算漂移 + K 次内更新让 reward 陈旧；三个机制分别修复，回收率 35.6%→83.4%。</p>
+      </a>
+    </div>
+  </section>
+
+  <section class="idx-group" data-group="concepts">
+    <h2>概念 CONCEPTS</h2>
+    <p class="idx-empty">暂无。按 templates/concept.md 入库后，速览页会出现在这里。</p>
+  </section>
+
+  <section class="idx-group" data-group="code">
+    <h2>代码 CODE</h2>
+    <p class="idx-empty">暂无。按 templates/code.md 入库后，速览页会出现在这里。</p>
+  </section>
+
+  <section class="idx-group" data-group="syntheses">
+    <h2>综合 SYNTHESES</h2>
+    <p class="idx-empty">暂无。跨页综合成页后，速览页会出现在这里。</p>
+  </section>
+
+  <p class="idx-empty idx-no-match" style="display:none">没有匹配的笔记。</p>
+
+  <footer class="idx-foot">
+    <span>完整笔记与费曼复述在 <a href="../index.md">wiki/ markdown 库</a></span>
+    <span>零依赖 · file:// 离线可用 · 样式源 assets/wiki-slides.css</span>
+  </footer>
+</div>
+
+<script src="assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

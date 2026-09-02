@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "conversationId": "conv-1786074362850-gk5na8uzw",
+  "records": [
+    {
+      "schemaVersion": 1,
+      "id": "msg-1786074362880-kug5ctd",
+      "userTurnOrdinal": 1,
+      "state": "accepted",
+      "localMessageId": "msg-1786074362839-nubocf3",
+      "timestamp": 1786074362839,
+      "rawDisplayText": "复习",
+      "canonicalText": "复习",
+      "images": [],
+      "contentDigest": "ab09226a3589c036a9d149c320c209b7a960bc56278633af3a8852b89f53a285",
+      "providerAssistantMessageId": "8a45bd67",
+      "providerUserMessageId": "a5d150c0"
+    },
+    {
+      "schemaVersion": 1,
+      "id": "msg-1786075406691-oy1b4gs",
+      "userTurnOrdinal": 2,
+      "state": "accepted",
+      "localMessageId": "msg-1786075406686-4j4ics0",
+      "timestamp": 1786075406686,
+      "rawDisplayText": "这篇文章有两个核心创新点，一个是视频帧的冗余压缩：具体做法是把T个连续帧压缩为连续序列然后通过时空注意力机制然后结合时空维度的池化操作将token数降为T，结合2x2的pixel shuffle 的2x2下采样实现了4T的压缩率；2是采用了状态token同时实现了流式视频理解的沉默以及token预算控制，也就是在每个时间chunk结束时会先输出一个状态token，如果状态token是silence/standby那么先闭嘴同时调整下一个窗口的像素预算(silence 224或standby 448找证据)，证据够了就生成答案并调低像素预算",
+      "canonicalText": "这篇文章有两个核心创新点，一个是视频帧的冗余压缩：具体做法是把T个连续帧压缩为连续序列然后通过时空注意力机制然后结合时空维度的池化操作将token数降为T，结合2x2的pixel shuffle 的2x2下采样实现了4T的压缩率；2是采用了状态token同时实现了流式视频理解的沉默以及token预算控制，也就是在每个时间chunk结束时会先输出一个状态token，如果状态token是silence/standby那么先闭嘴同时调整下一个窗口的像素预算(silence 224或standby 448找证据)，证据够了就生成答案并调低像素预算",
+      "images": [],
+      "contentDigest": "47ad40c178d3d9c0248bf68e836ed38f675c9c8267e406896ba7a79ae6fdc54f",
+      "providerAssistantMessageId": "90fe956f",
+      "providerUserMessageId": "bdf5341c"
+    }
+  ]
+}

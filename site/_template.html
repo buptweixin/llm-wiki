@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<!-- ============================================================
+  llm-wiki 速览页模板 (_template.html)
+  复制本文件为 site/<分类>/<名称>.html 后填充内容。
+  文件名必须与 wiki/ 下 markdown 页同名（如 wiki/papers/2026-xxx.md
+  对应 site/papers/2026-xxx.html）。
+
+  铁律（对应 assets/wiki-slides.css 的设计规范）:
+  1. 样式只用 wiki-slides.css 里的 class 和 token，禁止页内私设
+     颜色/字体/圆角（<style> 块禁止出现）。
+  2. 全站零 em-dash: 正文禁用「——」「—」「–」，改写为冒号、句号或括号；
+     分隔用竖排排列或细线，不用连续「·」。
+  3. 速览定位: 每页 5~8 张 slide，只放一句话本质/一页看懂/关键机制/
+     关键数字/卡壳点/关联；细节留在 markdown 原页，页脚链接回去。
+  4. 数字一律用 mono（class 里已带: metric-value / dtable td.num /
+     topbar-count）。每张 slide 至多一条 .takeaway 重点条。
+  5. 互链指向 site/ 内对应 html 页；源页/Zotero 用相对路径与
+     zotero:// 深链接。上一篇/下一篇链接按入库时间顺序连成环。
+  ============================================================ -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>简称 · llm-wiki 速览</title>
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">简称</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="#slide-1">上一张</a>
+      <a class="topbar-link" data-nav="next" href="#slide-2">下一张</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <!-- ① 封面: eyebrow 用分类, h1 简称, 一句话本质, meta 三行, 标签 -->
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>简称</h1>
+        <p class="cover-full">全称（英文原题）</p>
+        <p class="cover-essence">一句话本质（与 markdown 页表头完全一致）。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>作者 / 机构</dd>
+          <dt>入库</dt><dd>YYYY-MM-DD</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/XXXXXXXX">Zotero</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">标签1</span><span class="tag">标签2</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② 一页看懂: 问题 -> 方法 -> 结果, 方法步 data-hi 高亮 -->
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>旧方法哪里痛，一两句。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>核心思想，用类比讲，不堆行话。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>效果与代价，量级感即可。</p>
+          </div>
+        </div>
+        <p class="takeaway">本篇最值得记住的一句话。</p>
+      </div>
+    </section>
+
+    <!-- ③ 关键机制: 用 .fig 盒子图讲清主线, data-hi 高亮关键节点 -->
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制: 机制名</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>两三句铺垫，术语首次出现给一句人话解释。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">输入</span>视频帧</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">关键模块</span>做什么</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">输出</span>结果</div>
+          </div>
+          <p class="fig-note">图注: 一句话点破图里最容易看漏的地方。</p>
+        </div>
+        <p>机制的直觉解释。公式尽量改写成文字直觉；
+          必须保留的公式用 <code>代码字体</code> 行内排版。</p>
+      </div>
+    </section>
+
+    <!-- ④ 第二个机制（可选）: 结构同 ③, 没有就删掉 -->
+
+    <!-- ⑤ 关键数字: metrics 指标卡 + 可选 dtable 对照表 -->
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">72.1<small>%</small></div>
+            <div class="metric-label">基准名</div>
+            <div class="metric-why">为什么这个数重要。</div>
+          </div>
+          <!-- 3~5 个, 最重要的 data-hi -->
+        </div>
+        <table class="dtable">
+          <thead><tr><th>路线</th><th>指标</th><th>代价</th></tr></thead>
+          <tbody>
+            <tr data-hi><td>本文</td><td class="num">xx.x</td><td>一句话</td></tr>
+            <tr><td>基线</td><td class="num">xx.x</td><td>一句话</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ⑥ 卡壳点: 全库最私人最值钱的部分, Q 原话改写自 markdown 卡壳点节 -->
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">当时卡在哪的问题？</p>
+            <div class="qa-a"><p>怎么想通的，两三句。</p></div>
+          </div>
+          <!-- 2~3 个, 复测反复漏的排前面 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 关联与来源: 互链 + 源 markdown + Zotero -->
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">正交 / 互补 / 冲突</span>
+              <span><a href="2026-xxx.html">页面名</a> 一句话关系</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-xxx.md">wiki/papers/2026-xxx.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/XXXXXXXX">Zotero (citekey)</a></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>U-OPSD · llm-wiki 速览</title>
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">U-OPSD</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-video-o3.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-open-mopd.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>U-OPSD</h1>
+        <p class="cover-full">On-Policy Self-Distillation without Any Supervision</p>
+        <p class="cover-essence">让模型给自己的答错题「开小灶」：它自己把一道无答案的题做 8 遍，多数票当标准答案，专门拿答错的那几版去对照「看过答案的自己」逐 token 纠正，全程不需要任何外部答案。首个完全无外部监督的 on-policy 自蒸馏。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>UC San Diego / Georgia Tech / UMD / ByteDance（Li et al.）</dd>
+          <dt>入库</dt><dd>2026-08-19</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/JD4RZABE">Zotero</a> · <a href="https://doi.org/10.48550/arXiv.2608.06296">DOI</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">后训练</span><span class="tag">自蒸馏</span><span class="tag">无监督</span><span class="tag">多数投票</span><span class="tag">on-policy</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>后训练谱系每往右一步去掉一类外部依赖：SFT 要 GT 解且教师强制导致训练-推理失配；GRPO 要 GT 答案做奖励且信号稀疏；OPD 要外部强教师；OPSD 参数自共享但教师仍多看 GT 解。GT 标注的成本与稀缺是规模化瓶颈。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>没有标准答案就把同一题独立做 8 遍，5 次算出 42 就当 42 是对的；拿「算出 42 的完整过程」当参考，逐 token 纠正「算错的那 3 次」。只纠答错的，不模仿答对的。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>Non-thinking 模式 4B/8B 比基座 +8.5/+10.7，无 GT 反而超过有 GT 的 OPSD（+3.2/+2.3）。代价：伪标签 13.3% 是错的，构成性能硬上界。</p>
+          </div>
+        </div>
+        <p class="takeaway">学习信号从「教师知道答案、学生不知道」的上下文差里长出来：学生若也看了伪解，教师 = 学生，KL 恒 0。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：采样 → 投票 → 门控 → 蒸馏</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">① Sample</span>冻结策略独立采样 G=8 条 rollout</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">② Vote</span>多数票赢的当伪答案；一致性 c(x)=同意票数/G（分母是 G，截断废票直接拉低分数）</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">③ Gate</span>c(x)&lt;τ=0.5 或全对 → 跳过不学：自发课程，只学「能形成共识但时不时跑偏」的能力边界题</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">④ Distill</span>沿答错 rollout 逐 token 前向 KL</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>角色</th><th>输入上下文</th><th>看伪解 y+</th><th>看错答前缀 y⁻&lt;t</th></tr></thead>
+          <tbody>
+            <tr data-hi><td>教师 π̄</td><td class="num">x + y+ + y⁻&lt;t</td><td>是</td><td>是</td></tr>
+            <tr data-hi><td>学生 πθ</td><td class="num">x + y⁻&lt;t</td><td>否</td><td>是</td></tr>
+          </tbody>
+        </table>
+        <p>两者共享 x + y⁻&lt;t，教师比学生多出来的只有 y+（一条完整的同意 rollout，整条喂入不截断）。蒸馏沿 y⁻ 前缀逐 token 走完全长，纠正信号正好戳在「自信但错」的地方。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：三个消融出的硬取舍</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>取舍</th><th>错误做法的后果</th><th>为什么</th></tr></thead>
+          <tbody>
+            <tr data-hi>
+              <td>教师必须看完整推理轨迹</td>
+              <td class="num">label-only 掉 10.3~15.8%，甚至低于基座</td>
+              <td>光知道「答案是 42」无法引导中间步骤；y+ 必须是通向答案的整条路</td>
+            </tr>
+            <tr data-hi>
+              <td>必须 forward KL</td>
+              <td class="num">reverse KL 训练崩塌：长度 2.7k→99k、boxed 率 99%→33%、丧失终止</td>
+              <td>forward 是 mode-covering（老师会的都得会）；reverse 是 mode-seeking（只抱最高概率的峰，塌成复读机）；JSD 掉 13.8%</td>
+            </tr>
+            <tr data-hi>
+              <td>必须全词表分布蒸馏</td>
+              <td class="num">sampled-token 掉 13.7%，且伪标签下差距比 GT 下更大（17.8% vs 2.0%）</td>
+              <td>噪声伪标签下逐 token 采样会放大噪声；好消息：top-100 截断反而最好，实用降本</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">+8.5/+10.7</div>
+            <div class="metric-label">non-thinking 4B/8B vs 基座</div>
+            <div class="metric-why">无 GT 反超有 GT 的 OPSD（+3.2/+2.3）</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">+7.0~11.3</div>
+            <div class="metric-label">vs 无标签 RL（TTRL/RENT/Intuitor）</div>
+            <div class="metric-why">共识当稠密蒸馏信号胜过当稀疏标量奖励</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">13.3<small>%</small></div>
+            <div class="metric-label">过门后的伪标签错误率</div>
+            <div class="metric-why">性能硬上界，但被门控+课程+稠密信号三重抬高净收益</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>维度</th><th>结果</th><th>附注</th></tr></thead>
+          <tbody>
+            <tr><td>thinking 模式</td><td class="num">+2.2/+1.9，与 OPSD 打平</td><td>基座已强 headroom 小 + 长 rollout 同预算完成投票少</td></tr>
+            <tr><td>MoE 迁移</td><td class="num">30B-A3B-Instruct 75.77→77.46</td><td>配方免调优迁移</td></tr>
+            <tr><td>超参</td><td class="num">τ=0.3 优于默认 0.5</td><td>扫描跨度 14.2%</td></tr>
+            <tr><td>局限</td><td class="num">只在竞赛数学验证</td><td>开放式生成需换软共识（embedding 投票）；增益依赖基座中等偏强；缺 seed 误差棒</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">为什么必须前向 KL，反向 KL 会崩？（08-24 复测暴露两处易记偏）</p>
+            <div class="qa-a"><p>厨师比喻：前向 KL（老师‖学生）= 老师会的学生都得会，漏掉任何一道（哪怕低概率）就罚 → mode-covering，学生变成全面厨师。反向 KL（学生‖老师）= 学生敢做老师菜单外的菜就罚 → mode-seeking，学生死抱老师概率最高的招牌菜，其余全放弃。易记偏的两处：反向 KL 罚的是<strong>学生</strong>越菜单；实测失败模式是<strong>复读塌缩</strong>（长度爆炸、无限重复、丧失终止），不是幻觉。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">13.3% 的错标签为什么没把模型带偏？</p>
+            <div class="qa-a"><p>四重设计抬高净收益：门控先拦截瞎猜题（13.3% 是<strong>过门后</strong>的错误率）；自发课程聚焦能力边界（大多数时候对的题上 y+ 大概率对）；前向 KL + 全词表是稠密信号，一条 rollout 数百个纠正点，正梯度盖过少数错 y+ 的负梯度；教师不需要 y+ 完美，只需多数方向对，噪声 token 被平均。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">y+ 是单个答案值还是多个 token？为什么 &lt;t 只在 y⁻ 上？</p>
+            <div class="qa-a"><p>ã(x) 是单值（如 boxed 42），用来投票和分组；<strong>y+ 是通向 ã(x) 的整条推理轨迹</strong>（几百上千 token），整条喂教师当背景知识，不截断。&lt;t 在 y⁻ 上因为蒸馏沿答错那条逐 token 往前走：t 每加 1，在新位置算一次教师/学生的下一 token 分布 KL。label-only 消融掉 10.3~15.8% 的来由正是「只给答案值，教师不知道怎么走到这个答案」。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">「共识被用作上下文」和 TTRL 类方法的本质区别？</p>
+            <div class="qa-a"><p>TTRL/RENT/Intuitor 把多数投票当<strong>标量奖励</strong>（整条 rollout 一个数，稀疏）；U-OPSD 把共识当<strong>教师的特权上下文</strong>（y+ 拼进教师输入，每个 token 都有完整下一 token 分布，稠密）。同样 rollout 预算领先 7~11 个点的本质原因。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">兑现钩子 · 正交切片</span>
+              <span><a href="2026-open-mopd.html">Open-MOPD</a>：本文管「单教师的信号从哪来」（无 GT 自蒸馏），Open-MOPD 管「多教师信号怎么分账」（三层预算失衡）；组合方案成立。散度注记：本文前向 KL 是直接 loss，Open-MOPD 的 reverse-KL 式 dense reward 是 PPO 奖励信号，同方向不同框架不矛盾</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">未来钩子</span>
+              <span>on-policy distillation（DistiLLM 系列）/ self-consistency（Wang et al. 2023）/ 推理预算控制（Thinkless、BudgetThinker）入库时回链本页</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-u-opsd.md">wiki/papers/2026-u-opsd.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/JD4RZABE">Zotero</a>（Li2026）· AI Butler 预读笔记 itemKey <code>2ZRTZGPX</code></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

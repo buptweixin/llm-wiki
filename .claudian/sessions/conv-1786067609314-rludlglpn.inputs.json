@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "conversationId": "conv-1786067609314-rludlglpn",
+  "records": [
+    {
+      "schemaVersion": 1,
+      "id": "msg-1786067609408-ipb2ztu",
+      "userTurnOrdinal": 1,
+      "state": "accepted",
+      "localMessageId": "msg-1786067609305-0eh2fsd",
+      "timestamp": 1786067609305,
+      "rawDisplayText": "复习",
+      "canonicalText": "复习",
+      "images": [],
+      "contentDigest": "ab09226a3589c036a9d149c320c209b7a960bc56278633af3a8852b89f53a285",
+      "providerUserMessageId": "019fd9ed-074c-7540-a42f-967d8a081f7c",
+      "providerAssistantMessageId": "msg_06e6872b30b68b92016a753ab4a1948199b24703c1955dfe9d"
+    }
+  ]
+}
