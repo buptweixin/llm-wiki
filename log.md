@@ -188,3 +188,11 @@
 - 本地 site/deploy.sh（rsync --delete 同步 + 健康检查），凭据 site/.deploy.env（已排除不上传不进 git）。
 - 工作流挂钩：CLAUDE.md Ingest Phase 3 第 5 步 + Review 第 5 步均追加「改完速览页执行 deploy.sh」；ingest.md / review.md 命令同步；site/ 速览库规范节补部署条目。
 - 待办：用户在 Cloudflare 加 wiki.arnowei.cloud 的 A 记录（69.63.214.137，DNS only）后证书自动签发。
+
+## [2026-09-02] schema | 部署切换为 GitHub 同步模式
+
+- 部署链路改为纯 GitHub：本地 git push → VPS cron 每 2 分钟 git pull 自动同步。不再用 rsync。
+- 初始化 git 仓库（main 分支），建 GitHub 私有仓库 buptweixin/llm-wiki，.gitignore 排除 .deploy.env/.zcode/.obsidian。
+- VPS 端：仓库克隆到 /root/workspace/llm-wiki/，.deploy/ 目录（不入 git）放 docker-compose.yml + nginx 配置 + htpasswd + sync.sh，cron */2 执行 sync.sh。
+- site/deploy.sh 改为 git add+commit+push + 健康检查（等 VPS cron 拉取）。
+- 端到端验证通过：本地 push → VPS cron pull → 线上更新（延迟 ≤2 分钟）。
