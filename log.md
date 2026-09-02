@@ -196,3 +196,16 @@
 - VPS 端：仓库克隆到 /root/workspace/llm-wiki/，.deploy/ 目录（不入 git）放 docker-compose.yml + nginx 配置 + htpasswd + sync.sh，cron */2 执行 sync.sh。
 - site/deploy.sh 改为 git add+commit+push + 健康检查（等 VPS cron 拉取）。
 - 端到端验证通过：本地 push → VPS cron pull → 线上更新（延迟 ≤2 分钟）。
+
+## [2026-09-02] schema | 认证切换为 oauth2-proxy（GitHub 登录）
+
+- 去掉 basic auth 口令，改用 oauth2-proxy 容器做 GitHub OAuth 认证，仅限 buptweixin 账号访问。
+- VPS 架构：llm-wiki-web（nginx 静态）+ llm-wiki-auth（oauth2-proxy v7.7.1），auth 容器接入 nginx-proxy + acme-companion 自动 HTTPS。
+- 本地 deploy.sh 去掉明文口令（.deploy.env 不再需要）；健康检查只验站点可达（200/302/403 均算正常，403 = 未认证的 oauth2-proxy 登录页）。
+- CLAUDE.md site/ 规范节第 7 条同步更新。
+
+## [2026-09-02] ingest | S²VOPD（Self-Supervised Visual On-Policy Distillation）
+
+- U-OPSD 同作者线的视觉域续作：零特权监督的 VLM on-policy 自蒸馏，把学生的输入图退化（降采样 0.3~0.6× + DDPM 噪声）构造师生不对称，4B 70.68→77.44 超 235B 开源与 GPT-5.4。Zotero AWVKHW9W（citekey liSelfSupervisedVisualOnPolicy2026），AI Butler 预读（WAIZQ4EN/J9RDZC8L）质量高，与原文逐项核实，核出"96%"无正文推导（自行补算）与 §4.3 基座读数协议口径不一致两处。
+- 费曼两轮收敛。卡壳点：①"难度论"被 crop 消融证伪（真机制是向信息完整版自己对齐）；② 与 U-OPSD 散度结论完全颠倒（fKL 必选 vs JSD 最好），用"教师多出的信息可否恢复"统一解释；③ y+ 说成"伪标签"两连犯（老卡壳点复发，下次复测优先）；④ OCR 失效边界为本人推演。
+- 互链：U-OPSD（域互补 + 散度冲突注记）、Open-MOPD（散度第三数据点），OPD 家族三页成谱系。速览页 site/papers/2026-s2vopd.html，复测排 2026-09-05。

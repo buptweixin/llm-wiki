@@ -149,6 +149,7 @@ _无_——检验题全部补齐，无残留漏洞。
 
 ## 关联
 
+- [S²VOPD](2026-s2vopd.md) — 兑现本文预留的 on-policy distillation 钩子（视觉域）。同作者线（Yijiang Li 一作 + Vasconcelos 组）的域互补：本文教师多看"伪解 y+"（文本特权上下文），S²VOPD 教师多看"清晰像素"（把学生的输入图退化来构造不对称，方向倒转：不减教师加的信息，而减学生的信息）。**散度冲突注记（重要）**：本文必须 forward KL（reverse 复读塌缩、JSD 掉 13.8），S²VOPD 却是 JSD 最好 > reverse KL > forward KL 最差，排序完全颠倒——用"教师多出的信息可否恢复"统一解释：本文的解题思路学生原则上能自己推出来（可恢复→全面模仿对），S²VOPD 的清晰像素永远拿不回来（不可恢复→模仿不可及细节有害）。两篇合看才看清散度选择不是普适规则，是信息类型的函数。
 - [Open-MOPD](2026-open-mopd.md) — 兑现本文预留的 on-policy distillation 钩子。OPD 家族两个**正交切片**：本文管"单教师的信号从哪来"（无 GT 自蒸馏），Open-MOPD 管"多教师信号之间怎么分账"（token 数量/reward 幅度/新鲜度三层预算失衡，35.6%→83.4% 回收率）。组合方案成立：多个自蒸馏伪教师 + Open-MOPD 三机制。散度注记：本文前向 KL 直接当 loss（reverse 会复读塌缩）；Open-MOPD 的 reverse-KL 式 dense reward 是 PPO 的 reward 信号（sg 停梯度 + clip 兜底）而非直接损失——同方向不同框架，不矛盾。
 
 未来入库钩子：若 ingest on-policy distillation（DistiLLM 系列）、self-consistency（Wang et al. 2023）、推理路由/预算控制（Thinkless、BudgetThinker）相关论文，应回链本页——U-OPSD 把无监督蒸馏三条线交汇成一个方法。

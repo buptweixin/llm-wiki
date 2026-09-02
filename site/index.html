@@ -17,7 +17,7 @@
 
   <div class="idx-tools">
     <input class="idx-filter" type="search" placeholder="输入关键词过滤，如：attention / 蒸馏 / 流式" aria-label="过滤笔记">
-    <span class="idx-hint">7 篇 · 滑页内 ↑↓ 翻页 · 离线可用</span>
+    <span class="idx-hint">8 篇 · 滑页内 ↑↓ 翻页 · 离线可用</span>
   </div>
 
   <section class="idx-group" data-group="papers">
@@ -50,6 +50,10 @@
       <a class="entry" href="papers/2026-open-mopd.html">
         <div class="entry-title">Open-MOPD <span class="entry-date">2026-08-27</span></div>
         <p class="entry-desc">多专家蒸不进一个学生的病根不是教师打架（证伪实验：conflict mask 全降分），而是 token 级优化预算三层错配：长度差 25 倍吃掉短响应域的 token 份额 + 收敛速度差导致预算漂移 + K 次内更新让 reward 陈旧；三个机制分别修复，回收率 35.6%→83.4%。</p>
+      </a>
+      <a class="entry" href="papers/2026-s2vopd.html">
+        <div class="entry-title">S²VOPD <span class="entry-date">2026-09-02</span></div>
+        <p class="entry-desc">零特权视觉 on-policy 自蒸馏：把学生的输入图故意降采样加噪弄坏，EMA 教师看原图，学生每步向「看得清的自己」对齐；不对称不必给教师加信息，可以从学生减信息。4B 涨到 77.44 超 235B 开源模型与 GPT-5.4，冻结教师只掉 0.4。</p>
       </a>
     </div>
   </section>

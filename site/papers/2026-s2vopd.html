@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S²VOPD · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">S²VOPD</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-open-mopd.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-videochat3.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>S²VOPD</h1>
+        <p class="cover-full">Self-Supervised Visual On-Policy Distillation</p>
+        <p class="cover-essence">不给老师任何特权，而是把学生的输入图故意弄糊弄小：同一个模型里「看得清的自己」（EMA teacher 看原图）在学生每一步回答上教「看不清的自己」（student 看增强退化图），全部学习信号免费来自这张被弄坏的图。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>UC San Diego / UMD / Georgia Tech / JHU / Oxford（Yijiang Li 一作，U-OPSD 同组续作）</dd>
+          <dt>入库</dt><dd>2026-09-02</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/AWVKHW9W">Zotero</a> · <a href="https://arxiv.org/abs/2608.14144">arXiv</a> · <a href="https://williamium3000.github.io/s2vopd">项目页</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">on-policy 蒸馏</span><span class="tag">自监督</span><span class="tag">数据增强</span><span class="tag">VLM 细粒度感知</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>OPD 要求教师比学生多知道点什么：更强模型（贵）、GT 答案、GT 区域（要标注）。特权方法还偏科：ZwZ 在 MathVerse 掉 27.1。什么特权都没有时，不对称从哪来？</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>把方向倒过来：不给教师加信息，<strong>从学生减信息</strong>。学生的输入图降采样到 0.3~0.6× 再叠噪声，EMA 教师看原图，学生在坏图上自己 rollout，逐步向「看得清的自己」的分布对齐。模糊试卷复习法：看糊卷作答，看清卷的自己逐步纠偏；上考场发清晰卷。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>4B 从 70.68 涨到 77.44：超 235B 开源模型与 GPT-5.4，追平 397B；感知 +5.7、数学 +3.7 双赢。代价：增益依赖增强调参，OCR 类任务预期失效（本人推演）。</p>
+          </div>
+        </div>
+        <p class="takeaway">不对称性不在乎是「教师多看」还是「学生少看」实现的：从学生身上减信息，监督信号免费。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：非对称视图蒸馏</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>同一模型两个身份：student θ 与 EMA teacher φ（φ ← 0.95·φ + 0.05·θ，教师的「慢半拍影子」）。师生共享问题 q 和轨迹前缀 y&lt;t，教师多出来的只有那张清晰的图（对照 U-OPSD：教师多出来的是伪解 y+，不对称载体从上下文换成输入模态）。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">输入</span>原图 x + 问题 q</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">弄坏图</span>降采样 0.3~0.6×（不 resize 回，token 直接变少）+ 50% 概率 DDPM t=200 噪声</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">学生</span>看坏图 rollout 8 条</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">教师</span>看原图，同一前缀逐 token 打分</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><span class="fig-node-tag">损失</span>top-k 广义 JSD（α=0.5）</div>
+          </div>
+          <p class="fig-note">图注：最容易被看漏的是「教师根本不比学生聪明」。把教师永远冻结在基座（不做 EMA）只掉 0.40 分，93% 增益来自那张图，不来自自我改进。</p>
+        </div>
+        <p>训练看糊图、考试看好图不是 mismatch：学的是「从退化证据恢复完整判断」的能力，六个感知基准全用原图测照样 +6.76。也别用「练难考易」解释：更强的 crop 更难却单调掉分，难度的关键在向信息完整版自己对齐。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：增强设计三律</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p>首个针对 OPD 的系统化增强空间受控搜索（四族：信息减少 / 光度 / 几何 / 遮挡），得到三条规律：</p>
+        <table class="dtable">
+          <thead><tr><th>规律</th><th>证据</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr data-hi>
+              <td>不对称才有信号</td>
+              <td class="num">四族全涨：75.65 / 74.40 / 74.30 / 72.44（基座 70.58）；对称自蒸馏掉到 65.21</td>
+              <td>没有信息差时目标放大教师的自信错误（EMA 滞后 = 拉向过去的自己，正反馈强化弱点）</td>
+            </tr>
+            <tr>
+              <td>强度要中等</td>
+              <td class="num">各族倒 U 型，师生 JSD gap ≈ 0.014 处到顶</td>
+              <td>太弱没信号，太强学不动</td>
+            </tr>
+            <tr data-hi>
+              <td>gap 必须任务一致</td>
+              <td class="num">crop 单调跌：71.53 → 68.76 → 67.44，最大 gap 却最差</td>
+              <td>crop 选择性删证据，题变不可答；降采样均匀降密度，题可答、差距可学</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="takeaway">大 gap ≠ 好 gap：决定好坏的不是 gap 大小，是 gap 的语义内容（被删的信息可否恢复）。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">77.44<small>%</small></div>
+            <div class="metric-label">4B 六感知基准均值</div>
+            <div class="metric-why">基座 70.68；超 235B（75.75）与 GPT-5.4（72.77），追平 397B</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">96<small>%</small></div>
+            <div class="metric-label">同数据下恢复特权方法增益</div>
+            <div class="metric-why">摘要声称，正文无推导；自行补算：9B 感知 3.57 / Vision-OPD 3.70 ≈ 96.5%</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">-0.40</div>
+            <div class="metric-label">冻结教师（w/o EMA）代价</div>
+            <div class="metric-why">教师的强完全来自清晰输入，EMA 只是稳定性选择</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">65.21<small>%</small></div>
+            <div class="metric-label">对称自蒸馏</div>
+            <div class="metric-why">低于基座 70.58：无信息差 = 放大自信错误</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>散度消融（与 U-OPSD 排序完全颠倒）</th><th>本文 AVG</th><th>机制</th></tr></thead>
+          <tbody>
+            <tr data-hi><td>JSD（α=0.5，本文默认）</td><td class="num">76.05</td><td>覆盖与选择的平衡点</td></tr>
+            <tr><td>reverse KL</td><td class="num">75.49</td><td>mode-seeking，只学可迁移的高置信模式</td></tr>
+            <tr><td>forward KL</td><td class="num">74.74</td><td>逼学生模仿它接触不到的视觉细节，最差</td></tr>
+          </tbody>
+        </table>
+        <p>局限：增强需调参；OCR/文字密集图未测（噪声会毁文字证据，本人推演失效）；纯文本任务无可退化模态；无 seed 误差棒。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">训练看糊图、考试看好图，为什么反而变强？（初答走偏到「练难考易 + 探索能力」）</p>
+            <div class="qa-a"><p>「难度论」被论文自己的消融证伪：若难度是关键，更强的 crop 应涨更多，实际单调下跌；w/o EMA（教师冻结在基座）仍拿 93% 增益，教师一点不比学生聪明。真机制：学生的<strong>每一步被拉向「信息完整版的自己」在同样位置的判断</strong>，学的是从退化证据恢复完整判断，这是蒸馏目标不是探索训练。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">散度结论为什么和 U-OPSD 完全反过来？（U-OPSD 必须 forward KL，本文 forward KL 最差）</p>
+            <div class="qa-a"><p>一条原理：<strong>教师多出来的信息，学生能不能恢复</strong>。U-OPSD 教师多的是解题思路，学生原则上能自己推出来（可恢复），全面模仿（forward KL 的 mode-covering）方向正确；S²VOPD 教师多的是清晰像素，糊图里丢掉的细节永远拿不回来（不可恢复），forward KL 逼学生模仿不可及的细节反而有害，JSD 居中。量级佐证：U-OPSD 选错散度是灾难（13+ 点，「知道答案的教师」分布锐利），本文选错只是小亏（1.3 点，「看得清的教师」分布温和）。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">y+ 为什么又口误成「伪标签」？（两连犯，下次复测优先扫）</p>
+            <div class="qa-a"><p>y+ 不是标签，是拼进 U-OPSD 教师输入的<strong>完整解题轨迹（上下文）</strong>；共识答案 ã(x) 只用来投票和分组。消融 label-only（只给 boxed 答案值）掉 10.3~15.8：光知道答案没法引导中间步骤。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">同组域互补 · 兑现钩子</span>
+              <span><a href="2026-u-opsd.html">U-OPSD</a>：同作者线的文本域对应（教师多看伪解 y+ vs 本文教师多看清晰像素）；两页散度冲突用「信息可恢复性」统一解释，合看才知散度选择是信息类型的函数</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">家族三页谱系</span>
+              <span><a href="2026-open-mopd.html">Open-MOPD</a>：U-OPSD 管「单教师信号从哪来（文本）」，本文管「单教师信号从哪来（视觉：减学生而非加教师）」，Open-MOPD 管「多教师怎么分账」；本文是散度注记第三数据点</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">未来钩子</span>
+              <span>NoisyRollout / VPPO / PRPO（增强调 RL 的先例，区分点：本文增强差异本身是训练信号）、BYOL / DINO / FixMatch（弱视图教强视图的自监督源头）、DistiLLM 系列（散度统一沉淀）入库时回链本页</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-s2vopd.md">wiki/papers/2026-s2vopd.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/AWVKHW9W">Zotero</a>（liSelfSupervisedVisualOnPolicy2026）· AI Butler 预读笔记 itemKey <code>WAIZQ4EN</code> / <code>J9RDZC8L</code>（summary 复现级，与原文逐项核实一致）</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

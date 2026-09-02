@@ -111,6 +111,7 @@ _无_——检验题与两道补漏小检验全部收敛，无残留漏洞。
 
 ## 关联
 
+- [S²VOPD](2026-s2vopd.md) — OPD 家族第三页：「单教师信号从哪来」的视觉域答案（把学生输入图退化构造不对称，减学生而非加教师）。散度注记第三数据点：视觉不对称蒸馏里 JSD > reverse KL > forward KL，排序与 U-OPSD 完全颠倒（教师多出的像素信息不可恢复），三框架对照（U-OPSD 直接 loss / 本文 PPO reward 槽位 / S²VOPD 生成式 JSD）待 DistiLLM 系列统一沉淀。
 - [U-OPSD](2026-u-opsd.md) — 兑现其预留的 on-policy distillation 钩子。OPD 家族的两个**正交切片**：U-OPSD 管「单教师的信号从哪来」（自身多数投票伪解当特权上下文，去掉 GT 依赖），本文管「多教师信号之间怎么分账」（token/幅度/新鲜度三层预算分配）。组合方案成立：多个自蒸馏伪教师 + 本文三机制（三机制与「教师从哪来」完全正交，只要 K>1 复用 batch，refresh 白送 +0.81）。**散度形式对比注记**（不构成矛盾，记录备考）：U-OPSD 必须前向 KL 直接当 loss（reverse KL 直接优化会复读塌缩）；本文 dense reward 是 reverse-KL 式 per-token 形式，但角色是 PPO 的 **reward 信号**（sg 停梯度、走 policy gradient + clip），不是直接蒸馏损失——同一「方向」在不同框架里安全性不同，值得未来与 DistiLLM 系列一起沉淀。
 
 未来入库钩子：AsyncOPD（reward refresh 的灵感来源，异步 stale RL）、DistiLLM 系列（on-policy 蒸馏散度设计）、GKD（dense reward 进 PPO 槽位的先例）、多教师/路由相关论文应回链本页。

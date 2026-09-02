@@ -102,7 +102,7 @@ llm-wiki/
 4. 每页 5~8 张 slide，每张至多一条 `.takeaway` 重点条；卡壳点 slide 必须保留（全库最值钱的部分）。
 5. 上一篇/下一篇按 `index.md` 顺序连成环；互链指向 site/ 内 html 页；源页用相对路径链接回 `../../wiki/<分类>/<同名>.md`；Zotero 深链接保留 `zotero://select/items/<itemKey>`。
 6. 双击 `site/index.html`（file://）即可离线使用；纯静态零依赖，不引入任何构建工具。
-7. **线上部署**：`site/deploy.sh` 把 site/ rsync 到 VPS（nginx 容器 + nginx-proxy 自动 HTTPS + basic_auth 口令）；凭据在 `site/.deploy.env`（不上传，不入 git）。ingest/review 改完速览页后执行该脚本同步，VPS 不可达不阻塞入库流程。
+7. **线上部署**：`site/deploy.sh` 把 site/ 经 GitHub 推送，VPS cron 每 2 分钟 git pull 同步（纯 GitHub，不用 rsync）；认证由 oauth2-proxy（GitHub 登录，仅限 `buptweixin` 账号），无需本地口令。ingest/review 改完速览页后执行该脚本，VPS 不可达不阻塞入库流程。
 
 ## 页面质量标准（费曼标准）
 
