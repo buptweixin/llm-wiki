@@ -209,3 +209,13 @@
 - U-OPSD 同作者线的视觉域续作：零特权监督的 VLM on-policy 自蒸馏，把学生的输入图退化（降采样 0.3~0.6× + DDPM 噪声）构造师生不对称，4B 70.68→77.44 超 235B 开源与 GPT-5.4。Zotero AWVKHW9W（citekey liSelfSupervisedVisualOnPolicy2026），AI Butler 预读（WAIZQ4EN/J9RDZC8L）质量高，与原文逐项核实，核出"96%"无正文推导（自行补算）与 §4.3 基座读数协议口径不一致两处。
 - 费曼两轮收敛。卡壳点：①"难度论"被 crop 消融证伪（真机制是向信息完整版自己对齐）；② 与 U-OPSD 散度结论完全颠倒（fKL 必选 vs JSD 最好），用"教师多出的信息可否恢复"统一解释；③ y+ 说成"伪标签"两连犯（老卡壳点复发，下次复测优先）；④ OCR 失效边界为本人推演。
 - 互链：U-OPSD（域互补 + 散度冲突注记）、Open-MOPD（散度第三数据点），OPD 家族三页成谱系。速览页 site/papers/2026-s2vopd.html，复测排 2026-09-05。
+
+## [2026-09-04] ingest | LocateAnything（Parallel Box Decoding）
+
+- 第九篇论文入库：NVIDIA 2026-05，3B 统一 VLM 检测/grounding，提出 Parallel Box Decoding——把 2D 框当原子单元整块并行解码。库内第一篇 grounding/检测方向论文，开「解码表征与推理效率」新线。
+- Zotero 命中（itemKey `7KYM7ZBM`，citekey `wangLocateAnythingFastHighQuality2026`）：取元数据 + PDF 逐页核验（方法 p.4-7、实验 p.8-11）+ AI Butler 两份子笔记（summary Y4IH7DBI / table BTHUC235，deepseek-v4-pro 生成）做预读底稿。
+- 机制骨架：输出组织成 L=6 固定块（semantic/box/negative/end 四类）；同 GT 双格式训练（NTP 接龙卷 + MTP 填空卷）拼一条序列，混合掩码三规则（NTP 因果禁看 x_blk / x_blk 块间因果 / 块内双向）；推理三模式 Slow-NTP / Fast-MTP / Hybrid（触发器 top-1 坐标概率<0.7 且 top-5 极差>80 双条件 → 局部回退 NTP 重写问题块）。底座 Moon-ViT（Kimi）+ Qwen2.5 + MLP。
+- 费曼检验收敛（初讲用户卡在"具体怎么做"，重讲升级到 token 级演算后通过）。卡壳点 4 个：① 讲解颗粒度（必须 token 级走查）；② 触发器双条件 = 检测候选分布"撕裂"（初答把极差理解成框大小，三态表纠正）；③ PBD-Slow vs 旧 NTP 同是 NTP 解码却 +2 的归因（初答"互相促进"太泛，Table 6c「只训 Lntp 零增益 50.1、加 Lblk 才 52.1」定位出几何联合监督压进共享权重）；④ 通用 MTP 为何又慢又差（跨边界虚假相关）。"块内双向注意力在单步并行中的信息论作用"存疑但论文未展开，暂不立问题。
+- AI 预读核出 4 处修正：数据口径精确化（138M 查询/12M 图/785M 框）；Moon-ViT 补来源（Kimi Team 2025）；消融归因补 Lblk 决定性对照；触发器"撕裂分布"语义补讲。AI-Table 笔记信息量低未采用；GJXSHNW7 note 是用户备注非预读。
+- 互链：VST（延迟主题正交：藏起来 vs 减步数）、Video-o3/VST（感知侧 vs 推理行动侧，GUI grounding 是 agent 感知底座）。预留钩子：结构无关 MTP/diffusion LM 家族（SDLM/Block Diffusion/LLaDA/Dream/DiffusionVL）、grounding RL（Vision-R1/UniVG-R1/GW-VLM）、结构化输出并行迁移族。
+- 建页 `wiki/papers/2026-locateanything.md`；`index.md` 同步；`review.md` 排入复测 2026-09-07。

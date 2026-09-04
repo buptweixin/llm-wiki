@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LocateAnything · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260902-3">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 索引</a>
+    <span class="topbar-title">LocateAnything</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" data-nav="prev" href="2026-s2vopd.html">上一篇</a>
+      <a class="topbar-link" data-nav="next" href="2026-videochat3.html">下一篇</a>
+    </nav>
+    <span class="topbar-count">1 / 7</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <section class="slide" id="slide-1">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>LocateAnything</h1>
+        <p class="cover-full">Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding</p>
+        <p class="cover-essence">VLM 做视觉定位时，输出的原子单元不该是 token 而该是整个框：把 2D 框当一个固定长块，训练用「接龙卷 + 填空卷」双格式，推理时一次 forward 并行填出整框（框与框仍逐个来），又快又准，尤其贴边的高 IoU 精度。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>NVIDIA（实习作者来自港理工 / 普林斯顿 / 南大 / UIUC）</dd>
+          <dt>入库</dt><dd>2026-09-04</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/7KYM7ZBM">Zotero</a> · <a href="https://arxiv.org/abs/2605.27365">arXiv</a></dd>
+        </dl>
+        <div class="tagrow">
+          <span class="tag">并行框解码</span><span class="tag">VLM grounding</span><span class="tag">MTP</span><span class="tag">GUI 定位</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>VLM 检测把框序列化成 token 流，一个词一个词蹦：一个框 6+ 步，N 个框线性放大（H100 上 Qwen3-VL 仅 ~1.1 框/秒）。坐标之间是几何整体，却被迫独立串行猜，误差滚雪球。通用 MTP 随便切块并行，又会学跨框跨类的假关联。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>把解码粒度从「token」提升到「整个框」：同一份答案教两种格式，接龙卷保底（逐词）、填空卷提速（每块只留第一格，其余一次填出）。推理默认走填空，一个框一步 forward；填得可疑就用接龙逐词重写这一块再切回。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>Hybrid 12.7 框/秒，是 Rex-Omni 的 2.5 倍、Qwen3-VL 的 10 倍以上；贴边精度（LVIS F1@0.95 31.1 vs 别家 ~20）大幅领先。方法本体贡献有限，另一半靠 12M 图 / 138M 查询 / 785M 框的数据引擎。</p>
+          </div>
+        </div>
+        <p class="takeaway">别让四个坐标「接龙」出来：它们是一个舞步动作，四肢要同时摆好，不是一步一步迈。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：框 = 一块填空</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>词表里坐标是 [0,1000] 各一个词，「热狗在框 (342,567)-(890,345)」就是一句话 <code>&lt;ref&gt; hot dog &lt;/ref&gt; &lt;box&gt; 342 567 890 345 &lt;/box&gt;</code>。旧法把它当接龙，一次 forward 只能蹦一个词（Transformer 只取最后一个位置的预测）。</p>
+        <div class="fig">
+          <div class="fig-row">
+            <div class="fig-node"><span class="fig-node-tag">旧 NTP</span><code>&lt;box&gt;</code></div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><code>342</code></div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><code>567</code></div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><code>890</code></div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><code>345</code></div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node"><code>&lt;/box&gt;</code></div>
+          </div>
+          <div class="fig-row">
+            <div class="fig-node" data-hi><span class="fig-node-tag">新 PBD</span>一次 forward</div>
+            <span class="fig-arrow"></span>
+            <div class="fig-node" data-hi><span class="fig-node-tag">整框</span><code>&lt;box&gt; 342 567 890 345 &lt;/box&gt;</code></div>
+          </div>
+          <p class="fig-note">图注：PBD 靠的是 Transformer 被浪费的能力。训练时每个位置都学「预测下一词」，自回归解码却只取最后一位。PBD 把未来 5 个槽位摆成 MASK，一次把整框填出来，一个框从 6 步变 1 步。</p>
+        </div>
+        <p>训练时同一份答案排成两种格式（<code>L = L_ntp + L_blk</code>）：接龙卷喂完整序列练逐词；填空卷每块只留首 token 后 5 格涂 MASK 练整块。填空卷的 4 个坐标一起挨罚，模型要拿满分就得让四数构成合法框，这个几何约束被焊进权重，换回逐词推理时照样生效。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：Hybrid 回退与歧义触发器</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p>并行偶尔整块填歪：类别边界犹豫时块内混进结构 token 和坐标 token（格式乱）；密集网格里坐标滑进两物体中间（空间歧义）。Hybrid 每块填完就验置信，可疑就作废这块、退回上一块定稿处、改用接龙逐词重写这一块，写完再切回填空。</p>
+        <table class="dtable">
+          <thead><tr><th>候选分布（top-1 概率 / top-5 极差）</th><th>模型内心</th><th>回退？</th></tr></thead>
+          <tbody>
+            <tr data-hi>
+              <td>低 / 大</td>
+              <td>候选在坐标轴上撕裂到相距很远的两个位置，不知道框边贴哪个物体（真空间歧义）</td>
+              <td>回退</td>
+            </tr>
+            <tr>
+              <td>低 / 小</td>
+              <td>在 342 和 343 间像素级犹豫，落在同一物体内</td>
+              <td>否，NTP 也不会更好</td>
+            </tr>
+            <tr>
+              <td>高 / 大</td>
+              <td>对首选很笃定，尾巴长无关紧要</td>
+              <td>否</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="takeaway">触发器不是查「有没有不确定」，是查候选分布的「撕裂」：两条件（top-1 概率 &lt; 0.7 且 top-5 极差 &gt; 80）同时满足，才是慢工出细活能救的场景。极差量的是模型内心的动摇范围，不是框的尺寸。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">12.7<small> BPS</small></div>
+            <div class="metric-label">Hybrid 吞吐（H100）</div>
+            <div class="metric-why">Rex-Omni 5.0 的 2.5 倍、Qwen3-VL 1.1 的 10 倍以上；目标 20→300 时 PBD 生成时间几乎不涨（12→25 BPS）</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">31.1<small>%</small></div>
+            <div class="metric-label">LVIS F1@IoU=0.95</div>
+            <div class="metric-why">近乎像素级贴边：Rex-Omni 20.7 / Qwen3-VL-8B 20.2。贴边是 PBD 的主场</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">60.3<small>%</small></div>
+            <div class="metric-label">ScreenSpot-Pro GUI 定位</div>
+            <div class="metric-why">超 32B 的 GUI-Owl（58.0）；Office 图标 69.8，比别家高 10~20 分</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">138M<small> 查询</small></div>
+            <div class="metric-label">LocateAnything-Data</div>
+            <div class="metric-why">12M 图 / 785M 框 / 六任务域，多模型协作自动产框的数据引擎</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>COCO-only 消融</th><th>F1</th><th>机制</th></tr></thead>
+          <tbody>
+            <tr data-hi><td>PBD Slow（L_ntp + L_blk）</td><td class="num">52.1</td><td>几何联合监督压进权重，NTP 解码也生效</td></tr>
+            <tr><td>Quantized-NTP（旧坐标序列）</td><td class="num">50.1</td><td>逐 token 孤立监督</td></tr>
+            <tr data-hi><td>只训 L_ntp（块已对齐但没练填空）</td><td class="num">50.1</td><td>零增益：增益全来自 L_blk</td></tr>
+            <tr><td>结构无关 MTP（SDLM-B6）</td><td class="num">46.1</td><td>跨框跨类虚假相关，又慢又差</td></tr>
+          </tbody>
+        </table>
+        <p>两腿走路：方法本体在无大数据时只 +1.5~2.0（51.6 vs 50.1），加 138M 数据后 COCO 到 54.7（数据贡献约 +3，自行对比）。纯 Fast 复杂场景掉精度（49.6），最高精度场景请用 Slow。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa">
+            <p class="qa-q">坐标并行出、没有先后，凭什么互相约束？（第一版讲解完全没建立起「具体怎么做」的直觉）</p>
+            <div class="qa-a"><p>机制必须落到 token 级走查才通：旧法一个 forward 蹦一个词；Transformer 天生「每个位置预测下一词」，PBD 把未来槽位摆成 MASK 一次填整框。坐标约束不是「先填 x1 传给 x2」（并行无回头路），而是训练时四数<strong>一起挨罚</strong>，拿满分就得构成合法框，约束焊进权重。类比：舞步动作四肢同时摆好，不是一步一迈。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">PBD-Slow 也是逐词 NTP 解码，凭什么比旧 Quantized-NTP 高 +2？（初答「两种形式互相促进」被数据点纠正）</p>
+            <div class="qa-a"><p>决定性对照在损失消融第一行：只训 L_ntp（表征已块对齐）→ 50.1，跟旧方法分毫不差，说明块本身零增益。<strong>全部增益来自 L_blk</strong>：它用「一次猜对整块才得分」把几何联合约束压进共享权重，x1 不再孤立被评、和 y1/x2/y2 绑一起评；沉淀后换回 NTP 推理仍生效。精度收益因此从「必须靠并行」里解放。</p></div>
+          </div>
+          <div class="qa">
+            <p class="qa-q">触发器的两个条件为什么要同时满足？（初答把极差理解成框大小）</p>
+            <div class="qa-a"><p>极差量的是 5 个候选坐标词在 [0,1000] 轴上差多远，是模型内心的动摇范围。双条件合成一个检测：候选分布是否<strong>撕裂</strong>。单边都是正常尾巴：候选挤一团是像素级犹豫（落同一物体内），有明确首选则尾巴长无所谓。只有「不自信 + 候选几何上严重分裂」才说明真不知道框边贴哪，才值得回退。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">延迟主题正交</span>
+              <span><a href="2026-vst.html">VST</a>：同一敌人（延迟）的两种解法。VST 把推理切碎塞进播放空档把延迟藏起来，本文把解码步数本身减掉。可组合</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">感知侧 vs 推理侧</span>
+              <span><a href="2026-video-o3.html">Video-o3</a> / VST：本文是 GUI/指代定位感知底座（给得又快又准），它们是拿到框之后的推理与行动</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">未来钩子</span>
+              <span>结构无关 MTP / 扩散语言模型家族（SDLM、Block Diffusion、LLaDA、Dream、DiffusionVL）、grounding 后训练 RL（Vision-R1 / UniVG-R1 / GW-VLM）、结构化输出并行迁移族（多边形 / 动作基元 / 单元格）入库时回链本页</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../../wiki/papers/2026-locateanything.md">wiki/papers/2026-locateanything.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/7KYM7ZBM">Zotero</a>（wangLocateAnythingFastHighQuality2026）· AI Butler 预读笔记 itemKey <code>Y4IH7DBI</code> / <code>BTHUC235</code>（summary 质量高，四处修正见 markdown 备注）</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20260902-3"></script>
+</body>
+</html>

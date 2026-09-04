@@ -18,6 +18,7 @@ _暂无_
 - [U-OPSD](wiki/papers/2026-u-opsd.md) — 首个完全无外部监督的 on-policy 自蒸馏：模型自己做 8 遍题，多数投票伪解当教师特权上下文，只在答错 rollout 上逐 token 前向 KL 蒸馏"看过答案的自己"——去掉 OPSD 最后一层 GT 解依赖，非思考模式反而超过有 GT 的 OPSD（+3.2%/+2.3%）。
 - [Open-MOPD](wiki/papers/2026-open-mopd.md) — 多专家蒸不进一个学生的病根不是教师打架（证伪实验：conflict mask 全降分），而是 token 级优化预算三层错配：长度差 25× 吃掉短响应域的 token 份额（IF 占 20% prompt 只拿 0.99% 梯度）+ 收敛速度差导致预算漂移 + K 次内更新让 reward 陈旧；三个机制分别在三个时间尺度修复，回收率 35.6%→83.4%，refresh 零开销（学生项重算恰好免费，PPO 本来就算）。
 - [S²VOPD](wiki/papers/2026-s2vopd.md) — 零特权视觉 on-policy 自蒸馏：把学生的输入图故意降采样加噪弄坏，EMA 教师看原图，学生每步向"看得清的自己"对齐——不对称不必给教师加信息，可以从学生减信息；4B 涨到 77.44 超 235B 开源模型与 GPT-5.4，冻结教师只掉 0.4（增益来自那张图不是自我改进）。
+- [LocateAnything](wiki/papers/2026-locateanything.md) — VLM 检测别再把框拆成 token 流逐个蹦：把整个框当一个固定长块（`<box> x1 y1 x2 y2 </box>`）并行解码，训练用"接龙卷+填空卷"双格式、块内坐标联合监督；Hybrid 12.7 框/秒（Qwen3-VL 的 10×+）且贴边精度大涨（LVIS F1@0.95 31.1 vs 别家 ~20），另一半功劳靠 12M 图/138M 查询/785M 框数据引擎。
 
 ## 代码 Code
 
