@@ -166,8 +166,8 @@
             <div class="qa-a"><p>崩的是<strong>预算分配本身发散</strong>：IF 最先接近 teacher，m̄ 缩小；反向规则把「gap 已经小」误读成「需要更多帮助」，权重从 24.4 涨到 80.9；更多预算收敛更快，m̄ 更小；每圈更极端无刹车，step 74 整体崩溃。gap-following 的正方向自带两层刹车：语义级（收敛域权重自动回落让出预算）+ 兜底级（clamp [0.05, 20] 防单域突变）。</p></div>
           </div>
           <div class="qa">
-            <p class="qa-q">reward refresh 为什么零开销？（全文最大卡壳点，第一轮完全没理解）</p>
-            <div class="qa-a"><p>三句话拆到底：① reward 只有两个模型出场，教师冻结所以教师项一次 prefill 永久缓存；② 学生会变，但「当前学生 logprob」PPO 每次内更新<strong>本来就算出来了</strong>（importance ratio 必需），refresh 只是捡这个免费产出重建学生项，零额外 forward；③ 轨迹本身还是旧学生采样的，这层陈旧只有重新 rollout 才能换，refresh 不碰，剩余交给 clip 兜底。一句话：reward 两个组成项里陈旧的只有学生项，而学生项的重算成本恰好为零，refresh = 捡钱。</p></div>
+            <p class="qa-q">reward refresh 为什么能救命、为什么零开销？（全文最大卡壳点，09-07 复测彻底通透）</p>
+            <div class="qa-a"><p><strong>病根</strong>：学生写完草稿后复用 4 轮内更新（K=4）。第 1 轮学完后学生水平已涨到 75 分，若不刷新，第 2 轮仍用写草稿时发霉的「50 分差距大奖」继续抽打，导致新旧概率比剧烈过冲。结果触发 PPO 紧急刹车：<strong>75.8% 的 token 被 clip 冻结，算力浪费且带偏方向</strong>。<br><strong>零开销</strong>：刷新的真实差距是 80-75=5 分。教师冻结早就算好；而<strong>学生当前的 75 分，PPO 算 ratio 本来就必须算出来</strong>。顺手填入减法公式，零额外计算、零重新生成：refresh = 捡钱。</p></div>
           </div>
           <div class="qa">
             <p class="qa-q">为什么不直接过采样 IF，也不把 reward 幅度归一化掉？</p>

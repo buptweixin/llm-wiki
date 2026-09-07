@@ -219,3 +219,10 @@
 - AI 预读核出 4 处修正：数据口径精确化（138M 查询/12M 图/785M 框）；Moon-ViT 补来源（Kimi Team 2025）；消融归因补 Lblk 决定性对照；触发器"撕裂分布"语义补讲。AI-Table 笔记信息量低未采用；GJXSHNW7 note 是用户备注非预读。
 - 互链：VST（延迟主题正交：藏起来 vs 减步数）、Video-o3/VST（感知侧 vs 推理行动侧，GUI grounding 是 agent 感知底座）。预留钩子：结构无关 MTP/diffusion LM 家族（SDLM/Block Diffusion/LLaDA/Dream/DiffusionVL）、grounding RL（Vision-R1/UniVG-R1/GW-VLM）、结构化输出并行迁移族。
 - 建页 `wiki/papers/2026-locateanything.md`；`index.md` 同步；`review.md` 排入复测 2026-09-07。
+
+## [2026-09-07] review | Open-MOPD
+
+- 首次复测通过：核心失衡（token 长度差与 gap 方向）首答即中。
+- 突破最大卡壳点：Reward Refresh（rollout 周期陈旧）与 PPO loss 关系此前未彻底通透；换用「老师/学生评分与发霉奖励」大白话拆解后，用户准确自主复述出「能力提升到 75 分却仍受 50 分旧奖励抽打 → 偏离剧烈触发 PPO clip → 75.8% token 算力废弃且方向带偏」的核心机制，完全理解并收敛。
+- 顺手改页：`wiki/papers/2026-open-mopd.md` 的 Reward Refresh 卡壳点更新为本次通俗化直觉版本。
+- 判定：通过；复测间隔递推进 +1 周，下次复测 2026-09-14。

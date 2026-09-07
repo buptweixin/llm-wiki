@@ -5,11 +5,15 @@
   "titleGenerationStatus": "failed",
   "createdAt": 1786074362858,
   "lastActivityAt": 1786075449021,
-  "sessionId": "019fda53-f866-701d-98ce-31367bbf22c5",
+  "sessionId": null,
   "selectedModel": "pi:zai-coding-cn/glm-5.2",
   "providerState": {
-    "sessionFile": "/Users/weixin/.pi/agent/sessions/--Users-weixin-Documents-50_knowledge_base-llm-wiki--/2026-08-07T03-46-04-006Z_019fda53-f866-701d-98ce-31367bbf22c5.jsonl",
-    "sessionId": "019fda53-f866-701d-98ce-31367bbf22c5"
+    "previousSessions": [
+      {
+        "sessionFile": "/Users/weixin/.pi/agent/sessions/--Users-weixin-Documents-50_knowledge_base-llm-wiki--/2026-08-07T03-46-04-006Z_019fda53-f866-701d-98ce-31367bbf22c5.jsonl",
+        "sessionId": "019fda53-f866-701d-98ce-31367bbf22c5"
+      }
+    ]
   },
   "usage": {
     "cacheCreationInputTokens": 0,
