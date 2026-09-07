@@ -6,14 +6,14 @@
   <meta name="description" content="llm-wiki 的费曼式知识阅读库：按研究问题查找论文、重建机制、回看卡壳点。">
   <title>llm-wiki · 知识阅读库</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-  <link rel="stylesheet" href="assets/wiki-slides.css?v=20260907-1">
+  <link rel="stylesheet" href="assets/wiki-slides.css?v=20260907-2">
 </head>
 <body>
 <div class="idx-wrap">
   <header class="idx-header">
     <p class="idx-kicker">LLM-WIKI / READING LIBRARY</p>
     <h1>找到一个知识点，接着往下读</h1>
-    <p class="idx-sub">按研究问题、机制或曾经卡住的地方查找。文章页改为连续阅读，重点、证据、卡壳点和关联都在同一条阅读路径上。</p>
+    <p class="idx-sub">按研究问题、机制或曾经卡住的地方查找。文章为连续阅读；速览未收录的细节有完整笔记页兜底。</p>
   </header>
 
   <section class="idx-search-panel" aria-label="知识库搜索与筛选">
@@ -51,13 +51,14 @@
     <aside class="idx-side">
       <div class="idx-side-block">
         <h2>今天先做什么</h2>
-        <a href="?review=due">查看今天待复测</a>
-        <p>进入文章后可以先打开“回忆模式”，只看问题，再逐题查看历史解答。</p>
+        <div id="idx-due-entry" hidden><a href="?review=due">查看今天待复测</a></div>
+        <button class="idx-recall-toggle" id="idx-recall-toggle" type="button" aria-pressed="false">先回忆</button>
+        <p>回忆模式只显示论文标题：先凭记忆复述，再进入文章点「显示检验问题」逐题核对。</p>
       </div>
       <div class="idx-side-block">
         <h2>阅读方式</h2>
-        <p>文章按自然滚动组织。左侧目录负责定位，右侧关系卡说明为什么值得继续读。</p>
-        <p>网页是 Markdown 的速览层，完整笔记仍回到原页。</p>
+        <p>文章按自然滚动组织：左侧目录定位，右侧关系卡说明为什么值得继续读。</p>
+        <p>速览是 Markdown 的提炼层；每篇都有完整笔记页（notes/），细节与原话都在那里。</p>
       </div>
     </aside>
   </main>
@@ -67,7 +68,7 @@
     <a href="../docs/specs/site-reading-redesign.md">阅读改造说明</a>
   </footer>
 </div>
-<script src="assets/wiki-index.js?v=20260907-1"></script>
-<script src="assets/wiki-slides.js?v=20260907-1"></script>
+<script src="assets/wiki-index.js?v=20260907-2"></script>
+<script src="assets/wiki-slides.js?v=20260907-2"></script>
 </body>
 </html>

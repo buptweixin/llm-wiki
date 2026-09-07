@@ -1,3 +1,13 @@
+---
+id: 2026-open-mopd
+type: paper
+aliases: [Open-MOPD, Multi-Teacher On-Policy Distillation, M-OPD]
+topic: distillation
+mechanisms: [on-policy-distillation, multi-teacher, budget-allocation]
+goals: [improve-training-efficiency]
+updated: 2026-09-07
+---
+
 # Open-MOPD（全称：Diagnosing and Fixing Capability Imbalance in Multi-Teacher On-Policy Distillation）
 
 > **一句话本质**：多个领域专家蒸馏进一个学生模型时，掉分的主因不是「教师们意见打架」，而是**训练预算被系统性分错**——每个域实际拿到的优化量 = token 数量 × reward 幅度 × reward 新鲜度，这三样在三个时间尺度上全部失衡；论文用三个机制逐一修复，把提升回收率从 35.6% 修到 83.4%。

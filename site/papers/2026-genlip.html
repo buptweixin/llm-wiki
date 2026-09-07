@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GenLIP · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-1">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-2">
 </head>
 <body>
 <div class="page">
@@ -23,7 +23,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide" id="slide-1">
+    <section class="slide" id="slide-1" data-section="essence">
       <div class="slide-inner cover">
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>GenLIP</h1>
@@ -34,13 +34,11 @@
           <dt>入库</dt><dd>2026-08-17</dd>
           <dt>原文</dt><dd><a href="zotero://select/items/EAKWJXT8">Zotero</a> · <a href="https://doi.org/10.48550/arXiv.2605.00809">DOI</a></dd>
         </dl>
-        <div class="tagrow">
-          <span class="tag">视觉编码器预训练</span><span class="tag">生成式预训练</span><span class="tag">Prefix-LM</span><span class="tag">attention sink</span><span class="tag">数据效率</span>
-        </div>
+        <div class="tagrow"><span class="tag">生成式预训练</span><span class="tag">attention sink</span><span class="tag">改善视觉表示</span></div>
       </div>
     </section>
 
-    <section class="slide" id="slide-2">
+    <section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -64,7 +62,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-3">
+    <section class="slide" id="slide-3" data-section="mechanism">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：Prefix-LM Attention 一塔两用</h2>
@@ -92,7 +90,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-4">
+    <section class="slide" id="slide-4" data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：Gated Attention 防 attention sink</h2>
@@ -113,7 +111,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-5">
+    <section class="slide" id="slide-5" data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键数字</h2>
@@ -148,18 +146,18 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-6">
+    <section class="slide" id="slide-6" data-section="pitfalls">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>卡壳点</h2>
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa">
+          <div class="qa" id="qa-sink">
             <p class="qa-q">为什么生成式预训练更容易触发 attention sink，对比学习反而不容易？</p>
             <div class="qa-a"><p>梯度路由方式不同。对比学习有全局池化逼所有 token 贡献（梯度均匀回传）；生成式的逐 token 预测没有这个约束，文本 token 主动检索视觉信息时，模型自由选择了「少数枢纽」捷径并被梯度强化。一句话：对比学习有全局池化逼贡献，生成式没这个约束。</p></div>
           </div>
-          <div class="qa">
+          <div class="qa" id="qa-decoder">
             <p class="qa-q">「独立文本解码器」指什么？（2026-08-24 复测暴露的混淆点）</p>
             <div class="qa-a"><p>指的是<strong>预训练时</strong>的组件（AIMv2 式编-解码路线），不是下游 MLLM 的「ViT + MLP connector + LLM」推理接法。后者是 GenLIP 自己推理时也在用的标准接法（2 层 MLP 投影给 LLM），两者别搞混。</p></div>
           </div>
@@ -167,7 +165,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-7">
+    <section class="slide" id="slide-7" data-section="relations">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关联与来源</h2>
@@ -193,6 +191,10 @@
             <h3>SOURCE</h3>
             <div class="link-item">
               <span class="link-rel">完整笔记</span>
+              <span><a href="../notes/papers/2026-genlip.html">notes/papers/2026-genlip.html</a>（markdown 的完整静态投影）</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">源文件</span>
               <span><a href="../../wiki/papers/2026-genlip.md">wiki/papers/2026-genlip.md</a></span>
             </div>
             <div class="link-item">
@@ -206,7 +208,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20260907-1"></script>
-<script src="../assets/wiki-slides.js?v=20260907-1"></script>
+<script src="../assets/wiki-index.js?v=20260907-2"></script>
+<script src="../assets/wiki-slides.js?v=20260907-2"></script>
 </body>
 </html>

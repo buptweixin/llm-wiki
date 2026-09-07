@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LaSt-ViT · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-1">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-2">
 </head>
 <body>
 <div class="page">
@@ -23,7 +23,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide" id="slide-1">
+    <section class="slide" id="slide-1" data-section="essence">
       <div class="slide-inner cover">
         <p class="cover-eyebrow">PAPER · CVPR 2026</p>
         <h1>LaSt-ViT</h1>
@@ -34,13 +34,11 @@
           <dt>入库</dt><dd>2026-08-17</dd>
           <dt>原文</dt><dd><a href="zotero://select/items/XNL46XIR">Zotero</a> · <a href="https://doi.org/10.48550/arXiv.2602.22394">DOI</a></dd>
         </dl>
-        <div class="tagrow">
-          <span class="tag">ViT</span><span class="tag">lazy aggregation</span><span class="tag">密集预测</span><span class="tag">频域分析</span><span class="tag">CLS token</span>
-        </div>
+        <div class="tagrow"><span class="tag">懒惰聚合</span><span class="tag">频域分析</span><span class="tag">改善视觉表示</span></div>
       </div>
     </section>
 
-    <section class="slide" id="slide-2">
+    <section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -64,7 +62,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-3">
+    <section class="slide" id="slide-3" data-section="mechanism">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：懒惰聚合的两个驱动</h2>
@@ -84,7 +82,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-4">
+    <section class="slide" id="slide-4" data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：频域稳定性评分与 Top-K 聚合</h2>
@@ -106,7 +104,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-5">
+    <section class="slide" id="slide-5" data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键数字</h2>
@@ -146,26 +144,26 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-6">
+    <section class="slide" id="slide-6" data-section="pitfalls">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>卡壳点</h2>
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa">
+          <div class="qa" id="qa-drivers">
             <p class="qa-q">懒惰聚合的两个驱动因素是什么？（复述时漏了第二个）</p>
             <div class="qa-a"><p>驱动 1 = 粗粒度监督（只有图像级标签，没有 patch 级空间指导）；驱动 2 = 全局注意力（前景语义扩散到背景的通道）。缺一不可：窗口注意力实验（PiB 升但分类掉 8%）证明全局注意力是帮凶但砍掉得不偿失。</p></div>
           </div>
-          <div class="qa">
+          <div class="qa" id="qa-register">
             <p class="qa-q">Register tokens 为什么没用？</p>
             <div class="qa-a"><p>实测加 Register 后 PiB 从 42.7 反降到 41.5。高范数只是晚期症状，Register 把症状挪走，病因（CLS 往背景跑）还在。「ViT needs more than registers」标题说的就是这个。</p></div>
           </div>
-          <div class="qa">
+          <div class="qa" id="qa-frequency">
             <p class="qa-q">频域稳定性区分前景背景的真正机制？</p>
             <div class="qa-a"><p>是<strong>通道维</strong>频域特性，不是空间连续性。反向论证：空间维的低频是墙壁等平滑区域，恰恰是背景，不能当前景判据。通道维低频的直观图像 ≈ 语义分割输出图：同类语义在通道维上变化小。</p></div>
           </div>
-          <div class="qa">
+          <div class="qa" id="qa-scope">
             <p class="qa-q">LaSt-ViT 只适用于对比学习吗？和 GenLIP 的解法能组合吗？</p>
             <div class="qa-a"><p>不止：跨<strong>三种</strong>判别式预训练通用（标签监督、CLIP 文本监督、DINO 自监督），对比学习只是其一，准确叫法是「判别式预训练」（对应 GenLIP 的「生成式」）。能组合：Gated Attention 管信息<strong>分布</strong>（防少数 token 吸走），LaSt-ViT 管 CLS <strong>聚合</strong>（逼从前景取），作用在不同环节，正交可叠加。</p></div>
           </div>
@@ -173,7 +171,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-7">
+    <section class="slide" id="slide-7" data-section="relations">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关联与来源</h2>
@@ -199,6 +197,10 @@
             <h3>SOURCE</h3>
             <div class="link-item">
               <span class="link-rel">完整笔记</span>
+              <span><a href="../notes/papers/2026-last-vit.html">notes/papers/2026-last-vit.html</a>（markdown 的完整静态投影）</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">源文件</span>
               <span><a href="../../wiki/papers/2026-last-vit.md">wiki/papers/2026-last-vit.md</a></span>
             </div>
             <div class="link-item">
@@ -212,7 +214,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20260907-1"></script>
-<script src="../assets/wiki-slides.js?v=20260907-1"></script>
+<script src="../assets/wiki-index.js?v=20260907-2"></script>
+<script src="../assets/wiki-slides.js?v=20260907-2"></script>
 </body>
 </html>

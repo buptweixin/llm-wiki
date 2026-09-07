@@ -1,3 +1,13 @@
+---
+id: 2026-u-opsd
+type: paper
+aliases: [U-OPSD, On-Policy Self-Distillation without Any Supervision, OPD]
+topic: distillation
+mechanisms: [on-policy-distillation, self-distillation]
+goals: [reduce-supervision]
+updated: 2026-09-07
+---
+
 # U-OPSD（全称：On-Policy Self-Distillation without Any Supervision）
 
 > **一句话本质**：让模型给自己的答错题"开小灶"——它自己把一道无答案的题做 8 遍，多数票当标准答案，专门拿答错的那几版去对照"看过答案的自己"逐 token 纠正，全程不需要任何外部答案。

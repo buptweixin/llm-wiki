@@ -1,3 +1,13 @@
+---
+id: 2026-genlip
+type: paper
+aliases: [GenLIP, Generative Language-Image Pre-training]
+topic: visual-encoders
+mechanisms: [generative-pretraining, attention-sink]
+goals: [improve-representation]
+updated: 2026-09-07
+---
+
 # GenLIP（全称：Let ViT Speak: Generative Language-Image Pre-training）
 
 > **一句话本质**：**让 ViT 直接"说话"**——把图像 token 和文本 token 拼成一个序列丢进单个 Transformer，用标准的「预测下一个词」训练：ViT 在前半段看图（双向注意力），后半段逐字生成描述（因果注意力），训完扔掉语言头，ViT 就是个被生成式目标直接训出来的视觉编码器。

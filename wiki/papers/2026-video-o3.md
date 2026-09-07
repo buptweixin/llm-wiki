@@ -1,3 +1,13 @@
+---
+id: 2026-video-o3
+type: paper
+aliases: [Video-o3, Video-Holmes]
+topic: video-understanding
+mechanisms: [tool-use, cot-reasoning, group-rl]
+goals: [improve-reasoning]
+updated: 2026-09-07
+---
+
 # Video-o3（全称：Video-o3: Native Interleaved Clue Seeking for Long Video Multi-Hop Reasoning）
 
 > **一句话本质**：**像侦探破案一样看视频**——先粗扫全片 → 发现疑点主动"放大"某段细看 → 看完再决定继续找还是收网答，整个找线索和答题在**同一个共享上下文**里交替进行，模型自己决定何时调工具、调哪里、用多少分辨率、何时停。

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!-- ============================================================
+  llm-wiki 完整笔记阅读页模板 (_note-template.html)
+  site/notes/papers/<同名>.html 是 wiki/papers/<同名>.md 的忠实静态投影，
+  由 LLM 在 ingest / review 同步时生成或手工维护（可用一次性脚本辅助，
+  用户打开网页不依赖任何脚本）。
+
+  铁律:
+  1. 忠实转换 markdown：不摘要、不删用户原话、来源限定与假说标记必须保留。
+     原文的破折号「——」等标点按原样保留（保真优先于速览层的零 em-dash 约定）。
+  2. 章节锚点固定: 解决什么问题 #problem / 大白话讲解 #intuition /
+     关键机制 #mechanism / 结果与代价 #evidence / AI 预读备注 #ai-notes /
+     我的复述 #restatement / 卡壳点与解答 #pitfalls / 还没搞懂 #open / 关联 #relations。
+  3. 卡壳问答的 id 与速览页同名问答保持一致（如 qa-y-plus），
+     搜索索引据此在速览页与完整笔记页之间选择落点。
+  4. 样式只用 wiki-slides.css（note-* / qa / dtable / tagrow），
+     禁止 <style> 块；符号必须转义（<box> 写成 &lt;box&gt;）。
+  5. markdown 互链 [X](2026-y.md) 投影为同目录 notes 页链接；
+     Zotero 深链接 zotero:// 原样保留。
+  6. 资源版本串与全站同步（assets 变更时所有页面 +1）。
+  ============================================================ -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>简称 · 完整笔记 · llm-wiki</title>
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20260907-2">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <a class="topbar-home" href="../../index.html">← 知识库</a>
+    <span class="topbar-title">简称 · 完整笔记</span>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="../papers/同名.html">速览页</a>
+    </nav>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="note-wrap">
+    <header class="note-header">
+      <p class="cover-eyebrow">FULL NOTE · 专题名（taxonomy.md 的 topic）</p>
+      <h1>简称</h1>
+      <p class="note-full">全称（英文原题）</p>
+      <p class="note-essence">一句话本质（与 markdown 页表头完全一致）。</p>
+      <dl class="cover-meta">
+        <dt>作者 / 机构</dt><dd>作者 / 机构</dd>
+        <dt>入库</dt><dd>YYYY-MM-DD</dd>
+        <dt>Zotero</dt><dd>citekey / itemKey / DOI（深链接保留）</dd>
+      </dl>
+      <div class="tagrow">
+        <a class="tag" href="../../index.html?tag=机制或目标ID">taxonomy 标签</a>
+      </div>
+    </header>
+
+    <section class="note-sec" id="problem"><h2>解决什么问题</h2><!-- 忠实转换 --></section>
+    <section class="note-sec" id="intuition"><h2>大白话讲解</h2><!-- 忠实转换 --></section>
+    <section class="note-sec" id="mechanism"><h2>关键机制</h2><!-- 忠实转换 --></section>
+    <section class="note-sec" id="evidence"><h2>结果与代价</h2><!-- 忠实转换 --></section>
+    <section class="note-sec" id="ai-notes"><h2>AI 预读备注</h2><!-- 忠实转换 --></section>
+    <section class="note-sec" id="restatement"><h2>我的复述</h2><!-- 用户原话必须保留 --></section>
+    <section class="note-sec" id="pitfalls">
+      <h2>卡壳点与解答</h2>
+      <div class="qa" id="qa-稳定id">
+        <p class="qa-q">当时卡在哪的问题？</p>
+        <div class="qa-a"><p>怎么想通的。</p></div>
+      </div>
+      <!-- id 与速览页同名问答一致；速览未收录的问答用自己的稳定 id -->
+    </section>
+    <section class="note-sec" id="open"><h2>还没搞懂</h2><!-- 假说标记保留原样 --></section>
+    <section class="note-sec" id="relations"><h2>关联</h2><!-- 忠实转换 --></section>
+
+    <footer class="note-foot">
+      <a href="../papers/同名.html">← 返回速览页</a>
+      <a href="../../../wiki/papers/同名.md">markdown 源文件（唯一真源）</a>
+      <span>本页是完整笔记的静态投影，保留原话、限定与假说标记。</span>
+    </footer>
+  </main>
+
+</div>
+</body>
+</html>

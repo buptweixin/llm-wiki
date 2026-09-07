@@ -1,3 +1,13 @@
+---
+id: 2026-locateanything
+type: paper
+aliases: [LocateAnything, Parallel Box Decoding, PBD]
+topic: structured-output
+mechanisms: [parallel-decoding, grounding]
+goals: [improve-grounding, improve-efficiency]
+updated: 2026-09-07
+---
+
 # LocateAnything（全称：Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding）
 
 > **一句话本质**：VLM 做视觉定位时，输出的"原子单元"不该是 token 而该是整个框：把 `<box> x1 y1 x2 y2 </box>` 当一个固定长块，训练用"接龙卷 + 填空卷"双格式喂，推理时一次 forward 并行填出整框（框与框仍逐个来），又快又准（尤其贴边的高 IoU 精度）。

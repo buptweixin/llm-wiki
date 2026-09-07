@@ -1,3 +1,13 @@
+---
+id: 2026-videochat3
+type: paper
+aliases: [VideoChat3, VideoChat-Flash, I3D-ViT]
+topic: video-understanding
+mechanisms: [video-mlm, token-compression, streaming-inference]
+goals: [improve-efficiency]
+updated: 2026-09-07
+---
+
 # VideoChat3（全称：VideoChat3: Fully Open Video MLLM for Efficient and Generalist Video Understanding）
 
 > **一句话本质**：一个 4B 参数、**全开源**的视频多模态大模型（Video MLLM）——主张「视频的时空冗余应该在视觉编码器里就压掉，而不是把一堆帧的 token 全塞给 LLM」，用一个被「撑成 3D」的视觉编码器（I3D-ViT）把视觉 token 砍掉 16 倍，再用「像人看直播」的自适应分辨率机制处理流式视频。

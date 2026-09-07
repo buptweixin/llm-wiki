@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VideoChat3 · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-1">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-2">
 </head>
 <body>
 <div class="page">
@@ -23,7 +23,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide" id="slide-1">
+    <section class="slide" id="slide-1" data-section="essence">
       <div class="slide-inner cover">
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>VideoChat3</h1>
@@ -34,13 +34,11 @@
           <dt>入库</dt><dd>2026-07-27</dd>
           <dt>原文</dt><dd><a href="zotero://select/items/E5RZINH5">Zotero</a> · <a href="https://doi.org/10.48550/arXiv.2607.14935">DOI</a></dd>
         </dl>
-        <div class="tagrow">
-          <span class="tag">视频 MLLM</span><span class="tag">token 压缩</span><span class="tag">流式视频</span><span class="tag">状态机</span><span class="tag">全开源 4B</span>
-        </div>
+        <div class="tagrow"><span class="tag">视频 MLLM</span><span class="tag">token 压缩</span><span class="tag">流式推理</span><span class="tag">提高推理效率</span></div>
       </div>
     </section>
 
-    <section class="slide" id="slide-2">
+    <section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -64,7 +62,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-3">
+    <section class="slide" id="slide-3" data-section="mechanism">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：I3D-ViT 的时间维压缩</h2>
@@ -87,7 +85,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-4">
+    <section class="slide" id="slide-4" data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：Adaptive Frame Resolution 状态机</h2>
@@ -115,7 +113,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-5">
+    <section class="slide" id="slide-5" data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键数字</h2>
@@ -154,22 +152,22 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-6">
+    <section class="slide" id="slide-6" data-section="pitfalls">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>卡壳点</h2>
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa">
+          <div class="qa" id="qa-where-compress">
             <p class="qa-q">为什么在视觉编码器里压缩，而不是让 LLM 长上下文兜底？</p>
             <div class="qa-a"><p>两种开销不对称：视觉编码器近似线性涨，LLM 注意力二次方涨。把压缩从贵的二次方阶段挪到便宜的线性阶段，视频越长越赚（256 帧时反而略慢，2048 帧才大幅反超）。</p></div>
           </div>
-          <div class="qa">
+          <div class="qa" id="qa-zero-redundancy">
             <p class="qa-q">相邻帧零冗余（纯噪声）时，16× 压缩还成立吗？</p>
             <div class="qa-a"><p>分两层：算力层永远成立（池化是机械的，与内容无关）；质量层塌掉（池化前做时空 attention 的意义就是靠冗余在压缩中保真，零冗余时等于把 T 个无关场景硬塞进 1 个 token）。净结果：速度保住，精度塌掉。</p></div>
           </div>
-          <div class="qa">
+          <div class="qa" id="qa-state-token">
             <p class="qa-q">状态 token「合二为一」（响应时机 + 像素预算）vs 拆开，利弊是什么？</p>
             <div class="qa-a"><p>合一的好处：监督信号白送（状态标签自带预算语义）、符合「扫无关低分辨率、见证据高分辨率细读」的直觉。隐患：224² 下小尺度证据可能看不见，模型永不进 Standby、永不放大、错过响应；一个 token 背两个目标梯度互相干扰；论文只消融了动态 vs 固定预算，<strong>没消融合并 vs 拆分</strong>。</p></div>
           </div>
@@ -177,7 +175,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-7">
+    <section class="slide" id="slide-7" data-section="relations">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关联与来源</h2>
@@ -203,6 +201,10 @@
             <h3>SOURCE</h3>
             <div class="link-item">
               <span class="link-rel">完整笔记</span>
+              <span><a href="../notes/papers/2026-videochat3.html">notes/papers/2026-videochat3.html</a>（markdown 的完整静态投影）</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">源文件</span>
               <span><a href="../../wiki/papers/2026-videochat3.md">wiki/papers/2026-videochat3.md</a></span>
             </div>
             <div class="link-item">
@@ -216,7 +218,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20260907-1"></script>
-<script src="../assets/wiki-slides.js?v=20260907-1"></script>
+<script src="../assets/wiki-index.js?v=20260907-2"></script>
+<script src="../assets/wiki-slides.js?v=20260907-2"></script>
 </body>
 </html>

@@ -1,3 +1,13 @@
+---
+id: 2026-last-vit
+type: paper
+aliases: [LaSt-ViT, Lazy Stable ViT]
+topic: visual-encoders
+mechanisms: [lazy-aggregation, frequency-analysis]
+goals: [improve-representation]
+updated: 2026-09-07
+---
+
 # LaSt-ViT（全称：Vision Transformers Need More Than Registers）
 
 > **一句话本质**：**ViT 偷懒**——有全局注意力又只有图像级标签时，它发现用大量背景 patch 当"全局语义载体"就能把分类做对，根本不关心前景在哪；结果分类准但密集预测废。解法是用频域稳定性评分逼 CLS token 只从前景 patch 聚合信息。

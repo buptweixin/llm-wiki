@@ -17,14 +17,17 @@ llm-wiki/
 ├── index.md         # 全库地图：所有页面的分类目录（任何改动后必须同步）
 ├── log.md           # 只增日志：ingest/query/review/lint 流水
 ├── questions.md     # 开放问题：费曼检验中没补齐的理解漏洞
-├── review.md        # 费曼复测队列
+├── review.md        # 费曼复测队列（复测状态的唯一真源）
+├── taxonomy.md      # 站点标签受控词表：专题/机制/目标标签的稳定 ID、显示名与别名
 ├── templates/       # 笔记模板：paper.md / concept.md / code.md
 ├── sources/         # 非论文类原始材料（自写笔记、代码片段等）：只进不改，LLM 只读；论文原文由 Zotero 统一管理（不再往 sources/ 存 PDF 副本）
-├── site/            # 伴生 HTML 速览库（LLM 维护，markdown 是唯一真源，详见「site/ 速览库规范」节）
-│   ├── index.html   # 导航页：分组卡片墙 + 关键词过滤
-│   ├── _template.html # 速览页骨架模板（slide 结构约定）
-│   ├── assets/      # wiki-slides.css（全库唯一样式源）+ wiki-slides.js（翻页/计数/过滤）
-│   └── papers/      # 速览页，文件名与 wiki/ 下 markdown 页同名（2026-xxx.html）
+├── site/            # 伴生 HTML 阅读库（LLM 维护，markdown 是唯一真源，详见「site/ 阅读库规范」节）
+│   ├── index.html   # 首页：专题 + 标签筛选 + 全文条目搜索
+│   ├── _template.html     # 速览页模板（连续阅读章节约定）
+│   ├── _note-template.html # 完整笔记阅读页模板（markdown 忠实投影约定）
+│   ├── assets/      # wiki-slides.css（全库唯一样式源）+ wiki-slides.js（阅读/搜索/回忆交互）+ wiki-index.js（可再生的静态索引投影）
+│   ├── papers/      # 速览页，文件名与 wiki/ 下 markdown 页同名（2026-xxx.html）
+│   └── notes/papers/ # 完整笔记阅读页，与速览页同名（markdown 的静态可读投影）
 └── wiki/            # LLM 全权维护的知识页面
     ├── concepts/    # 概念页（attention、KV cache、RLHF ...）
     ├── papers/      # 论文页（命名：年份-简称，如 2017-transformer.md）
@@ -68,8 +71,13 @@ llm-wiki/
 1. 用 `templates/` 对应模板建页，必须保留：费曼讲解精华、用户 自己的复述（原话）、卡壳点与解答。
 2. 更新所有受影响的相关页面（新增互链、修正被推翻的旧结论），一次 ingest 波及多页是正常的。
 3. 同步 `index.md`；追加 `log.md`；在 `review.md` 排入复测（默认入库 +3 天）。
-4. **同步 HTML 速览页**：复制 `site/_template.html` 为 `site/<分类>/<同名>.html`，按真源 markdown 提炼成 5~8 张 slide（封面 / 一页看懂 / 关键机制 / 关键数字 / 卡壳点 / 关联与来源），互链指向 site/ 内对应 html 页，页脚链接回 markdown 原页；同时在 `site/index.html` 对应分组加入条目（一句话本质抄 `index.md`）。页面删除时同步删速览页并更新 `site/index.html`。
-5. **部署上线**：执行 `site/deploy.sh`（rsync 到 VPS + 健康检查；凭据在 `site/.deploy.env`，不上传）。VPS 不可达时不阻塞入库流程，如实报告，提醒用户稍后重跑。
+4. **同步站点派生层**（详见「site/ 阅读库规范」）：
+   - **front-matter**：markdown 页头加结构化元数据（`id` / `type` / `aliases` / `topic` / `mechanisms` / `goals` / `updated`），标签 ID 取自 `taxonomy.md` 受控词表。
+   - **速览页**：复制 `site/_template.html` 为 `site/papers/<同名>.html`，按真源提炼连续阅读章节（核心直觉 / 一页看懂 / 关键机制 / 证据与边界 / 卡壳点 / 关联与来源；章节数由内容决定，不凑张数），section 用 `data-section` 声明语义 ID，卡壳问答每条加稳定 `id="qa-*"`。
+   - **完整笔记页**：按 `site/_note-template.html` 生成 `site/notes/papers/<同名>.html`（markdown 的忠实投影，保留用户原话、来源限定与假说标记）。
+   - **静态索引**：在 `site/assets/wiki-index.js` 登记页面元数据（front-matter + `review.md` 结构化日期的投影）与全文搜索条目（条目文本取自真源原文，锚点指向速览页或完整笔记页里真实存在的段落；不许新增真源没有的因果结论）。
+   - 删除页面时同步删速览页、完整笔记页与索引条目。
+5. **部署上线**：执行 `site/deploy.sh`（GitHub 推送，VPS cron 每 2 分钟 git pull 同步）。VPS 不可达时不阻塞入库流程，如实报告，提醒用户稍后重跑。
 
 ### 2. Query —— 查询
 
@@ -81,7 +89,7 @@ llm-wiki/
 2. 只报页面标题，让 用户 凭记忆重讲核心内容。重讲后**直接把页面「卡壳点与解答」节的原始问题改写成具体问题来问**（如「为什么 X 比 Y 更容易触发 Z？」）；**绝不问元问题**（「上次卡在哪还记得吗」）——元记忆远难于内容记忆，答不出"卡在哪"≠ 内容忘了，测不出真实遗忘。
 3. 对照 wiki 页逐点核对：讲对的确认；遗忘/讲错的重新费曼一轮（小规模 Phase 1→2）。核对只测**机制与定性结论**，不考具体数字（数值页面可查，Phase 2 明言不出背诵题）；定性量级感（如「1/5 数据全面超越」）可测。
 4. 更新 `review.md`（复测时间、结果），间隔递推：+3 天 → +1 周 → +1 月 → +3 月（宽松执行，以 用户 节奏为准）。
-5. 复测中若发现页面本身写得不够好（重建直觉太慢），顺手改进页面，**并同步对应的 `site/` HTML 速览页**。速览页有改动时执行 `site/deploy.sh` 部署上线。
+5. 复测中若发现页面本身写得不够好（重建直觉太慢），顺手改进页面，**并同步对应的 `site/` 派生层**：速览页、完整笔记页，以及 `site/assets/wiki-index.js` 里的复测投影（`review.next/last/count` 结构化日期，站点按 Asia/Shanghai 判断到期，不靠「今天」字样）。页面里的历史卡壳提示要带当时日期，已被复测推翻的「下次优先扫」要补上当前状态，不冒充当前弱项。速览页有改动时执行 `site/deploy.sh` 部署上线。
 
 ### 4. Lint —— 体检（用户 说「lint」时）
 
@@ -90,19 +98,20 @@ llm-wiki/
 - 页面间互相矛盾的结论；被新页面推翻但没更新的旧说法
 - 孤儿页（没有任何入链）；高频出现却没有独立页面的概念
 - `index.md` 与实际文件不一致；`questions.md` 里其实已经能回答的旧问题
-- `site/` 与 `wiki/` 一致性：markdown 页有/无对应速览页（漏更或残留死链）、速览页互链是否指向存在的 html、`site/index.html` 条目与实际文件是否一致、真源内容大改后速览页是否过期
+- `site/` 与 `wiki/` 一致性：每个 markdown 页有对应速览页 + 完整笔记页 + `wiki-index.js` 条目（漏更或残留死链）；索引条目的锚点在目标页面真实存在；front-matter 标签 ID 都在 `taxonomy.md` 词表内；`wiki-index.js` 复测投影与 `review.md` 一致；速览/完整笔记内容是否与真源冲突（含假说标注是否保留）
 
-## site/ 速览库规范（伴生 HTML 快速查阅层）
+## site/ 阅读库规范（伴生 HTML 阅读层）
 
-`site/` 是 wiki 的**速览层**，不是镜像：每页只提炼「快速查阅」需要的内容，细节一律回 markdown 原页。设计基调和组件约定由 taste-skill（`design-taste-frontend`，装于 `.zcode/skills/`）推断，固化在 `site/assets/wiki-slides.css`。硬规则：
+`site/` 是 wiki 的**阅读层**，不是镜像：速览页（`papers/`）只提炼「快速查阅」需要的内容；完整笔记页（`notes/papers/`）是 markdown 的忠实静态投影，速览未收录的细节都在那里，搜索结果可直接落到它的锚点。设计基调和组件约定由 taste-skill（`design-taste-frontend`，装于 `.zcode/skills/`）推断，固化在 `site/assets/wiki-slides.css`。硬规则：
 
-1. **markdown 是唯一真源**：速览页内容冲突时以 markdown 为准；改速览页不改 markdown 没有意义。
+1. **markdown 是唯一真源**：速览页 / 完整笔记页 / 静态索引内容冲突时以 markdown 为准；只改派生层不改 markdown 没有意义。派生层不许出现真源没有的因果结论；个人假说必须带「待验证」标注，实验结论与解释假说分开呈现。
 2. **样式只用 `wiki-slides.css` 的 class 与 token**，禁止页内私设颜色/字体/圆角（禁止 `<style>` 块）；改设计就改唯一样式源，**并把全部页面的 `?v=` 版本串同步 +1**（assets 变更的缓存破除约定）。
-3. **全站零 em-dash**：正文禁用「——」「—」「–」，改写为冒号、句号或括号；数字一律 mono（metric-value / dtable td.num 自带）。
-4. 每页 5~8 张 slide，每张至多一条 `.takeaway` 重点条；卡壳点 slide 必须保留（全库最值钱的部分）。
-5. 上一篇/下一篇按 `index.md` 顺序连成环；互链指向 site/ 内 html 页；源页用相对路径链接回 `../../wiki/<分类>/<同名>.md`；Zotero 深链接保留 `zotero://select/items/<itemKey>`。
-6. 双击 `site/index.html`（file://）即可离线使用；纯静态零依赖，不引入任何构建工具。
-7. **线上部署**：`site/deploy.sh` 把 site/ 经 GitHub 推送，VPS cron 每 2 分钟 git pull 同步（纯 GitHub，不用 rsync）；认证由 oauth2-proxy（GitHub 登录，仅限 `buptweixin` 账号），无需本地口令。ingest/review 改完速览页后执行该脚本，VPS 不可达不阻塞入库流程。
+3. **全站零 em-dash（速览层与首页）**：正文禁用「——」「—」「–」，改写为冒号、句号或括号；数字一律 mono（metric-value / dtable td.num 自带）。完整笔记投影页为保真例外：原文标点按 markdown 原样保留。
+4. **连续阅读，不强制凑 slide 张数**：每页由 `data-section` 显式声明语义章节 ID（essence / overview / mechanism / mechanism-2 / evidence / pitfalls / relations），卡壳点章节必须保留（全库最值钱的部分），每条卡壳问答带稳定 `id="qa-*"` 且与完整笔记页同名问答一致；旧 `slide-N` 锚点作为兼容锚点保留。全页只有一个最高级强调（一条 takeaway）。
+5. **导航**：顶部「← 知识库」保留来源筛选状态；不设上一篇/下一篇接环，跨页阅读靠关系卡（提炼两三条：类型 + 一句原因 + 证据状态）与首页专题/标签。标签一律用 `taxonomy.md` 的受控 ID（front-matter 是归属真源，`wiki-index.js` 是投影，显示名与别名只作归一）；「已通过/待复测」不是标签，来自 `review.md` 投影。
+6. **完整笔记双出口**：速览页 SOURCE 区同时给「完整笔记」（`../notes/papers/<同名>.html`）与「源文件」（`../../wiki/<分类>/<同名>.md`）；Zotero 深链接保留 `zotero://select/items/<itemKey>`。
+7. 双击 `site/index.html`（file://）即可离线使用；纯静态零依赖，不引入任何构建工具与运行时服务；完整笔记页零脚本可读。
+8. **线上部署**：`site/deploy.sh` 把 site/ 经 GitHub 推送，VPS cron 每 2 分钟 git pull 同步（纯 GitHub，不用 rsync）；认证由 oauth2-proxy（GitHub 登录，仅限 `buptweixin` 账号），无需本地口令。ingest/review 改完派生层后执行该脚本，VPS 不可达不阻塞入库流程。
 
 ## 页面质量标准（费曼标准）
 

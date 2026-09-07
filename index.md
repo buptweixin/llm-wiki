@@ -32,3 +32,4 @@ _暂无_
 
 - [站点阅读体验改造 Spec](docs/specs/site-reading-redesign.md) — 自然滚动阅读、问题专题、标签与关联、全文搜索、复测状态及分阶段迁移计划；工程维护文档，不计入费曼知识页。
 - [站点标签词表](taxonomy.md) — 专题、机制与目标标签的受控 ID、显示名和适用范围；工程维护文档，不计入费曼知识页。
+- [站点阅读改造验收报告](docs/reviews/site-reading-redesign-review-2026-09-07.md) — 对提交 b35b7b2 的功能与 spec 验收，记录复现步骤、优先级和返工顺序。

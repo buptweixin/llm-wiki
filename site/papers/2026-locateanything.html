@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LocateAnything · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-1">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260907-2">
 </head>
 <body>
 <div class="page">
@@ -23,7 +23,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide" id="slide-1">
+    <section class="slide" id="slide-1" data-section="essence">
       <div class="slide-inner cover">
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>LocateAnything</h1>
@@ -34,13 +34,11 @@
           <dt>入库</dt><dd>2026-09-04</dd>
           <dt>原文</dt><dd><a href="zotero://select/items/7KYM7ZBM">Zotero</a> · <a href="https://arxiv.org/abs/2605.27365">arXiv</a></dd>
         </dl>
-        <div class="tagrow">
-          <span class="tag">并行框解码</span><span class="tag">VLM grounding</span><span class="tag">MTP</span><span class="tag">GUI 定位</span>
-        </div>
+        <div class="tagrow"><span class="tag">并行解码</span><span class="tag">视觉定位</span><span class="tag">提高定位精度</span><span class="tag">提高推理效率</span></div>
       </div>
     </section>
 
-    <section class="slide" id="slide-2">
+    <section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -64,7 +62,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-3">
+    <section class="slide" id="slide-3" data-section="mechanism">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：框 = 一块填空</h2>
@@ -96,7 +94,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-4">
+    <section class="slide" id="slide-4" data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键机制：Hybrid 回退与歧义触发器</h2>
@@ -127,7 +125,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-5">
+    <section class="slide" id="slide-5" data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关键数字</h2>
@@ -168,30 +166,38 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-6">
+    <section class="slide" id="slide-6" data-section="pitfalls">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>卡壳点</h2>
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa">
-            <p class="qa-q">坐标并行出、没有先后，凭什么互相约束？（第一版讲解完全没建立起「具体怎么做」的直觉）</p>
-            <div class="qa-a"><p>机制必须落到 token 级走查才通：旧法一个 forward 蹦一个词；Transformer 天生「每个位置预测下一词」，PBD 把未来槽位摆成 MASK 一次填整框。坐标约束不是「先填 x1 传给 x2」（并行无回头路），而是训练时四数<strong>一起挨罚</strong>，拿满分就得构成合法框，约束焊进权重。类比：舞步动作四肢同时摆好，不是一步一迈。</p></div>
+          <div class="qa" id="qa-token-walkthrough">
+            <p class="qa-q">第一版讲解为什么「还是没看懂具体怎么做的」？</p>
+            <div class="qa-a"><p>卡在机制没落到 token 级操作，重讲三步才走通：① 原材料：框 = 一串词（结构词 + 坐标词），旧法一个 forward 蹦一个；② Transformer 天生「每个位置都预测下一词」，只是自回归只取最后一个，PBD 把浪费的位置用起来，训练时专出填空题（块留首格、后 5 格 [MASK]、一次填）；③ 推理 = 只做填空，一段段填。<strong>教训：这篇的机制必须讲到 token 级演算才能建立直觉，纯架构图讲不通。</strong></p></div>
           </div>
-          <div class="qa">
+          <div class="qa" id="qa-constraint">
+            <p class="qa-q">坐标并行出、没有先后，凭什么互相约束？</p>
+            <div class="qa-a"><p>不是「先填 x1 传给 x2」（并行无回头路），而是训练时四数<strong>一起挨罚</strong>，拿满分就得构成合法框，约束焊进权重；块内双向注意力让这些位置在 Transformer 内部互见。类比：舞步动作四肢同时摆好，配合靠肌肉记忆一次成型，不是一步一步迈。</p></div>
+          </div>
+          <div class="qa" id="qa-trigger">
+            <p class="qa-q">触发器的两个条件为什么要同时满足？（初答把极差理解成框大小）</p>
+            <div class="qa-a"><p>极差量的是 5 个候选坐标词在 [0,1000] 轴上差多远，是模型内心的动摇范围。双条件合成一个检测：候选分布是否<strong>撕裂</strong>。单边都是正常尾巴：候选挤一团是像素级犹豫（落同一物体内），有明确首选则尾巴长无所谓。只有「不自信 + 候选几何上严重分裂」才说明真不知道框边贴哪，才值得回退。</p></div>
+          </div>
+          <div class="qa" id="qa-slow-plus2">
             <p class="qa-q">PBD-Slow 也是逐词 NTP 解码，凭什么比旧 Quantized-NTP 高 +2？（初答「两种形式互相促进」被数据点纠正）</p>
             <div class="qa-a"><p>决定性对照在损失消融第一行：只训 L_ntp（表征已块对齐）→ 50.1，跟旧方法分毫不差，说明块本身零增益。<strong>全部增益来自 L_blk</strong>：它用「一次猜对整块才得分」把几何联合约束压进共享权重，x1 不再孤立被评、和 y1/x2/y2 绑一起评；沉淀后换回 NTP 推理仍生效。精度收益因此从「必须靠并行」里解放。</p></div>
           </div>
-          <div class="qa">
-            <p class="qa-q">触发器的两个条件为什么要同时满足？（初答把极差理解成框大小）</p>
-            <div class="qa-a"><p>极差量的是 5 个候选坐标词在 [0,1000] 轴上差多远，是模型内心的动摇范围。双条件合成一个检测：候选分布是否<strong>撕裂</strong>。单边都是正常尾巴：候选挤一团是像素级犹豫（落同一物体内），有明确首选则尾巴长无所谓。只有「不自信 + 候选几何上严重分裂」才说明真不知道框边贴哪，才值得回退。</p></div>
+          <div class="qa" id="qa-generic-mtp">
+            <p class="qa-q">通用 MTP（SDLM / Block Diffusion）为什么又慢又差？</p>
+            <div class="qa-a"><p>结构无关切块让块边界大概率落在无意义处，一个块同时装「上一框尾巴坐标 + 下一类别的开头词」，模型被迫拟合横跨框边界、横跨类别的<strong>虚假相关</strong>（共现统计，非真实规律），纯消耗容量还错误传播；加速也弱（块内容不连贯，SDLM 只到约 5.5 BPS）。PBD 用「块 = 框」把这个伪模式源头拆掉。</p></div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="slide" id="slide-7">
+    <section class="slide" id="slide-7" data-section="relations">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>关联与来源</h2>
@@ -217,6 +223,10 @@
             <h3>SOURCE</h3>
             <div class="link-item">
               <span class="link-rel">完整笔记</span>
+              <span><a href="../notes/papers/2026-locateanything.html">notes/papers/2026-locateanything.html</a>（markdown 的完整静态投影）</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">源文件</span>
               <span><a href="../../wiki/papers/2026-locateanything.md">wiki/papers/2026-locateanything.md</a></span>
             </div>
             <div class="link-item">
@@ -230,7 +240,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20260907-1"></script>
-<script src="../assets/wiki-slides.js?v=20260907-1"></script>
+<script src="../assets/wiki-index.js?v=20260907-2"></script>
+<script src="../assets/wiki-slides.js?v=20260907-2"></script>
 </body>
 </html>

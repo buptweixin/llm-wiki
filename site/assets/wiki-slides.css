@@ -882,13 +882,16 @@ strong {
   grid-row: 1;
 }
 
-.reader-outline,
-.reader-context {
+/* 目录短, 允许 sticky; 关系旁栏不建独立滚动区, 随文档滚动 */
+.reader-outline {
   min-width: 0;
   position: sticky;
   top: calc(var(--topbar-h) + 24px);
-  max-height: calc(100dvh - var(--topbar-h) - 48px);
-  overflow: auto;
+}
+
+.reader-context {
+  min-width: 0;
+  position: static;
 }
 
 .reader-outline {
@@ -912,6 +915,31 @@ strong {
 
 .reader-outline nav {
   border-left: 1px solid var(--hairline);
+}
+
+/* 目录为 details: 桌面常开(隐藏 summary), 手机默认折叠 */
+.reader-outline summary {
+  display: none;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+  list-style: none;
+}
+
+.reader-outline summary::-webkit-details-marker {
+  display: none;
+}
+
+.reader-outline summary::before {
+  content: "▸ 目录";
+}
+
+.reader-outline[open] summary::before {
+  content: "▾ 目录";
 }
 
 .reader-outline a {
@@ -1018,7 +1046,7 @@ strong {
   scroll-snap-align: none;
   scroll-snap-stop: normal;
   display: block;
-  padding: 26px 0 42px;
+  padding: 20px 0 34px;
   border-bottom: 1px solid var(--hairline-soft);
   scroll-margin-top: calc(var(--topbar-h) + 22px);
 }
@@ -1046,20 +1074,29 @@ strong {
   font-size: clamp(1.15rem, 2vw, 1.45rem);
 }
 
+/* 封面压缩: 不占整屏, 首屏尽快露出一页看懂与核心提醒 */
 .cover {
-  padding: 8px 0 22px;
+  padding: 4px 0 16px;
 }
 
 .cover h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+}
+
+.cover .cover-full {
+  font-size: 0.95rem;
+  margin-bottom: 12px;
 }
 
 .cover-essence {
-  margin-bottom: 24px;
+  font-size: clamp(1rem, 1.9vw, 1.15rem);
+  line-height: 1.75;
+  margin-bottom: 14px;
 }
 
 .cover-meta {
   max-width: 100%;
+  font-size: 12.5px;
 }
 
 .legacy-anchor {
@@ -1106,41 +1143,64 @@ strong {
   color: var(--accent-ink);
 }
 
-.reader-recall .qa-a,
+/* 回忆模式状态机: 进入只见标题 -> 显示问题 -> 逐题展开解答。
+   逐题展开(.is-open)优先于初始隐藏, 按钮状态与视觉状态保持一致。 */
+.reader-recall .qa-a {
+  display: none;
+}
+
 .reader-recall .qa.is-open .qa-a {
-  display: none !important;
+  display: block;
+}
+
+.reader-recall .cover-essence,
+.reader-recall .cover-meta,
+.reader-recall .tagrow,
+.reader-recall .takeaway,
+.reader-recall .link-groups,
+.reader-recall .context-review,
+.reader-recall .context-rel-list {
+  display: none;
+}
+
+.reader-recall .slide:not(#pitfalls):not(:first-child) {
+  display: none;
+}
+
+.reader-recall:not(.show-questions) .qa-q,
+.reader-recall:not(.show-questions) .qa-toggle {
+  display: none;
 }
 
 .reader-recall .qa-toggle {
   color: var(--ink-2);
 }
 
-.reader-modal[hidden] {
-  display: none;
+.reader-recall-hint {
+  color: var(--ink-2);
+  min-width: 0;
 }
 
-html.modal-open {
-  overflow: hidden;
-}
-
+/* 并排比较用原生 dialog: 自带焦点圈定、Esc 关闭与背景 inert */
 .reader-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: color-mix(in srgb, var(--ink) 32%, transparent);
+  width: min(92vw, 920px);
+  max-height: min(88dvh, 760px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.reader-modal::backdrop {
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
 }
 
 .reader-modal-panel {
-  width: min(100%, 920px);
   max-height: min(88dvh, 760px);
   overflow: auto;
   padding: clamp(20px, 4vw, 36px);
-  border: 1px solid var(--hairline);
-  background: var(--bg);
-  color: var(--ink);
 }
 
 .reader-modal-head {
@@ -1194,6 +1254,78 @@ html.modal-open {
   color: var(--ink-2);
 }
 
+.compare-table tr.is-hypothesis {
+  background: var(--surface-2);
+}
+
+.compare-table tr.is-hypothesis td.compare-dim {
+  color: var(--accent-ink);
+}
+
+.compare-ref {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.compare-note {
+  margin-top: 7px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+/* 关系旁栏: 提炼后的两三条关系, 不再克隆整个关联区 */
+.context-rel-list {
+  display: grid;
+  gap: 14px;
+}
+
+.context-rel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.context-rel-type {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  border: 1px solid var(--hairline);
+  padding: 1px 6px;
+}
+
+.context-rel-head a {
+  border-bottom: 0;
+  font-weight: 600;
+}
+
+.context-rel-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.context-rel-status.is-hypothesis {
+  color: var(--accent-ink);
+  border-bottom: 1px dashed var(--accent-line);
+}
+
+.context-rel-reason {
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+
+.reader-context .context-action-sub {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
 /* ---------- 首页: 问题专题与结果 ---------- */
 .idx-wrap {
   width: min(100%, 1320px);
@@ -1214,22 +1346,22 @@ html.modal-open {
 }
 
 .idx-header h1 {
-  font-size: clamp(2rem, 5vw, 3.7rem);
+  font-size: clamp(1.6rem, 3.6vw, 2.5rem);
   font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
-  margin-bottom: 16px;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 12px;
 }
 
 .idx-header .idx-sub {
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 14.5px;
+  line-height: 1.75;
   color: var(--ink-2);
 }
 
 .idx-search-panel {
-  margin-top: 40px;
-  padding: 18px 0 20px;
+  margin-top: 26px;
+  padding: 16px 0 18px;
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--hairline);
 }
@@ -1250,7 +1382,8 @@ html.modal-open {
 
 .topic-filter,
 .idx-tag,
-.idx-clear {
+.idx-clear,
+.idx-recall-toggle {
   appearance: none;
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
@@ -1269,7 +1402,9 @@ html.modal-open {
 .topic-filter[aria-pressed="true"],
 .topic-filter:hover,
 .idx-tag:hover,
-.idx-clear:hover {
+.idx-clear:hover,
+.idx-recall-toggle[aria-pressed="true"],
+.idx-recall-toggle:hover {
   border-color: var(--accent-line);
   background: var(--accent-soft);
   color: var(--accent-ink);
@@ -1428,6 +1563,22 @@ html.modal-open {
   color: var(--ink-2);
 }
 
+/* 首页回忆模式: 只留标题, 凭记忆复述后再进文章看检验问题 */
+.idx-recall .idx-card-essence,
+.idx-recall .idx-card-tags,
+.idx-recall .idx-card-meta,
+.idx-recall .idx-hit {
+  display: none;
+}
+
+.idx-recall .idx-card-title {
+  font-size: 21px;
+}
+
+.idx-recall .idx-card {
+  padding: 14px 0 15px;
+}
+
 @media (max-width: 1050px) {
   .reader-layout {
     grid-template-columns: 1fr 210px;
@@ -1553,8 +1704,39 @@ html.modal-open {
   .idx-card-title {
     font-size: 18px;
   }
-  .compare-table {
-    min-width: 650px;
+  /* 目录默认折叠成一条入口 */
+  .reader-outline summary {
+    display: block;
+  }
+  .reader-outline {
+    margin-bottom: 18px;
+  }
+  /* 比较表窄屏按维度重排: 一行变一组, 两篇各占一段 */
+  .compare-table thead {
+    display: none;
+  }
+  .compare-table,
+  .compare-table tbody {
+    display: block;
+  }
+  .compare-table tr {
+    display: block;
+    border-top: 1px solid var(--hairline);
+    padding: 12px 0 14px;
+  }
+  .compare-table td {
+    display: block;
+    border-top: 0;
+    padding: 6px 0 2px;
+  }
+  .compare-table td[data-col]::before {
+    content: attr(data-col);
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--accent-ink);
+    margin-bottom: 2px;
   }
   .reader-modal-panel {
     padding: 18px 14px;
@@ -1565,6 +1747,107 @@ html.modal-open {
   .idx-entries {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- 完整笔记阅读页 (site/notes/, markdown 的忠实静态投影) ---------- */
+.note-wrap {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding: clamp(22px, 5vh, 52px) clamp(18px, 4vw, 32px) 80px;
+}
+
+.note-header {
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 20px;
+}
+
+.note-header .note-full {
+  color: var(--ink-2);
+  font-size: 14px;
+  margin: 6px 0 14px;
+}
+
+.note-essence {
+  border-left: 3px solid var(--accent);
+  padding: 2px 0 2px 16px;
+  margin: 0 0 16px;
+  font-size: 15.5px;
+  line-height: 1.85;
+}
+
+.note-sec {
+  padding-top: 24px;
+}
+
+.note-sec + .note-sec {
+  border-top: 1px solid var(--hairline-soft);
+  margin-top: 20px;
+}
+
+.note-sec h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+
+.note-sec h3 {
+  font-size: 1.02rem;
+  font-weight: 650;
+  margin: 18px 0 8px;
+}
+
+.note-sec p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.note-sec li {
+  margin: 0 0 8px 1.4em;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.note-quote {
+  border-left: 2px solid var(--hairline);
+  padding: 2px 0 2px 14px;
+  margin: 0 0 12px;
+  color: var(--ink-2);
+  font-size: 14.5px;
+  line-height: 1.8;
+}
+
+.note-quote strong {
+  color: var(--ink);
+}
+
+.note-pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  background: var(--surface);
+  border: 1px solid var(--hairline-soft);
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-sec .dtable {
+  font-size: 13px;
+}
+
+.note-foot {
+  border-top: 1px solid var(--hairline);
+  margin-top: 30px;
+  padding-top: 14px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--ink-3);
 }
 
 /* ---------- 打印: 每 slide 一页, 可导出 PDF ---------- */
