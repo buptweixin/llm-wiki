@@ -35,3 +35,6 @@ _暂无_
 - [站点阅读改造验收报告](docs/reviews/site-reading-redesign-review-2026-09-07.md) — 对提交 b35b7b2 的功能与 spec 验收，记录复现步骤、优先级和返工顺序。
 - [站点阅读改造第二轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08.md) — 对提交 3c7f95a 复验：五项原问题已修复，全文搜索、返回路径和手机关键入口仍需收尾。
 - [站点阅读改造第三轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-3.md) — 复核未提交修复：27 项新全文抽样全部命中，仍需修复组合筛选丢失、段落定位、回忆提示泄漏与比较遮挡。
+- [站点阅读改造第四轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-4.md) — file:// 与 HTTP 复验：来源状态、九篇回忆与比较交互通过，全文短语定位仍有跨行内标签和只匹配首词两类失败。
+- [站点阅读改造第五轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-5.md) — 原 8 个定位查询与回归抽查通过；新样本在较矮手机视口暴露块间匹配优先级问题，仍有 1 项 P2 需修复。
+- [站点阅读改造第六轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-6.md) — 双尺寸、双通道确认 T2-c 与 P3 关闭，8 个旧查询、10 个新样本及 T1/T3/T4 抽查通过。

@@ -42,13 +42,38 @@
   }
 
   function highlight(value, tokens) {
-    var html = escapeHtml(value);
+    var raw = String(value);
+    // 先在原始文本上一次性算出全部命中区间（含互相重叠的），合并后统一转义输出；
+    // 绝不在已含 <mark> 的字符串上继续替换，避免改坏标签名。
+    var marks = [];
     tokens.forEach(function (token) {
       if (!token) return;
-      var pattern = new RegExp("(" + escapeRegExp(token) + ")", "gi");
-      html = html.replace(pattern, "<mark>$1</mark>");
+      var pattern = new RegExp(escapeRegExp(token), "gi");
+      var match;
+      while ((match = pattern.exec(raw)) !== null) {
+        marks.push([match.index, match.index + match[0].length]);
+        if (match.index === pattern.lastIndex) pattern.lastIndex += 1;
+      }
     });
-    return html;
+    if (!marks.length) return escapeHtml(raw);
+    marks.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+    var merged = [marks[0].slice()];
+    for (var i = 1; i < marks.length; i += 1) {
+      var last = merged[merged.length - 1];
+      if (marks[i][0] <= last[1]) {
+        if (marks[i][1] > last[1]) last[1] = marks[i][1];
+      } else {
+        merged.push(marks[i].slice());
+      }
+    }
+    var out = "";
+    var pos = 0;
+    merged.forEach(function (span) {
+      out += escapeHtml(raw.slice(pos, span[0])) + "<mark>" + escapeHtml(raw.slice(span[0], span[1])) + "</mark>";
+      pos = span[1];
+    });
+    out += escapeHtml(raw.slice(pos));
+    return out;
   }
 
   /* ---------- 标签与复测状态 ---------- */
@@ -135,16 +160,71 @@
     return score;
   }
 
+  /* ---------- 匹配选择: 完整短语优先, 其次覆盖全部查询词的最小窗口, 最后降级 ---------- */
+
+  function matchSelection(lower, tokens) {
+    if (!tokens.length) return null;
+    var phrase = tokens.join(" ");
+    var at = lower.indexOf(phrase);
+    if (at >= 0) return { start: at, end: at + phrase.length };
+    if (tokens.length > 1) {
+      var win = coveringWindow(lower, tokens);
+      // 窗口过大说明词之间隔着整段内容, 算不上"局部上下文", 交由降级路径处理
+      if (win && win.span <= 600) return win;
+    }
+    return null;
+  }
+
+  function tokenHits(lower, token) {
+    var hits = [];
+    var at = lower.indexOf(token);
+    while (at >= 0) {
+      hits.push(at);
+      at = lower.indexOf(token, at + token.length);
+    }
+    return hits;
+  }
+
+  function coveringWindow(lower, tokens) {
+    var lists = [];
+    for (var k = 0; k < tokens.length; k += 1) {
+      var hits = tokenHits(lower, tokens[k]);
+      if (!hits.length) return null;
+      lists.push(hits);
+    }
+    var cursor = lists.map(function () { return 0; });
+    var best = null;
+    for (;;) {
+      var minK = 0;
+      var maxK = 0;
+      for (var j = 1; j < lists.length; j += 1) {
+        if (lists[j][cursor[j]] < lists[minK][cursor[minK]]) minK = j;
+        if (lists[j][cursor[j]] > lists[maxK][cursor[maxK]]) maxK = j;
+      }
+      var end = lists[maxK][cursor[maxK]] + tokens[maxK].length;
+      var span = end - lists[minK][cursor[minK]];
+      if (!best || span < best.span) {
+        best = { start: lists[minK][cursor[minK]], end: end, span: span };
+      }
+      cursor[minK] += 1;
+      if (cursor[minK] >= lists[minK].length) break;
+    }
+    return best;
+  }
+
   function snippetAround(text, tokens) {
     var lower = text.toLocaleLowerCase();
-    var at = -1;
-    for (var i = 0; i < tokens.length; i += 1) {
-      at = lower.indexOf(tokens[i]);
-      if (at >= 0) break;
+    var sel = matchSelection(lower, tokens);
+    var at = sel ? sel.start : -1;
+    if (at < 0) {
+      for (var i = 0; i < tokens.length; i += 1) {
+        at = lower.indexOf(tokens[i]);
+        if (at >= 0) break;
+      }
     }
     if (at < 0) return { text: text.slice(0, 110), exact: false };
     var start = Math.max(0, at - 36);
-    var end = Math.min(text.length, at + 110);
+    var end = Math.min(text.length, Math.max(at + 110, (sel ? sel.end : at) + 10));
     var clip = (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
     return { text: clip, exact: true };
   }
@@ -165,13 +245,18 @@
     var raw = params.get("from") || "";
     if (!raw) return "";
     var source = new URLSearchParams(raw);
+    // 来源校验依赖 WIKI_TOPICS / WIKI_TAXONOMY；完整笔记页不加载全站索引，
+    // 此时按原样保留来源字段，首页加载后会再做同样的校验与归一。
+    var hasTopics = Object.keys(topics).length > 0;
+    var hasTaxonomy = taxonomy.length > 0;
     var state = {
       q: source.get("q") || "",
       topic: source.get("topic") || "all",
-      tag: resolveTag(source.get("tag") || "") || "",
+      tag: source.get("tag") || "",
       review: source.get("review") === "due" ? "due" : ""
     };
-    if (state.topic !== "all" && !topics[state.topic]) state.topic = "all";
+    if (state.tag) state.tag = hasTaxonomy ? (resolveTag(state.tag) || "") : state.tag.trim();
+    if (state.topic !== "all" && hasTopics && !topics[state.topic]) state.topic = "all";
     var normalized = new URLSearchParams();
     if (state.q) normalized.set("q", state.q);
     if (state.topic !== "all") normalized.set("topic", state.topic);
@@ -487,7 +572,7 @@
     }
   ];
 
-  function makeCompareDialog() {
+  function makeCompareDialog(sameDocRef) {
     var dialog = document.createElement("dialog");
     dialog.className = "reader-modal";
     var panel = node("div", "reader-modal-panel");
@@ -539,12 +624,27 @@
     document.body.appendChild(dialog);
 
     var opener = null;
+    var pendingFocus = null;
+    // 同文档依据：关闭弹窗并落到目标问答，焦点跟到依据而不是触发按钮。
+    // 跨文档依据交给默认导航（弹窗随文档销毁），sameDocRef 返回 null 表示不拦截。
+    qsa("a.compare-ref", dialog).forEach(function (ref) {
+      ref.addEventListener("click", function (event) {
+        if (!sameDocRef) return;
+        var focusTarget = sameDocRef(ref);
+        if (!focusTarget) return;
+        event.preventDefault();
+        pendingFocus = focusTarget === true ? null : focusTarget;
+        dialog.close();
+      });
+    });
     close.addEventListener("click", function () { dialog.close(); });
     dialog.addEventListener("click", function (event) {
       if (event.target === dialog) dialog.close();
     });
     dialog.addEventListener("close", function () {
-      if (opener && opener.focus) opener.focus();
+      var focusEl = pendingFocus || opener;
+      pendingFocus = null;
+      if (focusEl && focusEl.focus) focusEl.focus();
     });
     return {
       open: function (trigger) {
@@ -599,7 +699,20 @@
 
     var compareButtons = qsa('[data-action="compare"]');
     if (compareButtons.length) {
-      var comparison = makeCompareDialog();
+      var comparison = makeCompareDialog(function (ref) {
+        var resolved = new URL(ref.href, window.location.href);
+        if (resolved.pathname !== window.location.pathname) return null;
+        var id = resolved.hash.slice(1);
+        var target = id ? document.getElementById(id) : null;
+        if (!target) return null;
+        var qa = target.closest ? target.closest(".qa") : null;
+        if (qa) openQa(qa);
+        var focusEl = (qa && qs(".qa-toggle", qa)) || target;
+        if (focusEl === target) target.setAttribute("tabindex", "-1");
+        if (window.location.hash === "#" + id) openHashTarget();
+        else window.location.hash = id;
+        return focusEl;
+      });
       compareButtons.forEach(function (compareButton) {
         compareButton.addEventListener("click", function () { comparison.open(compareButton); });
       });
@@ -621,19 +734,21 @@
     window.addEventListener("scroll", updateReaderProgress, { passive: true });
     updateReaderProgress();
 
+    function openQa(qa) {
+      qa.classList.add("is-open");
+      var button = qs(".qa-toggle", qa);
+      if (button) {
+        button.textContent = "收起解答";
+        button.setAttribute("aria-expanded", "true");
+      }
+    }
+
     function openHashTarget() {
       if (!window.location.hash) return;
       var target = document.getElementById(window.location.hash.slice(1));
       if (!target) return;
       var qa = target.closest ? target.closest(".qa") : null;
-      if (qa) {
-        qa.classList.add("is-open");
-        var button = qs(".qa-toggle", qa);
-        if (button) {
-          button.textContent = "收起解答";
-          button.setAttribute("aria-expanded", "true");
-        }
-      }
+      if (qa) openQa(qa);
       target.scrollIntoView({ block: "start", behavior: "auto" });
     }
     window.addEventListener("hashchange", openHashTarget);
@@ -812,16 +927,176 @@
     render();
   }
 
+  /* ---------- 完整笔记: 全文命中直接落到匹配段落 ---------- */
+
+  function topbarOffset() {
+    var raw = getComputedStyle(document.documentElement).getPropertyValue("--topbar-h");
+    var height = parseFloat(raw);
+    return (isNaN(height) ? 0 : height) + 24;
+  }
+
+  // strong/em/code/a 等行内标签会把一句话切成多个 Text 节点。
+  // 因此在"叶子块"（不再含更小块的 p/li/td 等）的规范化 textContent 上匹配，
+  // 再把命中区间映射回跨节点的 DOM Range：按用户看到的连续文本定位，原文不动。
+  function contentBlocks(section) {
+    var selector = "p, li, blockquote, pre, h1, h2, h3, h4, dt, dd, td, th, caption, figcaption, .qa-q";
+    var blocks = qsa(selector, section).filter(function (el) { return !el.querySelector(selector); });
+    return blocks.length ? blocks : [section];
+  }
+
+  function textNodesOf(container) {
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    var total = 0;
+    while (walker.nextNode()) {
+      nodes.push({ node: walker.currentNode, start: total });
+      total += walker.currentNode.nodeValue.length;
+    }
+    return nodes;
+  }
+
+  // 归一化连续文本（小写、空白折叠），map 记录每个归一化字符在原文里的下标（-1 为补的空格）
+  function normIndex(raw) {
+    var text = "";
+    var map = [];
+    var pendingSpace = false;
+    for (var i = 0; i < raw.length; i += 1) {
+      var ch = raw.charAt(i);
+      if (/\s/.test(ch)) {
+        pendingSpace = true;
+        continue;
+      }
+      if (pendingSpace && text.length) {
+        text += " ";
+        map.push(-1);
+      }
+      text += ch.toLocaleLowerCase();
+      map.push(i);
+      pendingSpace = false;
+    }
+    return { text: text, map: map };
+  }
+
+  function pointAt(nodes, rawIdx) {
+    for (var i = 0; i < nodes.length; i += 1) {
+      var len = nodes[i].node.nodeValue.length;
+      if (rawIdx < nodes[i].start + len) return { node: nodes[i].node, offset: rawIdx - nodes[i].start };
+    }
+    var last = nodes[nodes.length - 1];
+    return { node: last.node, offset: last.node.nodeValue.length };
+  }
+
+  // 匹配阶梯提升到整个章节的候选块之间（与首页片段的 matchSelection 同一语义）：
+  // ① 先扫全部块的完整短语，按文档序取第一个；
+  // ② 没有完整短语，再比较覆盖全部查询词的局部窗口，按跨度选最小（不按 DOM 顺序接受第一个）；
+  // ③ 最后才降级到块内第一个查询词。
+  // 这样前面块的宽窗口不可能压过后面块的完整短语。
+  function locateHitRange(section, tokens) {
+    var datas = [];
+    contentBlocks(section).forEach(function (block) {
+      var nodes = textNodesOf(block);
+      if (nodes.length) datas.push({ nodes: nodes, idx: normIndex(block.textContent) });
+    });
+
+    function rangeOf(data, sel) {
+      var from = data.idx.map[sel.start];
+      var to = data.idx.map[sel.end - 1] + 1;
+      if (from < 0 || to <= from) return null;
+      var head = pointAt(data.nodes, from);
+      var tail = pointAt(data.nodes, to);
+      var range = document.createRange();
+      try {
+        range.setStart(head.node, head.offset);
+        range.setEnd(tail.node, tail.offset);
+      } catch (error) {
+        return null;
+      }
+      return range;
+    }
+
+    var phrase = tokens.join(" ");
+    var i, data, at, range;
+
+    for (i = 0; i < datas.length; i += 1) {
+      data = datas[i];
+      at = data.idx.text.indexOf(phrase);
+      if (at >= 0) {
+        range = rangeOf(data, { start: at, end: at + phrase.length });
+        if (range) return range;
+      }
+    }
+
+    if (tokens.length > 1) {
+      var best = null;
+      for (i = 0; i < datas.length; i += 1) {
+        data = datas[i];
+        var win = coveringWindow(data.idx.text, tokens);
+        if (win && win.span <= 600 && (!best || win.span < best.span)) best = { data: data, win: win };
+      }
+      if (best) {
+        range = rangeOf(best.data, best.win);
+        if (range) return range;
+      }
+    }
+
+    for (i = 0; i < datas.length; i += 1) {
+      data = datas[i];
+      for (var t = 0; t < tokens.length; t += 1) {
+        at = data.idx.text.indexOf(tokens[t]);
+        if (at >= 0) {
+          range = rangeOf(data, { start: at, end: at + tokens[t].length });
+          if (range) return range;
+        }
+      }
+    }
+    return null;
+  }
+
+  function locateHitText() {
+    if (!window.location.hash) return;
+    var from = new URLSearchParams(window.location.search).get("from") || "";
+    var q = from ? (new URLSearchParams(from).get("q") || "") : "";
+    var tokens = tokensFor(q);
+    if (!tokens.length) return;
+    var section = document.getElementById(window.location.hash.slice(1));
+    if (!section) return;
+    var hit = locateHitRange(section, tokens);
+    if (!hit) return;
+    var offset = topbarOffset();
+    var viewport = window.innerHeight;
+    var rect = hit.getBoundingClientRect();
+    var matchTop = rect.top + window.scrollY;
+    var heading = null;
+    var headingTop = -Infinity;
+    qsa("h2, h3, .qa-q", section).forEach(function (candidate) {
+      var top = candidate.getBoundingClientRect().top + window.scrollY;
+      if (top <= matchTop + 1 && top > headingTop) {
+        heading = candidate;
+        headingTop = top;
+      }
+    });
+    // 所属小标题与命中文字在同一屏内时对齐小标题; 长章节深处则直接落到命中文字本身
+    var targetTop = matchTop;
+    if (heading && matchTop - headingTop <= viewport * 0.7) targetTop = headingTop;
+    window.scrollTo({ top: Math.max(0, targetTop - offset), behavior: "auto" });
+  }
+
   function initNote() {
     var from = fromQuery();
-    if (!from) return;
-    var home = qs(".topbar-home");
-    if (home) home.href = addQuery("../../index.html", from);
-    qsa(".topbar-nav a, .note-foot a").forEach(function (link) {
-      var href = link.getAttribute("href") || "";
-      if (href.indexOf("../../papers/") < 0) return;
-      link.href = addQuery(href, "from=" + encodeURIComponent(from));
-    });
+    if (from) {
+      var home = qs(".topbar-home");
+      if (home) home.href = addQuery("../../index.html", from);
+      qsa(".topbar-nav a, .note-foot a").forEach(function (link) {
+        var href = link.getAttribute("href") || "";
+        if (href.indexOf("../../papers/") < 0) return;
+        link.href = addQuery(href, "from=" + encodeURIComponent(from));
+      });
+    }
+    window.addEventListener("hashchange", locateHitText);
+    // 浏览器对 URL 里的锚点滚动发生在 load 时机、晚于脚本执行；
+    // 等它落地后再定位命中的段落，避免被原生锚点滚动覆盖。
+    if (document.readyState === "complete") window.setTimeout(locateHitText, 0);
+    else window.addEventListener("load", function () { window.setTimeout(locateHitText, 0); });
   }
 
   if (qs(".deck")) enhanceReader();

@@ -1164,6 +1164,7 @@ strong {
 .reader-recall .cover-meta,
 .reader-recall .tagrow,
 .reader-recall .takeaway,
+.reader-recall .mobile-cover-takeaway,
 .reader-recall .link-groups,
 .reader-recall .context-review,
 .reader-recall .context-rel-list {
@@ -1875,6 +1876,7 @@ strong {
 
 .note-sec {
   padding-top: 24px;
+  scroll-margin-top: calc(var(--topbar-h) + 24px);
 }
 
 .note-sec + .note-sec {
