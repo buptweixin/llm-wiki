@@ -162,9 +162,30 @@
 
   function fromQuery() {
     var params = new URLSearchParams(window.location.search);
-    var from = params.get("from") || "";
-    if (!from || !/^[a-zA-Z0-9=%&_.\-]+$/.test(from)) return "";
-    return from;
+    var raw = params.get("from") || "";
+    if (!raw) return "";
+    var source = new URLSearchParams(raw);
+    var state = {
+      q: source.get("q") || "",
+      topic: source.get("topic") || "all",
+      tag: resolveTag(source.get("tag") || "") || "",
+      review: source.get("review") === "due" ? "due" : ""
+    };
+    if (state.topic !== "all" && !topics[state.topic]) state.topic = "all";
+    var normalized = new URLSearchParams();
+    if (state.q) normalized.set("q", state.q);
+    if (state.topic !== "all") normalized.set("topic", state.topic);
+    if (state.tag) normalized.set("tag", state.tag);
+    if (state.review) normalized.set("review", state.review);
+    return normalized.toString();
+  }
+
+  function addQuery(href, query) {
+    if (!query) return href;
+    var hashAt = href.indexOf("#");
+    var base = hashAt >= 0 ? href.slice(0, hashAt) : href;
+    var hash = hashAt >= 0 ? href.slice(hashAt) : "";
+    return base + (base.indexOf("?") >= 0 ? "&" : "?") + query + hash;
   }
 
   function setTopbar(page) {
@@ -277,7 +298,7 @@
 
     if (page && page.noteHref) {
       var note = node("a", "context-action", "阅读完整笔记");
-      note.href = "../" + page.noteHref;
+      note.href = addQuery("../" + page.noteHref, fromQuery() ? "from=" + encodeURIComponent(fromQuery()) : "");
       context.appendChild(note);
     }
     var source = node("a", "context-action context-action-sub", "markdown 源文件");
@@ -291,6 +312,49 @@
       context.appendChild(compare);
     }
     return context;
+  }
+
+  function buildMobileCoverAccess(deck, page) {
+    var cover = qs(".cover", deck);
+    if (!cover || !page) return;
+    var insertionPoint = qs(".cover-meta", cover) || qs(".tagrow", cover);
+    var takeaway = qs(".takeaway", deck);
+    if (takeaway) {
+      var reminder = node("p", "mobile-cover-takeaway");
+      reminder.innerHTML = takeaway.innerHTML;
+      if (insertionPoint) cover.insertBefore(reminder, insertionPoint);
+      else cover.appendChild(reminder);
+    }
+
+    var quick = node("div", "mobile-cover-links");
+    quick.appendChild(node("span", "mobile-cover-kicker", "QUICK ACCESS"));
+    if (page.noteHref) {
+      var note = node("a", "mobile-cover-link", "完整笔记");
+      note.href = addQuery("../" + page.noteHref, fromQuery() ? "from=" + encodeURIComponent(fromQuery()) : "");
+      quick.appendChild(note);
+    }
+    var relation = page.relations && page.relations.length ? getPage(page.relations[0].to) : null;
+    if (page.id === "2026-u-opsd" || page.id === "2026-s2vopd") {
+      var compare = node("button", "mobile-cover-link", "比较 U-OPSD / S²VOPD");
+      compare.type = "button";
+      compare.dataset.action = "compare";
+      quick.appendChild(compare);
+    } else if (relation) {
+      var related = node("a", "mobile-cover-link", "重点关联：" + relation.title);
+      related.href = relation.href.split("/").pop();
+      quick.appendChild(related);
+    }
+    if (insertionPoint) cover.insertBefore(quick, insertionPoint);
+    else cover.appendChild(quick);
+
+    var meta = qs(".cover-meta", cover);
+    if (meta) {
+      meta.classList.add("cover-meta-primary");
+      var details = node("details", "mobile-cover-meta");
+      details.appendChild(node("summary", "", "作者、日期与原文"));
+      details.appendChild(meta.cloneNode(true));
+      cover.appendChild(details);
+    }
   }
 
   /* ---------- 回忆模式: 只见标题 -> 显示问题 -> 逐题展开解答 ---------- */
@@ -516,6 +580,7 @@
 
     var built = buildOutline(deck);
     var context = buildContext(deck, page);
+    buildMobileCoverAccess(deck, page);
     var layout = node("div", "reader-layout");
     deck.parentNode.insertBefore(layout, deck);
     layout.appendChild(built.outline);
@@ -532,10 +597,12 @@
       });
     }
 
-    var compareButton = qs('[data-action="compare"]', context);
-    if (compareButton) {
+    var compareButtons = qsa('[data-action="compare"]');
+    if (compareButtons.length) {
       var comparison = makeCompareDialog();
-      compareButton.addEventListener("click", function () { comparison.open(compareButton); });
+      compareButtons.forEach(function (compareButton) {
+        compareButton.addEventListener("click", function () { comparison.open(compareButton); });
+      });
     }
 
     var sectionLinks = qsa("[data-section-link]", built.outline);
@@ -558,7 +625,6 @@
       if (!window.location.hash) return;
       var target = document.getElementById(window.location.hash.slice(1));
       if (!target) return;
-      target.scrollIntoView({ block: "start", behavior: "auto" });
       var qa = target.closest ? target.closest(".qa") : null;
       if (qa) {
         qa.classList.add("is-open");
@@ -568,6 +634,7 @@
           button.setAttribute("aria-expanded", "true");
         }
       }
+      target.scrollIntoView({ block: "start", behavior: "auto" });
     }
     window.addEventListener("hashchange", openHashTarget);
     window.setTimeout(openHashTarget, 0);
@@ -620,12 +687,12 @@
       return query ? encodeURIComponent(query) : "";
     }
 
-    function cardHref(page, anchor, state, recallOn) {
+    function cardHref(target, state, recallOn) {
       var params = [];
       if (recallOn) params.push("recall=1");
       var from = fromParam(state);
       if (from) params.push("from=" + from);
-      return page.href + (params.length ? "?" + params.join("&") : "") + (anchor ? "#" + anchor : "");
+      return addQuery(target, params.join("&"));
     }
 
     function render() {
@@ -654,7 +721,7 @@
         var hits = matchingEntries(page, tokens).slice(0, 2);
         var card = node("article", "idx-card");
         var link = node("a", "idx-card-title", page.title);
-        link.href = cardHref(page, hits.length ? hits[0].a.split("#")[1] : "essence", state, recallOn);
+        link.href = cardHref(hits.length ? hits[0].a : page.href, state, recallOn);
         card.appendChild(link);
         card.appendChild(node("p", "idx-card-meta", (topics[page.topic] || "") + "  ·  " + page.date + "  ·  " + reviewLabel(page)));
         var essence = node("p", "idx-card-essence");
@@ -671,7 +738,7 @@
         hits.forEach(function (entry) {
           var snippet = snippetAround(entry.t, tokens);
           var hit = node("a", "idx-hit");
-          hit.href = cardHref(page, entry.a.split("#")[1], state, false);
+          hit.href = cardHref(entry.a, state, false);
           hit.innerHTML = "<strong>命中 " + escapeHtml(entry.h) + "</strong>" +
             (snippet.exact ? highlight(snippet.text, tokens) : escapeHtml(snippet.text));
           card.appendChild(hit);
@@ -745,6 +812,19 @@
     render();
   }
 
+  function initNote() {
+    var from = fromQuery();
+    if (!from) return;
+    var home = qs(".topbar-home");
+    if (home) home.href = addQuery("../../index.html", from);
+    qsa(".topbar-nav a, .note-foot a").forEach(function (link) {
+      var href = link.getAttribute("href") || "";
+      if (href.indexOf("../../papers/") < 0) return;
+      link.href = addQuery(href, "from=" + encodeURIComponent(from));
+    });
+  }
+
   if (qs(".deck")) enhanceReader();
   if (qs(".idx-results")) initIndex();
+  if (qs(".note-wrap")) initNote();
 })();

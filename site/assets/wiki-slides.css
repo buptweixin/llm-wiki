@@ -350,6 +350,12 @@ strong {
   overflow-wrap: anywhere;
 }
 
+.mobile-cover-links,
+.mobile-cover-takeaway,
+.mobile-cover-meta {
+  display: none;
+}
+
 .tagrow {
   display: flex;
   flex-wrap: wrap;
@@ -1126,6 +1132,7 @@ strong {
 
 .qa {
   padding: 17px 0;
+  scroll-margin-top: calc(var(--topbar-h) + 24px);
 }
 
 [data-enhanced="true"] .qa-a {
@@ -1613,6 +1620,9 @@ strong {
 }
 
 @media (max-width: 720px) {
+  :root {
+    --topbar-h: 78px;
+  }
   .topbar {
     padding: 7px 14px;
     flex-wrap: wrap;
@@ -1644,6 +1654,94 @@ strong {
     border-top: 1px solid var(--hairline);
     padding: 22px 0 0;
     margin-top: 42px;
+  }
+  .cover {
+    padding-top: 0;
+  }
+  .cover-eyebrow {
+    margin-bottom: 4px;
+  }
+  .cover h1 {
+    margin-bottom: 4px;
+  }
+  .cover .cover-full {
+    font-size: 0.88rem;
+    line-height: 1.45;
+    margin-bottom: 8px;
+  }
+  .cover-essence {
+    font-size: 0.98rem;
+    line-height: 1.62;
+    padding-left: 12px;
+    margin-bottom: 10px;
+  }
+  .cover-meta-primary {
+    display: none;
+  }
+  .mobile-cover-takeaway {
+    display: block;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 8px 10px;
+    margin: 0 0 10px;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .mobile-cover-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+    padding: 8px 0;
+    margin-bottom: 10px;
+  }
+  .mobile-cover-kicker {
+    flex-basis: 100%;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+  .mobile-cover-link {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 4px 8px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .mobile-cover-link:hover {
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+  .mobile-cover-meta {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+  .mobile-cover-meta summary {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .mobile-cover-meta .cover-meta {
+    display: grid;
+    margin-top: 8px;
+  }
+  .cover .tagrow {
+    margin-top: 8px;
   }
   .slide {
     padding: 22px 0 34px;
