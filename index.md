@@ -38,3 +38,5 @@ _暂无_
 - [站点阅读改造第四轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-4.md) — file:// 与 HTTP 复验：来源状态、九篇回忆与比较交互通过，全文短语定位仍有跨行内标签和只匹配首词两类失败。
 - [站点阅读改造第五轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-5.md) — 原 8 个定位查询与回归抽查通过；新样本在较矮手机视口暴露块间匹配优先级问题，仍有 1 项 P2 需修复。
 - [站点阅读改造第六轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-6.md) — 双尺寸、双通道确认 T2-c 与 P3 关闭，8 个旧查询、10 个新样本及 T1/T3/T4 抽查通过。
+- [站点阅读改造分析与修复交接](docs/reviews/site-reading-redesign-analysis-2026-09-08.md) — 对 087cb87 整轮改造的设计判断，记录四项 P2、搜索与手机布局优化方向，以及复现步骤和验收标准。
+- [站点阅读 S1~S4 修复与 O1~O3 优化报告](docs/reviews/site-reading-redesign-fixes-2026-09-08.md) — 按交接文档完成四项 P2 与三项优化：回忆入口统一、来源继承、目录定位分离、索引生成器真源全量重建，附静态回归脚本 check-site.mjs 与浏览器验证证据。

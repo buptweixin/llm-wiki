@@ -6,7 +6,7 @@
   <meta name="description" content="llm-wiki 的费曼式知识阅读库：按研究问题查找论文、重建机制、回看卡壳点。">
   <title>llm-wiki · 知识阅读库</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-  <link rel="stylesheet" href="assets/wiki-slides.css?v=20260908-5">
+  <link rel="stylesheet" href="assets/wiki-slides.css?v=20260908-6">
 </head>
 <body>
 <div class="idx-wrap">
@@ -24,6 +24,10 @@
       <button class="topic-filter" type="button" data-topic="visual-encoders" aria-pressed="false">视觉编码器</button>
       <button class="topic-filter" type="button" data-topic="distillation" aria-pressed="false">蒸馏与训练预算</button>
       <button class="topic-filter" type="button" data-topic="structured-output" aria-pressed="false">结构化输出与定位</button>
+    </div>
+    <div class="idx-mobile-cue">
+      <a class="idx-due-link" id="idx-due-mobile" href="?review=due" hidden>今天待复测</a>
+      <button class="idx-recall-toggle" type="button" aria-pressed="false">先回忆</button>
     </div>
     <div class="idx-state">
       <span id="idx-count">9 篇可读</span>
@@ -52,14 +56,14 @@
     <aside class="idx-side">
       <div class="idx-side-block">
         <h2>今天先做什么</h2>
-        <div id="idx-due-entry" hidden><a href="?review=due">查看今天待复测</a></div>
+        <div id="idx-due-entry" hidden><a class="idx-due-link" href="?review=due">查看今天待复测</a></div>
         <button class="idx-recall-toggle" id="idx-recall-toggle" type="button" aria-pressed="false">先回忆</button>
         <p>回忆模式只显示论文标题：先凭记忆复述，再进入文章点「显示检验问题」逐题核对。</p>
       </div>
       <div class="idx-side-block">
         <h2>阅读方式</h2>
         <p>文章按自然滚动组织：左侧目录定位，右侧关系卡说明为什么值得继续读。</p>
-        <p>速览是 Markdown 的提炼层；每篇都有完整笔记页（notes/），细节与原话都在那里。</p>
+        <p>速览页负责快速重建直觉；细节与你的原话都在完整笔记页，文章页右上有入口。</p>
       </div>
     </aside>
   </main>
@@ -69,7 +73,7 @@
     <a href="../docs/specs/site-reading-redesign.md">阅读改造说明</a>
   </footer>
 </div>
-<script src="assets/wiki-index.js?v=20260908-5"></script>
-<script src="assets/wiki-slides.js?v=20260908-5"></script>
+<script src="assets/wiki-index.js?v=20260908-6"></script>
+<script src="assets/wiki-slides.js?v=20260908-6"></script>
 </body>
 </html>

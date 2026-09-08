@@ -1,6 +1,7 @@
 /* 静态索引。真源：wiki/papers/*.md（front-matter 与正文）、taxonomy.md、review.md。
  * 速览条目与全文投影条目均保留完整导航路径；搜索片段来自真实可见的速览或完整笔记正文。
- * 使用：node scripts/build-wiki-index.mjs。
+ * title/essence/relations/速览条目是编辑判断字段，重建时从本文件保留；其余字段全部由真源生成。
+ * 使用：node scripts/build-wiki-index.mjs（校验失败会拒绝生成；CHECK_DRY_RUN=1 输出到 stdout）。
  */
 window.WIKI_TOPICS = {
   "video-understanding": "视频理解与响应",

@@ -1388,6 +1388,11 @@ strong {
   margin-top: 14px;
 }
 
+/* 手机紧凑条: 复测/回忆入口放结果之前, 阅读说明移到结果之后（桌面隐藏） */
+.idx-mobile-cue {
+  display: none;
+}
+
 .topic-filter,
 .idx-tag,
 .idx-clear,
@@ -1793,9 +1798,32 @@ strong {
   .idx-main {
     grid-template-columns: 1fr;
   }
+  /* 结果在前, 侧栏说明随后; 紧凑入口由 .idx-mobile-cue 提供 */
   .idx-side {
     position: static;
-    order: -1;
+  }
+  .idx-mobile-cue {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .idx-mobile-cue .idx-due-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--radius);
+    color: var(--accent-ink);
+    font-size: 13px;
+  }
+  .idx-mobile-cue .idx-due-link[hidden] {
+    display: none;
+  }
+  .idx-mobile-cue .idx-recall-toggle {
+    min-height: 44px;
+    padding: 8px 14px;
   }
   .idx-header h1 {
     letter-spacing: -0.025em;
@@ -2053,6 +2081,16 @@ p, li, dd {
 
 /* 移动端触控目标: 主要操作 ≥44px, 目标间距 ≥8px */
 @media (max-width: 720px) {
+  /* 放在 .note-toc 基础规则之后, 单行横滑不被后定义的 wrap 覆盖 */
+  .note-toc {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .note-toc a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
   .topbar-link,
   .reader-recall-bar button,
   .qa-toggle,

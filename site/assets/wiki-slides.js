@@ -153,6 +153,28 @@
     });
   }
 
+  // 条目排序：问题标题命中 > 正文完整短语 > 正文散命中；具体问答（卡壳/全文问答）
+  // 比章节摘要更可能直接回答困惑。同分保持索引原序（稳定排序）。
+  function entryScore(entry, tokens) {
+    var h = entry.h.toLocaleLowerCase();
+    var t = entry.t.toLocaleLowerCase();
+    var phrase = tokens.join(" ");
+    var score = 0;
+    if (h.indexOf(phrase) >= 0) score += 60;
+    else if (t.indexOf(phrase) >= 0) score += 24;
+    tokens.forEach(function (token) {
+      if (h.indexOf(token) >= 0) score += 10;
+      else if (t.indexOf(token) >= 0) score += 3;
+    });
+    if (h.indexOf("问答") >= 0 || h.indexOf("卡壳") >= 0) score += 9;
+    return score;
+  }
+
+  function rankEntries(entries, tokens) {
+    if (entries.length < 2) return entries;
+    return entries.slice().sort(function (a, b) { return entryScore(b, tokens) - entryScore(a, tokens); });
+  }
+
   function scorePage(page, tokens) {
     var titleText = (page.title + " " + page.aliases.join(" ")).toLocaleLowerCase();
     var tagText = pageTagsText(page).toLocaleLowerCase();
@@ -279,6 +301,13 @@
     return base + (base.indexOf("?") >= 0 ? "&" : "?") + query + hash;
   }
 
+  // 站内继续阅读链接统一继承来源条件（from），落地页顶部返回才能恢复首页筛选。
+  // 标签链接是新的筛选操作，保持重置语义，不走这里。
+  function withFrom(href) {
+    var from = fromQuery();
+    return from ? addQuery(href, "from=" + encodeURIComponent(from)) : href;
+  }
+
   function setTopbar(page) {
     var home = qs(".topbar-home");
     var title = qs(".topbar-title");
@@ -367,7 +396,7 @@
         head.appendChild(typeLabel);
         if (target) {
           var link = node("a", "", target.title);
-          link.href = target.href.split("/").pop();
+          link.href = withFrom(target.href.split("/").pop());
           head.appendChild(link);
         }
         var status = node("span", "context-rel-status", STATUS_LABEL[rel.status] || rel.status);
@@ -389,7 +418,7 @@
 
     if (page && page.noteHref) {
       var note = node("a", "context-action", "阅读完整笔记");
-      note.href = addQuery("../" + page.noteHref, fromQuery() ? "from=" + encodeURIComponent(fromQuery()) : "");
+      note.href = withFrom("../" + page.noteHref);
       context.appendChild(note);
     }
     var source = node("a", "context-action context-action-sub", "markdown 源文件");
@@ -421,7 +450,7 @@
     quick.appendChild(node("span", "mobile-cover-kicker", "QUICK ACCESS"));
     if (page.noteHref) {
       var note = node("a", "mobile-cover-link", "完整笔记");
-      note.href = addQuery("../" + page.noteHref, fromQuery() ? "from=" + encodeURIComponent(fromQuery()) : "");
+      note.href = withFrom("../" + page.noteHref);
       quick.appendChild(note);
     }
     var relation = page.relations && page.relations.length ? getPage(page.relations[0].to) : null;
@@ -432,7 +461,7 @@
       quick.appendChild(compare);
     } else if (relation) {
       var related = node("a", "mobile-cover-link", "重点关联：" + relation.title);
-      related.href = relation.href.split("/").pop();
+      related.href = withFrom(relation.href.split("/").pop());
       quick.appendChild(related);
     }
     if (insertionPoint) cover.insertBefore(quick, insertionPoint);
@@ -632,8 +661,13 @@
     var opener = null;
     var pendingFocus = null;
     // 同文档依据：关闭弹窗并落到目标问答，焦点跟到依据而不是触发按钮。
-    // 跨文档依据交给默认导航（弹窗随文档销毁），sameDocRef 返回 null 表示不拦截。
+    // 跨文档依据交给默认导航（弹窗随文档销毁），sameDocRef 返回 null 表示不拦截；
+    // 跨文档导航前补上来源条件，落地页返回首页时才能恢复原筛选。
     qsa("a.compare-ref", dialog).forEach(function (ref) {
+      var resolved = new URL(ref.href, window.location.href);
+      if (resolved.pathname !== window.location.pathname) {
+        ref.href = withFrom(ref.getAttribute("href"));
+      }
       ref.addEventListener("click", function (event) {
         if (!sameDocRef) return;
         var focusTarget = sameDocRef(ref);
@@ -683,6 +717,14 @@
       link.title = "按这个标签查找更多页面";
       tag.replaceWith(link);
     });
+
+    // 文末关联等静态互链（同目录 *.html）也继承来源条件；标签链接已被替换为 ../index.html，不受影响
+    if (fromQuery()) {
+      qsa("a[href]", deck).forEach(function (link) {
+        var href = link.getAttribute("href") || "";
+        if (/^[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href)) link.href = withFrom(href);
+      });
+    }
 
     var built = buildOutline(deck);
     var context = buildContext(deck, page);
@@ -775,7 +817,6 @@
     var count = qs("#idx-count");
     var stateLabel = qs("#idx-state-label");
     var clear = qs("#idx-clear");
-    var recallToggle = qs("#idx-recall-toggle");
 
     function readState() {
       var params = new URLSearchParams(window.location.search);
@@ -839,10 +880,12 @@
       results.appendChild(heading);
 
       filtered.forEach(function (page) {
-        var hits = matchingEntries(page, tokens).slice(0, 2);
+        var hits = rankEntries(matchingEntries(page, tokens), tokens).slice(0, 2);
         var card = node("article", "idx-card");
         var link = node("a", "idx-card-title", page.title);
-        link.href = cardHref(hits.length ? hits[0].a : page.href, state, recallOn);
+        // 标题入口 = 本篇阅读入口（回忆模式进速览回忆流程）；精确定位由下方命中片段负责。
+        // 不跟随首条命中，避免「先回忆」把人带进不处理 recall 的完整笔记页。
+        link.href = cardHref(page.href, state, recallOn);
         card.appendChild(link);
         card.appendChild(node("p", "idx-card-meta", (topics[page.topic] || "") + "  ·  " + page.date + "  ·  " + reviewLabel(page)));
         var essence = node("p", "idx-card-essence");
@@ -908,26 +951,30 @@
       writeState(state, "push");
     });
     if (clear) clear.addEventListener("click", function () { writeState({ q: "", topic: "all", tag: "", review: "" }, "push"); });
-    if (recallToggle) {
-      recallToggle.addEventListener("click", function () {
+    // 回忆开关与待复测入口在桌面侧栏与手机紧凑条各有一份，状态必须同步
+    var recallToggles = qsa(".idx-recall-toggle");
+    recallToggles.forEach(function (toggle) {
+      toggle.addEventListener("click", function () {
         var on = document.documentElement.classList.toggle("idx-recall");
-        recallToggle.textContent = on ? "结束回忆模式" : "先回忆";
-        recallToggle.setAttribute("aria-pressed", on ? "true" : "false");
+        recallToggles.forEach(function (item) {
+          item.textContent = on ? "结束回忆模式" : "先回忆";
+          item.setAttribute("aria-pressed", on ? "true" : "false");
+        });
         render();
       });
-    }
-    var dueEntry = qs("#idx-due-entry");
-    if (dueEntry) {
-      var dueCount = pages.filter(reviewDue).length;
-      dueEntry.hidden = !dueCount;
-      var dueLink = qs("a", dueEntry);
-      if (dueLink) {
-        dueLink.textContent = "查看今天待复测（" + dueCount + " 篇）";
-        dueLink.addEventListener("click", function (event) {
+    });
+    var dueCount = pages.filter(reviewDue).length;
+    if (dueCount) {
+      var desktopDue = qs("#idx-due-entry");
+      if (desktopDue) desktopDue.hidden = false;
+      qsa("a.idx-due-link").forEach(function (link) {
+        link.hidden = false;
+        link.textContent = "今天待复测（" + dueCount + " 篇）";
+        link.addEventListener("click", function (event) {
           event.preventDefault();
           writeState({ q: "", topic: "all", tag: "", review: "due" }, "push");
         });
-      }
+      });
     }
     // 键盘快捷键: / 或 Cmd/Ctrl+K 聚焦搜索; Esc 先清词、再失焦
     document.addEventListener("keydown", function (event) {
@@ -1117,10 +1164,15 @@
         if (href.indexOf("../../papers/") < 0) return;
         link.href = addQuery(href, "from=" + encodeURIComponent(from));
       });
+      // markdown 互链投影出的同目录笔记互链同样继承来源
+      qsa("a[href]", qs(".note-wrap")).forEach(function (link) {
+        var href = link.getAttribute("href") || "";
+        if (/^[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href)) link.href = withFrom(href);
+      });
     }
-    window.addEventListener("hashchange", locateHitText);
-    // 浏览器对 URL 里的锚点滚动发生在 load 时机、晚于脚本执行；
-    // 等它落地后再定位命中的段落，避免被原生锚点滚动覆盖。
+    // 搜索词定位只在「从搜索进入」的第一次落地生效；之后用户点目录、跳到正文都遵循
+    // 锚点本身，不再被旧查询词拉走。from 参数保留，仅用于返回首页时恢复筛选。
+    // 浏览器对 URL 锚点滚动发生在 load 时机、晚于脚本执行；等它落地后再定位命中段落。
     if (document.readyState === "complete") window.setTimeout(locateHitText, 0);
     else window.addEventListener("load", function () { window.setTimeout(locateHitText, 0); });
   }
