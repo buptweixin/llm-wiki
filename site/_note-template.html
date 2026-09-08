@@ -25,10 +25,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>简称 · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20260908-4">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20260908-5">
 </head>
 <body>
 <div class="page">
+  <a class="skip-link" href="#note-main">跳到正文</a>
 
   <header class="topbar">
     <a class="topbar-home" href="../../index.html">← 知识库</a>
@@ -39,7 +40,7 @@
     <div class="topbar-progress"></div>
   </header>
 
-  <main class="note-wrap">
+  <main class="note-wrap" id="note-main">
     <header class="note-header">
       <p class="cover-eyebrow">FULL NOTE · 专题名（taxonomy.md 的 topic）</p>
       <h1>简称</h1>
@@ -54,6 +55,9 @@
         <a class="tag" href="../../index.html?tag=机制或目标ID">taxonomy 标签</a>
       </div>
     </header>
+
+    <!-- 章节目录: 按本页实际存在的 note-sec 生成（无 ai-notes 时删去该项） -->
+    <nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#problem">解决什么问题</a><a href="#intuition">大白话讲解</a><a href="#mechanism">关键机制</a><a href="#evidence">结果与代价</a><a href="#ai-notes">AI 预读备注</a><a href="#restatement">我的复述</a><a href="#pitfalls">卡壳点与解答</a><a href="#open">还没搞懂</a><a href="#relations">关联</a></nav>
 
     <section class="note-sec" id="problem"><h2>解决什么问题</h2><!-- 忠实转换 --></section>
     <section class="note-sec" id="intuition"><h2>大白话讲解</h2><!-- 忠实转换 --></section>
@@ -80,6 +84,6 @@
   </main>
 
 </div>
-<script src="../../assets/wiki-slides.js?v=20260908-4"></script>
+<script src="../../assets/wiki-slides.js?v=20260908-5"></script>
 </body>
 </html>

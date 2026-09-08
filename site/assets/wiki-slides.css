@@ -1950,6 +1950,142 @@ strong {
   color: var(--ink-3);
 }
 
+/* ---------- 2026-09-08 UX 优化: 键盘可达 / 落点反馈 / 触控目标 ---------- */
+
+/* 跳到正文: 键盘用户跳过顶栏与目录, 聚焦时滑入 */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 60;
+  padding: 10px 16px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent-ink);
+  font-size: 13.5px;
+  transform: translateY(-72px);
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* 深链落点反馈: 搜索命中/比较弹窗跳转后, 目标问答与章节可见 */
+.qa:target {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-left: 12px;
+  margin-left: -12px;
+}
+
+.note-sec:target > h2 {
+  color: var(--accent-ink);
+}
+
+/* 原生表单控件跟随单强调色 */
+:root {
+  accent-color: var(--accent);
+}
+
+/* 标题禁孤字断行, 段落避免孤行 (渐进增强, 不支持则忽略) */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+p, li, dd {
+  text-wrap: pretty;
+}
+
+/* 回忆模式逐题展开的按钮: 桌面也要有舒适的点击区 */
+.qa-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.idx-clear {
+  min-height: 32px;
+}
+
+/* 完整笔记页章节目录: 静态 chips, 零脚本可用 */
+.note-toc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  border-bottom: 1px solid var(--hairline-soft);
+  padding-bottom: 14px;
+  margin-bottom: 6px;
+}
+
+.note-toc-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  margin-right: 2px;
+}
+
+.note-toc a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.note-toc a:hover {
+  color: var(--accent-ink);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+/* 首页搜索快捷键提示 (触屏无键盘, 移动端隐藏) */
+.idx-search-hint {
+  color: var(--ink-3);
+}
+
+/* 移动端触控目标: 主要操作 ≥44px, 目标间距 ≥8px */
+@media (max-width: 720px) {
+  .topbar-link,
+  .reader-recall-bar button,
+  .qa-toggle,
+  .mobile-cover-link,
+  .topic-filter,
+  .idx-recall-toggle,
+  .idx-clear,
+  .note-toc a {
+    min-height: 44px;
+  }
+  .qa-toggle,
+  .idx-clear {
+    padding: 8px 12px;
+  }
+  .idx-tag {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+  .reader-outline a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .topbar-nav,
+  .idx-card-tags,
+  .idx-topics {
+    gap: 8px;
+  }
+  .idx-search-hint {
+    display: none;
+  }
+}
+
 /* ---------- 打印: 每 slide 一页, 可导出 PDF ---------- */
 @media print {
   .page {

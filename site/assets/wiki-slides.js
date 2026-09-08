@@ -127,6 +127,12 @@
 
   var STATUS_LABEL = { reported: "论文记录", synthesis: "库内综合", hypothesis: "待验证假说" };
 
+  var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+
+  function scrollBehavior() {
+    return reduceMotion && reduceMotion.matches ? "auto" : "smooth";
+  }
+
   /* ---------- 搜索 ---------- */
 
   function tokensFor(query) {
@@ -498,7 +504,7 @@
           pageRoot.classList.add("show-questions");
           renderBar("questions");
           var top = qs("#pitfalls", deck);
-          if (top) top.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (top) top.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
         });
         bar.appendChild(show);
       } else {
@@ -516,7 +522,7 @@
       qas.forEach(function (qa) { setQaOpen(qa, false); });
       renderBar("titles");
       syncRecallLinks(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: scrollBehavior() });
     }
 
     function exitRecall() {
@@ -923,6 +929,26 @@
         });
       }
     }
+    // 键盘快捷键: / 或 Cmd/Ctrl+K 聚焦搜索; Esc 先清词、再失焦
+    document.addEventListener("keydown", function (event) {
+      var active = document.activeElement;
+      var typing = active && (/^(input|textarea|select)$/i.test(active.tagName) || active.isContentEditable);
+      var key = event.key.toLowerCase();
+      if ((event.key === "/" && !typing) || ((event.metaKey || event.ctrlKey) && key === "k")) {
+        event.preventDefault();
+        filter.focus();
+        filter.select();
+      } else if (event.key === "Escape" && active === filter) {
+        if (filter.value) {
+          var state = readState();
+          state.q = "";
+          filter.value = "";
+          writeState(state, "replace");
+        } else {
+          filter.blur();
+        }
+      }
+    });
     window.addEventListener("popstate", render);
     render();
   }

@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>U-OPSD · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20260908-4">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20260908-5">
 </head>
 <body>
 <div class="page">
+  <a class="skip-link" href="#note-main">跳到正文</a>
 
   <header class="topbar">
     <a class="topbar-home" href="../../index.html">← 知识库</a>
@@ -19,7 +20,7 @@
     <div class="topbar-progress"></div>
   </header>
 
-  <main class="note-wrap">
+  <main class="note-wrap" id="note-main">
     <header class="note-header">
       <p class="cover-eyebrow">FULL NOTE · 蒸馏与训练预算</p>
       <h1>U-OPSD</h1>
@@ -30,6 +31,7 @@
       </dl>
       <div class="tagrow"><a class="tag" href="../../index.html?tag=on-policy-distillation">on-policy 蒸馏</a><a class="tag" href="../../index.html?tag=self-distillation">自蒸馏</a><a class="tag" href="../../index.html?tag=reduce-supervision">减少外部监督</a></div>
     </header>
+<nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#problem">解决什么问题</a><a href="#intuition">大白话讲解</a><a href="#mechanism">关键机制</a><a href="#evidence">结果与代价</a><a href="#ai-notes">AI 预读备注</a><a href="#restatement">我的复述</a><a href="#pitfalls">卡壳点与解答</a><a href="#open">还没搞懂</a><a href="#relations">关联</a></nav>
 <section class="note-sec" id="problem"><h2>解决什么问题</h2><p>LLM 后训练方法谱系，每往右一步去掉一类外部依赖：</p><pre class="note-pre">SFT ──► OPD ──► OPSD ──► U-OPSD
 要GT解+教师强制  要强教师   要GT解    啥都不要(GT解也不要)</pre><ul><li><strong>SFT</strong>：要标好的答案，且 teacher-forcing 导致训练-推理失配（train-inference mismatch）+ 灾难性遗忘（catastrophic forgetting）。</li><li><strong>GRPO</strong>：要 GT 答案做可验证奖励；奖励稀疏——一整条 rollout 一个 0/1 序列级 advantage，组内全对/全错梯度归零。</li><li><strong>OPD</strong>：要一个<strong>外部更强教师</strong>的逐 token 分布；依赖外部模型。</li><li><strong>OPSD</strong>：参数自共享（同模型当教师和学生），但教师比学生多看 <strong>GT 解 y*</strong>——让教师更强的信息<strong>仍来自模型之外</strong>。论文原话：这是"只在参数共享意义上的 self，信息仍外部"。</li></ul><p>U-OPSD 把最后这层 GT 解也去掉，用模型自己投票出来的"伪解 y+"替代 y*，是<strong>首个完全无外部监督的 on-policy 自蒸馏</strong>。痛点：GT 标注的成本与稀缺是 RLVR/OPSD 规模化的瓶颈；许多领域监督昂贵/不可靠/不可得。</p></section><section class="note-sec" id="intuition"><h2>大白话讲解</h2><p>想象一个学生考前自学，但有"看过答案的自己"在旁边。OPSD 是：<strong>你偷偷看了标准答案</strong>，让"已看答案的你"在每个步骤上指导"没看答案的你"。U-OPSD 是：<strong>没有标准答案</strong>，你把同一题独立做 8 遍，8 次里 5 次都算出 42，那大概率 42 是对的；于是把"算出 42 的完整过程"当"看过答案的你"的参考，专门去纠正"算成别的数的那 3 次过程"里每一步的偏差。</p><p>关键：<strong>只纠正答错的 rollout，不直接模仿答对的那条</strong>（否则就成了 SFT teacher-forcing）。蒸馏沿答错 rollout 的前缀做，让"不知道答案的学生"在每个 token 上向"知道答案的教师"的下一 token 分布靠拢，纠正信号正好戳在"自信但错"的地方。</p></section><section class="note-sec" id="mechanism"><h2>关键机制</h2><p>对每道<strong>无答案</strong>题 x：</p><p><strong>① Sample（采样）</strong>：冻结梯度策略 π̄（stop-gradient）独立采样 G=8 条 rollout，训练温度 1.1 + top-p 0.95 + top-k 20。</p><p><strong>② Vote（投票）</strong>：从每条 rollout 抽 <code>\boxed{}</code> 答案并规范化，多数票赢的当伪答案 ã(x)。自一致性分数 <code>c(x) = 同意票数 / G</code>——<strong>分母是 G 不是有效答案数</strong>，截断的废 rollout 直接拉低 c(x)，天然惩罚"模型说不清"的题。</p><p><strong>③ Gate（门控，关键）</strong>：两道筛子都不过的训练步直接跳过、不产生梯度：</p><ul><li><code>c(x) &lt; τ</code>（τ=0.5，绝对多数）→ 投票不可靠 → 不学。</li><li><code>Y⁻ = ∅</code>（所有有效 rollout 一致）→ 没有分歧可纠正 → 也不学。</li></ul><p>这一步<strong>自动挑训练样本</strong>——只学"模型能形成稳定共识、但仍时不时跑偏"的题（能力边界 / competence frontier / 自发课程 self-curriculum）。太难的（投不出票）和太简单的（全对）自动跳过，不需人工排课程。</p><p><strong>④ Distill（蒸馏）</strong>：</p><table class="dtable"><thead><tr><th></th><th>输入上下文</th><th>看 y+（伪解）</th><th>看 y⁻&lt;t（错答前缀）</th></tr></thead><tbody><tr><td><strong>教师</strong> π̄</td><td><code>x + y+ + y⁻&lt;t</code></td><td>✅</td><td>✅</td></tr><tr><td><strong>学生</strong> πθ</td><td><code>x + y⁻&lt;t</code></td><td>❌</td><td>✅</td></tr></tbody></table><p>两者<strong>共享</strong> <code>x + y⁻&lt;t</code>（错答前缀）；教师比学生<strong>多出来</strong>的是伪解 y+。如果学生也看了 y+，教师=学生，KL 散度恒 0，无学习信号——学习信号正是从"教师知道答案、学生不知道"这个差里长出来的。</p><p>逐 token 算前向 KL（forward KL，<code>KL(教师‖学生)</code>，β=0），全词表，逐 token 点裁剪（point-wise clipping）。教师/学生选哪条：消融最优 = <strong>最长</strong>同意 rollout 当 y+，<strong>最长</strong>反对 rollout 当 y⁻。</p><p>主目标（Eq 1/5）：</p><pre class="note-pre">L_U-OPSD(θ) = E_x E_{y(g)~π̄}
   [ 1{Y⁻≠∅} · (1/|B⁻|) Σ_{y⁻∈B⁻} (1/|y⁻|) Σ_{n=1}^{|y⁻|}
@@ -46,6 +48,6 @@
   </main>
 
 </div>
-<script src="../../assets/wiki-slides.js?v=20260908-4"></script>
+<script src="../../assets/wiki-slides.js?v=20260908-5"></script>
 </body>
 </html>
