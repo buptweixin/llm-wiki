@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PPO · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260908-7">
+</head>
+<body>
+<div class="page">
+  <a class="skip-link" href="#deck">跳到正文</a>
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 知识库</a>
+    <span class="topbar-title">PPO</span>
+    <nav class="topbar-nav">
+    </nav>
+    <span class="topbar-count">连续阅读</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <!-- ① 核心直觉 -->
+    <section class="slide" id="slide-1" data-section="essence">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2017</p>
+        <h1>PPO</h1>
+        <p class="cover-full">Proximal Policy Optimization Algorithms</p>
+        <p class="cover-essence">用「剪刀（Clip 悲观下界裁剪）」代替「紧箍咒（TRPO 二阶约束优化）」的 Actor-Critic 算法：通过在重要性采样概率比 r_t(θ) 上施加悲观裁剪限制策略偏离幅度，安全地在同一批交互样本上跑多轮 Minibatch 随机梯度更新，以极简的一阶优化兼顾样本效率与防策略崩溃的鲁棒性。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>OpenAI（John Schulman 等）</dd>
+          <dt>入库</dt><dd>2026-09-09</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/Z6L573AE">Zotero</a> · <a href="http://arxiv.org/abs/1707.06347">arXiv</a></dd>
+        </dl>
+        <div class="tagrow"><span class="tag">策略梯度</span><span class="tag">裁剪代理目标</span><span class="tag">连续控制</span><span class="tag">GAE</span><span class="tag">提高训练稳定性</span><span class="tag">提高训练预算利用率</span></div>
+      </div>
+    </section>
+
+    <!-- ② 一页看懂 -->
+    <section class="slide" id="slide-2" data-section="overview">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>经典策略梯度（A2C）每批数据只能更新一次且易一步崩盘；TRPO 理论虽稳但要求解二阶 Hessian 与共轭梯度，工程极其笨重且不兼容参数共享与现代网络结构。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>重要性采样比率 + 悲观裁剪下界 L_CLIP：当优势为正时截断上限防探索过热，当优势为负且动作更坏时用外层 min 保留未裁剪真实重罚与负梯度，安全开启多轮 Epoch 复用。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>MuJoCo 7 项连续控制基准归一化得分 0.82 领跑全场（无裁剪为 -0.39 崩溃）；在 3D 人形机器人与 Atari 49 款游戏中均以极简一阶架构超越或打平高度复杂算法。</p>
+          </div>
+        </div>
+        <p class="takeaway">PPO 的核心是一阶机械限位器：把车把转角锁死在安全区，放手让同一个 Batch 跑多轮小批量随机梯度更新。</p>
+      </div>
+    </section>
+
+    <!-- ③ 关键机制：截断代理目标与不对称纠偏 -->
+    <section class="slide" id="slide-3" data-section="mechanism">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：悲观下界与外层 min</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>核心损失函数定义为：L_CLIP(θ) = E_t [ min(r_t(θ) A_t, clip(r_t(θ), 1-ε, 1+ε) A_t) ]。外层 min 构成了非对称保护伞：</p>
+        <table class="dtable">
+          <thead><tr><th>优势信号</th><th>目标与比率变化</th><th>clip 截断效果</th><th>外层 min 的保护意义</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>正优势 A_t &gt; 0（好动作）</td>
+              <td class="num">提升概率（r_t &gt; 1）</td>
+              <td>r_t &gt; 1+ε 时卡在 1+ε，导数归零</td>
+              <td>防止贪婪过度推高单一动作概率，锁住探索活力</td>
+            </tr>
+            <tr data-hi>
+              <td>负优势 A_t &lt; 0（坏动作）</td>
+              <td class="num">压低概率（r_t &lt; 1）</td>
+              <td>若只 clip，r_t 激增到 2.0 时被截断在 1+ε，惩罚缩水且导数为零</td>
+              <td>min 选取未截断的更小值（-2.0|A|），输出巨大负梯度强行拉回错误动作</td>
+            </tr>
+          </tbody>
+        </table>
+        <p><strong>最反直觉的设计</strong>：只做 clip 会在网络犯大错（坏动作概率反而剧增）时掐断纠偏梯度；外层 min 确保了对坏动作的重罚绝不手软。</p>
+      </div>
+    </section>
+
+    <!-- ④ 关键机制：BipedalWalker 实战与监控矩阵 -->
+    <section class="slide" id="slide-4" data-section="mechanism-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>实战机制：连续控制与四大监控因果</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p>BipedalWalker 拥有 24 维状态、4 维连续扭矩高斯策略 a ~ N(μ, σ^2)，经历「站立（0~500k）→ 挪步双模态（500k~1M）→ 稳定行走（1M~2M）」三阶段。诊断训练健康的四维矩阵：</p>
+        <table class="dtable">
+          <thead><tr><th>监控指标</th><th>健康区间</th><th>异常表现</th><th>背后因果与处置</th></tr></thead>
+          <tbody>
+            <tr data-hi>
+              <td>裁剪比例（Clip Fraction）</td>
+              <td class="num">0.05 ~ 0.15</td>
+              <td class="num">&gt; 0.20</td>
+              <td>单次更新过于激进，动作剧烈偏离旧策略；需调小 lr 或增大 n_steps</td>
+            </tr>
+            <tr>
+              <td>近似 KL 散度（Approx KL）</td>
+              <td class="num">&lt; 0.03</td>
+              <td class="num">&gt; 0.05</td>
+              <td>新旧策略分布严重撕裂，策略面临跳水崩溃危险；属于红色告警线</td>
+            </tr>
+            <tr>
+              <td>策略熵（Policy Entropy）</td>
+              <td class="num">平稳缓慢下降</td>
+              <td class="num">快速跌落至 0</td>
+              <td>高斯方差过早坍缩，陷入呆站不动的局部最优；需增大 ent_coef</td>
+            </tr>
+            <tr>
+              <td>回合奖励（Episode Reward）</td>
+              <td class="num">稳步攀升（深蓝均线）</td>
+              <td class="num">单局断崖跳水</td>
+              <td>看滑动均线而非浅蓝单局；若与 Clip 飙升并发，说明更新过猛崩盘</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ⑤ 结果与消融 -->
+    <section class="slide" id="slide-5" data-section="evidence">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键数字</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <div class="metrics">
+          <div class="metric" data-hi>
+            <div class="metric-value">0.82</div>
+            <div class="metric-label">MuJoCo 7 项归一化总分</div>
+            <div class="metric-why">PPO-Clip (ε=0.2) 领跑全场</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">-0.39</div>
+            <div class="metric-label">无裁剪无惩罚得分</div>
+            <div class="metric-why">HalfCheetah 上直接彻底跑崩</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">30/49</div>
+            <div class="metric-label">Atari 胜出游戏数</div>
+            <div class="metric-why">全训练均分战胜 A2C 与 ACER</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">282.5</div>
+            <div class="metric-label">BipedalWalker 2M 步回报</div>
+            <div class="metric-why">稳定高效行走（基准线 300）</div>
+          </div>
+        </div>
+        <table class="dtable">
+          <thead><tr><th>目标函数变体</th><th>归一化均分</th><th>结论</th></tr></thead>
+          <tbody>
+            <tr><td>无裁剪无惩罚（No clipping or penalty）</td><td class="num">-0.39</td><td>单步多轮更新直接跑飞</td></tr>
+            <tr><td>固定 KL 惩罚（β=0.3 ~ 10）</td><td class="num">0.62 ~ 0.72</td><td>难以跨环境适配超参</td></tr>
+            <tr><td>自适应 KL 惩罚（d_targ=0.003 ~ 0.03）</td><td class="num">0.68 ~ 0.74</td><td>动态调 β，但仍逊于剪刀裁剪</td></tr>
+            <tr data-hi><td>PPO-Clip（ε=0.2）</td><td class="num"><strong>0.82</strong></td><td>极简一阶目标，稳定性与效率最佳</td></tr>
+          </tbody>
+        </table>
+        <p>代价与局限：本质仍是 on-policy，数据局部近端有效，几轮更新后必须丢弃，绝对样本效率逊于纯 off-policy（SAC）；高度依赖优势归一化与正交初始化等代码级工程技巧包裹。</p>
+      </div>
+    </section>
+
+    <!-- ⑥ 卡壳点 -->
+    <section class="slide" id="slide-6" data-section="pitfalls">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa-list">
+          <div class="qa" id="qa-min-bound">
+            <p class="qa-q">为什么既有 clip 又必须带外层 min？只保留 clip(r, 1-eps, 1+eps) * A 会发生什么？</p>
+            <div class="qa-a"><p>若只有裁剪项，当动作很差（A &lt; 0）且新策略错误地把概率激增（如 r = 2.0）时，比率被截断在 1+ε = 1.2。这会导致惩罚从真实的 -2.0|A| 缩小为 -1.2|A|，且比率落在常数边界导致导数直接归零，优化器彻底丧失纠偏负梯度！外层 min 锁死未裁剪的更低值，输出巨大纠偏负梯度拉回策略。</p></div>
+          </div>
+          <div class="qa" id="qa-on-policy-reuse">
+            <p class="qa-q">既然同一批数据能跑多个 Epoch，为什么 PPO 依然是严格的 on-policy 算法？</p>
+            <div class="qa-a"><p>PPO 复用数据依赖重要性采样比率与 Clip 截断，但这套机制只在当前策略的近端邻域有效。一旦策略经过几个 Epoch 的微小漂移，新旧策略分布脱节，重要性采样方差爆炸且绝大部分样本被 clip 清零梯度。数据跑完几个 Epoch 必须全盘丢弃重新交互，绝不能像 SAC 那样放入 Replay Buffer 循环复用陈旧历史。</p></div>
+          </div>
+          <div class="qa" id="qa-bipedal-metrics">
+            <p class="qa-q">在连续控制中，Clip Fraction 飙升到 0.27、KL 散度到 0.065 伴随奖励跳水，该如何调参排查？</p>
+            <div class="qa-a"><p>这是单步更新步子过大、策略坠入悬崖的病症。排查次序：① 调小 learning_rate（最直接的刹车器，如 3e-4 降至 1e-4）；② 增大单次采样步数 n_steps（用更多样本平滑梯度方差）；③ 调小 n_epochs 或收窄 clip_range（如 0.2 缩至 0.1 限制单次偏移）。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 关联与来源 -->
+    <section class="slide" id="slide-7" data-section="relations">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item">
+              <span class="link-rel">机制载体</span>
+              <span><a href="2026-open-mopd.html">Open-MOPD</a>：机制三（reward refresh）的底层物理载体。当 K 次更新内学生变聪明而仍用旧 reward 评分时，概率比过冲触发 PPO Clip 踩死刹车，75.8% 的 token 预算被白白浪费；refresh 顺手复用 PPO 本就算好的学生 logprob 盘活算力。</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">范式对比</span>
+              <span><a href="2026-u-opsd.html">U-OPSD</a> / <a href="2026-s2vopd.html">S²VOPD</a>：强化学习标量稀疏 Reward 探索与 on-policy 自蒸馏逐 Token 稠密教师分布信号（前向/反向/JSD）的对比与演进。</span>
+            </div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item">
+              <span class="link-rel">完整笔记</span>
+              <span><a href="../notes/papers/2017-ppo.html">notes/papers/2017-ppo.html</a>（markdown 的完整静态投影）</span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">源文件</span>
+              <span><a href="../../wiki/papers/2017-ppo.md">wiki/papers/2017-ppo.md</a></span>
+            </div>
+            <div class="link-item">
+              <span class="link-rel">原文</span>
+              <span><a href="zotero://select/items/Z6L573AE">Zotero</a>（schulmanProximalPolicyOptimization2017）· 结合 Hands-on Modern RL 第 8 章连续控制实战</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-index.js?v=20260908-7"></script>
+<script src="../assets/wiki-slides.js?v=20260908-7"></script>
+</body>
+</html>

@@ -301,11 +301,24 @@
     return base + (base.indexOf("?") >= 0 ? "&" : "?") + query + hash;
   }
 
+  function isLocalReaderHtml(href) {
+    return /^(?:\.\.\/notes\/papers\/)?[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href);
+  }
+
   // 站内继续阅读链接统一继承来源条件（from），落地页顶部返回才能恢复首页筛选。
   // 标签链接是新的筛选操作，保持重置语义，不走这里。
   function withFrom(href) {
     var from = fromQuery();
-    return from ? addQuery(href, "from=" + encodeURIComponent(from)) : href;
+    if (!from) return href;
+    var hashAt = href.indexOf("#");
+    var base = hashAt >= 0 ? href.slice(0, hashAt) : href;
+    var hash = hashAt >= 0 ? href.slice(hashAt) : "";
+    var queryAt = base.indexOf("?");
+    var pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+    var params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : "");
+    params.delete("from");
+    params.set("from", from);
+    return pathname + "?" + params.toString() + hash;
   }
 
   function setTopbar(page) {
@@ -722,7 +735,7 @@
     if (fromQuery()) {
       qsa("a[href]", deck).forEach(function (link) {
         var href = link.getAttribute("href") || "";
-        if (/^[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href)) link.href = withFrom(href);
+        if (isLocalReaderHtml(href)) link.href = withFrom(href);
       });
     }
 
@@ -1167,7 +1180,7 @@
       // markdown 互链投影出的同目录笔记互链同样继承来源
       qsa("a[href]", qs(".note-wrap")).forEach(function (link) {
         var href = link.getAttribute("href") || "";
-        if (/^[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href)) link.href = withFrom(href);
+        if (isLocalReaderHtml(href)) link.href = withFrom(href);
       });
     }
     // 搜索词定位只在「从搜索进入」的第一次落地生效；之后用户点目录、跳到正文都遵循

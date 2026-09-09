@@ -12,6 +12,7 @@
 | `visual-encoders` | 视觉编码器 | ViT、视觉预训练目标、注意力与表示学习 |
 | `distillation` | 蒸馏与训练预算 | on-policy 蒸馏、自蒸馏、教师信号与优化预算 |
 | `structured-output` | 结构化输出与定位 | 坐标、框、结构化解码与视觉 grounding |
+| `reinforcement-learning` | 强化学习与对齐 | 策略梯度、信任域、价值估计、连续控制与对齐算法 |
 
 ## 机制 `mechanism`
 
@@ -35,6 +36,10 @@
 | `parallel-decoding` | 并行解码 | block decoding、并行框解码 |
 | `grounding` | 视觉定位 | VLM grounding |
 | `tool-use` | 工具调用 | native interleaving |
+| `policy-gradient` | 策略梯度 | Policy Gradient、策略优化 |
+| `clipped-surrogate` | 裁剪代理目标 | PPO-Clip、clipping objective、近端策略优化 |
+| `continuous-control` | 连续控制 | 连续动作空间、高斯策略、机器人控制 |
+| `gae` | GAE | 广义优势估计、优势估计、Generalized Advantage Estimation |
 
 ## 目标 `goal`
 
@@ -48,5 +53,6 @@
 | `improve-reasoning` | 提高推理深度 |
 | `improve-perception` | 提高细粒度感知 |
 | `improve-training-efficiency` | 提高训练预算利用率 |
+| `improve-stability` | 提高训练稳定性 |
 
 「待复测」「已通过」「待验证」不进入标签词表，它们分别来自 `review.md`、复测记录和页面中的证据状态。

@@ -168,19 +168,37 @@ function sourceSections(markdown) {
     else if (heading === "卡壳点与解答") id = "pitfalls";
     else if (heading === "还没搞懂") id = "open";
     else if (heading === "关联") id = "relations";
-    return { id, heading, text: markdownText(`${heading}\n${markdown.slice(bodyStart, bodyEnd)}`) };
+    const bodyText = markdownText(markdown.slice(bodyStart, bodyEnd));
+    return { id, heading, bodyText, text: markdownText(`${heading}\n${markdown.slice(bodyStart, bodyEnd)}`) };
   }).filter(section => section.id);
 }
 
-function projectedEntries(noteHref, markdown, noteHtml) {
-  const entries = [];
+function renderedNoteSections(noteHtml) {
   const renderedSections = {};
   const sections = /<section class="note-sec" id="([^"]+)">([\s\S]*?)<\/section>/g;
   let rendered;
   while ((rendered = sections.exec(noteHtml))) renderedSections[rendered[1]] = rendered[2];
+  return renderedSections;
+}
+
+function validateSourceSectionCoverage(pageId, notePath, markdown, noteHtml) {
+  const renderedSections = renderedNoteSections(noteHtml);
+  const actualIds = Object.keys(renderedSections);
+  for (const section of sourceSections(markdown).filter(item => item.bodyText)) {
+    if (!renderedSections[section.id]) {
+      const actual = actualIds.length ? `；实际章节锚点：${actualIds.map(id => `#${id}`).join(", ")}` : "；实际章节锚点为空";
+      fail(`${pageId}: 真源章节「${section.heading}」应投影为 #${section.id}，但完整笔记 site/${notePath} 缺失该锚点${actual}`);
+    }
+  }
+  return renderedSections;
+}
+
+function projectedEntries(pageId, noteHref, markdown, noteHtml) {
+  const entries = [];
+  const renderedSections = validateSourceSectionCoverage(pageId, `notes/papers/${pageId}.html`, markdown, noteHtml);
 
   for (const section of sourceSections(markdown)) {
-    if (renderedSections[section.id] && section.text) {
+    if (renderedSections[section.id] && section.bodyText) {
       entries.push({ h: `全文 · ${section.heading}`, a: `${noteHref}#${section.id}`, t: section.text });
     }
 
@@ -310,7 +328,7 @@ for (const id of ids) {
     entries.push(entry);
   }
   if (fs.existsSync(noteHtmlPath)) {
-    entries.push(...projectedEntries(`notes/papers/${id}.html`, markdown, fs.readFileSync(noteHtmlPath, "utf8")));
+    entries.push(...projectedEntries(id, `notes/papers/${id}.html`, markdown, fs.readFileSync(noteHtmlPath, "utf8")));
   }
   for (const entry of entries) validateEntryAnchor(id, entry);
 

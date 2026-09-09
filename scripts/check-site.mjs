@@ -41,6 +41,50 @@ function frontMatter(markdown) {
 }
 const fmList = raw => ((raw || "").match(/^\[([^\]]*)\]$/) || [, ""])[1].split(",").map(s => s.trim()).filter(Boolean);
 
+function markdownText(value) {
+  return value
+    .replace(/^```[^\n]*\n/gm, "")
+    .replace(/^```\s*$/gm, "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*(?:[-*+] |\d+\. )/gm, "")
+    .replace(/^\s*\|/gm, "")
+    .replace(/\|\s*$/gm, "")
+    .replace(/\|/g, " ")
+    .replace(/^\s*[-: ]+(?:\|[-: ]+)+\s*$/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sourceSections(markdown) {
+  const headings = Array.from(markdown.matchAll(/^## (.+)$/gm));
+  let mechanismIndex = 0;
+  return headings.map((match, index) => {
+    const heading = match[1].trim();
+    const bodyStart = match.index + match[0].length;
+    const bodyEnd = index + 1 < headings.length ? headings[index + 1].index : markdown.length;
+    let id;
+    if (heading === "解决什么问题") id = "problem";
+    else if (heading === "大白话讲解") id = "intuition";
+    else if (heading === "关键机制") {
+      mechanismIndex += 1;
+      id = mechanismIndex === 1 ? "mechanism" : `mechanism-${mechanismIndex}`;
+    } else if (heading === "结果与代价") id = "evidence";
+    else if (heading === "AI 预读备注") id = "ai-notes";
+    else if (heading === "我的复述") id = "restatement";
+    else if (heading === "卡壳点与解答") id = "pitfalls";
+    else if (heading === "还没搞懂") id = "open";
+    else if (heading === "关联") id = "relations";
+    const bodyText = markdownText(markdown.slice(bodyStart, bodyEnd));
+    return { id, heading, bodyText };
+  }).filter(section => section.id && section.bodyText);
+}
+
 function reviewRows() {
   const rows = new Map();
   for (const raw of fs.readFileSync(path.join(root, "review.md"), "utf8").split("\n")) {
@@ -96,6 +140,25 @@ for (const page of pages) {
   }
 }
 console.log(`（共 ${entryTotal} 条搜索条目）`);
+
+/* ---------- C2a 真源章节与派生/索引覆盖独立对账 ---------- */
+
+section("C2a 真源章节覆盖");
+for (const page of pages) {
+  const markdown = fs.readFileSync(path.join(root, "wiki/papers", `${page.id}.md`), "utf8");
+  const notePath = path.join(root, "site", page.noteHref);
+  if (!fs.existsSync(notePath)) {
+    check(false, `${page.id} 完整笔记缺失，无法核对真源章节覆盖`);
+    continue;
+  }
+  const noteHtml = fs.readFileSync(notePath, "utf8");
+  const actualIds = new Set(Array.from(noteHtml.matchAll(/<section class="note-sec" id="([^"]+)">/g), match => match[1]));
+  for (const source of sourceSections(markdown)) {
+    check(actualIds.has(source.id), `${page.id} 真源章节「${source.heading}」派生锚点 #${source.id} 存在`);
+    check(page.entries.some(entry => entry.h === `全文 · ${source.heading}` && entry.a === `${page.noteHref}#${source.id}`),
+      `${page.id} 真源章节「${source.heading}」在索引中有完整笔记条目 #${source.id}`);
+  }
+}
 
 /* ---------- C3 关系指向 ---------- */
 
@@ -169,11 +232,34 @@ for (const rel of ["site/index.html", ...pages.map(page => `site/papers/${page.i
 /* ---------- C10 索引可由真源逐字重建（无投影漂移） ---------- */
 
 section("C10 索引干跑对账");
-const dry = execFileSync(process.execPath, ["scripts/build-wiki-index.mjs"], {
-  cwd: root,
-  env: { ...process.env, CHECK_DRY_RUN: "1" }
-}).toString();
-check(dry === fs.readFileSync(indexPath, "utf8"), "build-wiki-index.mjs 干跑结果与现有 wiki-index.js 逐字一致");
+let dry = "";
+try {
+  dry = execFileSync(process.execPath, ["scripts/build-wiki-index.mjs"], {
+    cwd: root,
+    env: { ...process.env, CHECK_DRY_RUN: "1" }
+  }).toString();
+  check(dry === fs.readFileSync(indexPath, "utf8"), "build-wiki-index.mjs 干跑结果与现有 wiki-index.js 逐字一致");
+} catch (error) {
+  check(false, `build-wiki-index.mjs 干跑应成功（退出 ${error.status ?? "异常"}）`);
+  const stderr = error.stderr?.toString().trim();
+  if (stderr) console.log(stderr);
+}
+
+/* ---------- C11 S4 缺失章节持久回归 ---------- */
+
+section("C11 S4 缺失章节回归");
+try {
+  const regression = execFileSync(process.execPath, ["scripts/check-site-regressions.mjs"], {
+    cwd: root,
+    encoding: "utf8"
+  }).trim();
+  if (regression) console.log(regression);
+  check(true, "完整笔记单锚点改名会拒绝生成，恢复后条目数完整且连续两次一致");
+} catch (error) {
+  check(false, `S4 缺失章节回归失败（退出 ${error.status ?? "异常"}）`);
+  const output = `${error.stdout?.toString() || ""}${error.stderr?.toString() || ""}`.trim();
+  if (output) console.log(output);
+}
 
 /* ---------- 汇总 ---------- */
 

@@ -19,6 +19,7 @@ _暂无_
 - [Open-MOPD](wiki/papers/2026-open-mopd.md) — 多专家蒸不进一个学生的病根不是教师打架（证伪实验：conflict mask 全降分），而是 token 级优化预算三层错配：长度差 25× 吃掉短响应域的 token 份额（IF 占 20% prompt 只拿 0.99% 梯度）+ 收敛速度差导致预算漂移 + K 次内更新让 reward 陈旧；三个机制分别在三个时间尺度修复，回收率 35.6%→83.4%，refresh 零开销（学生项重算恰好免费，PPO 本来就算）。
 - [S²VOPD](wiki/papers/2026-s2vopd.md) — 零特权视觉 on-policy 自蒸馏：把学生的输入图故意降采样加噪弄坏，EMA 教师看原图，学生每步向"看得清的自己"对齐——不对称不必给教师加信息，可以从学生减信息；4B 涨到 77.44 超 235B 开源模型与 GPT-5.4，冻结教师只掉 0.4（增益来自那张图不是自我改进）。
 - [LocateAnything](wiki/papers/2026-locateanything.md) — VLM 检测别再把框拆成 token 流逐个蹦：把整个框当一个固定长块（`<box> x1 y1 x2 y2 </box>`）并行解码，训练用"接龙卷+填空卷"双格式、块内坐标联合监督；Hybrid 12.7 框/秒（Qwen3-VL 的 10×+）且贴边精度大涨（LVIS F1@0.95 31.1 vs 别家 ~20），另一半功劳靠 12M 图/138M 查询/785M 框数据引擎。
+- [PPO](wiki/papers/2017-ppo.md) — 用「剪刀（Clip 悲观下界）」代替「紧箍咒（TRPO 二阶约束）」的 Actor-Critic 算法：通过重要性采样比率的截断目标限制策略偏离幅度，在同一批样本上安全跑多轮 Minibatch 更新，以极简的一阶优化兼顾样本效率与防策略崩溃的鲁棒性。
 
 ## 代码 Code
 
@@ -40,3 +41,4 @@ _暂无_
 - [站点阅读改造第六轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-08-round-6.md) — 双尺寸、双通道确认 T2-c 与 P3 关闭，8 个旧查询、10 个新样本及 T1/T3/T4 抽查通过。
 - [站点阅读改造分析与修复交接](docs/reviews/site-reading-redesign-analysis-2026-09-08.md) — 对 087cb87 整轮改造的设计判断，记录四项 P2、搜索与手机布局优化方向，以及复现步骤和验收标准。
 - [站点阅读 S1~S4 修复与 O1~O3 优化报告](docs/reviews/site-reading-redesign-fixes-2026-09-08.md) — 按交接文档完成四项 P2 与三项优化：回忆入口统一、来源继承、目录定位分离、索引生成器真源全量重建，附静态回归脚本 check-site.mjs 与浏览器验证证据。
+- [站点阅读改造第七轮验收报告](docs/reviews/site-reading-redesign-review-2026-09-09-round-7.md) — 复核 8d661fe：S1/S3/O1/O2 通过，SOURCE 完整笔记出口与索引缺失章节检查仍有两项 P2，O3 部分完成。
