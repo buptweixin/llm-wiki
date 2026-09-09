@@ -1,0 +1,19 @@
+index.md
+  s_6ee912a2239e44::t_ae9ec7d1a28be7 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9267b6b8bac18dd28c1b35df694b2228d3c33404",
+  "prompts": {},
+  "sessions": {
+    "s_6ee912a2239e44": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08512-afb2-7171-a188-f5070ec43fd4",
+        "model": "unknown"
+      },
+      "human_author": "buptweixin <weixin.bupt.ml@gmail.com>"
+    }
+  }
+}
