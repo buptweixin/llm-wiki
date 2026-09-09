@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<!-- ============================================================
+  llm-wiki 专题导读页模板 (_topic-template.html)
+  复制本文件为 site/topics/<同名>.html 后填充内容。
+  文件名必须与 wiki/syntheses/<同名>.md 同名；完整专题笔记投影在 site/notes/syntheses/。
+
+  铁律（沿用速览页规范，另加专题层约定）:
+  1. 样式只用 assets/wiki-slides.css 的 class 与 token，禁止 <style> 块与逐图配色。
+  2. 速览层零 em-dash：正文、图注、SVG 文字都不许出现「——」「—」「–」。
+  3. 连续阅读，data-section 依次为 essence / map / evolution / compare / path / pitfalls / relations；
+     全页只有一条 .takeaway（本专题最值得记住的一句话）。
+  4. 问题与方法地图：内嵌 site/assets/diagrams/<同名>-map.svg 的同一份图稿，
+     用 <!-- hub-diagram:<同名>-map --> 与 <!-- /hub-diagram --> 包住，
+     跑 node scripts/sync-hub-diagrams.mjs 同步；图下必须配可读的文字关系表（.hub-edges），图不是唯一入口。
+  5. 每篇主线论文与跨专题引用在「带着问题读论文」里各占一块，块 id 固定为 paper-<论文 id>，
+     论文页「在专题中的位置」入口与图中节点都落到这里。
+  6. 跨篇卡壳问答每条带稳定 id（qa-*），与 site/notes/syntheses/<同名>.html 同名问答一致。
+  7. 证据状态用 .evidence.is-reported / .is-synthesis / .is-hypothesis 就地标注（原文报告 / 库内对照 / 待验证假说），
+     不能只在页尾统一声明；关系记录以 wiki/syntheses/<同名>.md 的「关系记录」表为规范，本页只是投影。
+  8. SOURCE 区给「完整专题笔记」（../notes/syntheses/同名.html）与「源文件」（../../wiki/syntheses/同名.md）两个出口。
+  9. 资源版本串与全站同步（assets 变更时所有页面 ?v= +1）。
+  ============================================================ -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>专题名 · 专题导读 · llm-wiki</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260909-1">
+</head>
+<body>
+<div class="page">
+  <a class="skip-link" href="#deck">跳到正文</a>
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html?topic=专题ID">← 知识库</a>
+    <span class="topbar-title">专题名 · 专题导读</span>
+    <nav class="topbar-nav"><a class="topbar-link" href="#path">本专题论文列表</a></nav>
+    <span class="topbar-count">连续阅读</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <!-- ① 主题本质：专题名 + 研究问题 + 一句话本质 + 范围（主线/跨专题分开计数）+ 唯一 takeaway -->
+    <section class="slide" id="slide-1" data-section="essence">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">TOPIC · 专题导读</p>
+        <h1>专题名</h1>
+        <p class="cover-full">这组论文共同关心的研究问题？</p>
+        <p class="cover-essence">一句话本质（与 wiki/syntheses 页表头一致）。</p>
+        <dl class="cover-meta">
+          <dt>主线</dt><dd>N 篇：A · B · C</dd>
+          <dt>跨专题</dt><dd>M 篇：X（为什么引用，主归属是哪个专题）</dd>
+          <dt>更新</dt><dd>YYYY-MM-DD</dd>
+          <dt>状态</dt><dd>由已复测通过的论文页整理；专题级组织待首测</dd>
+        </dl>
+        <p class="takeaway">本专题最值得记住的一句话（全页唯一最高级强调）。</p>
+        <div class="tagrow"><span class="tag">taxonomy 标签显示名</span></div>
+      </div>
+    </section>
+
+    <!-- ② 问题与方法地图：内嵌 SVG + 文字关系表 -->
+    <section class="slide" id="slide-2" data-section="map">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>问题与方法地图</h2><span class="slide-no">02</span></div>
+        <p>一两句说明分叉方式与图中连线的含义。</p>
+        <figure class="hub-fig">
+          <!-- hub-diagram:专题ID-map -->
+          <!-- /hub-diagram -->
+          <figcaption class="fig-note">图注：哪些连线是库内组织、哪些来自论文自述；放大：<a href="../assets/diagrams/专题ID-map.svg">独立图文件</a>。</figcaption>
+        </figure>
+        <table class="dtable hub-edges">
+          <thead><tr><th>边</th><th>说明</th><th>证据</th></tr></thead>
+          <tbody>
+            <tr><td>A → B</td><td>这条边到底声称什么</td><td><span class="evidence is-synthesis">库内对照</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ③ 分叉与演进：谱系背景（无独立页的节点用 data-dim）+ 每篇「原先瓶颈 → 本文改变 → 仍留下」+ 有出处的首次公开时间 -->
+    <section class="slide" id="slide-3" data-section="evolution">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>分叉与演进</h2><span class="slide-no">03</span></div>
+        <div class="hub-evo">
+          <article class="hub-evo-item">
+            <h3>论文名</h3>
+            <dl><dt>原先瓶颈</dt><dd>…</dd><dt>本文改变</dt><dd>…</dd><dt>仍留下</dt><dd>…</dd></dl>
+          </article>
+        </div>
+        <table class="dtable hub-timeline">
+          <thead><tr><th>论文</th><th>首次公开</th><th>出处</th><th>入库（阅读顺序，不是时间线）</th></tr></thead>
+          <tbody><tr><td>论文名</td><td class="num">YYYY-MM</td><td class="num">arXiv ID</td><td class="num">YYYY-MM-DD</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ④ 关键维度比较：compare-table（手机按维度重排），每格带依据链接 -->
+    <section class="slide" id="slide-4" data-section="compare">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>关键维度比较</h2><span class="slide-no">04</span></div>
+        <table class="compare-table hub-compare">
+          <thead><tr><th>维度</th><th>A</th><th>B</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="compare-dim">维度名</td>
+              <td data-col="A"><p>值</p><a class="compare-ref" href="../notes/papers/a.html#mechanism">依据</a></td>
+              <td data-col="B"><p>值</p><a class="compare-ref" href="../notes/papers/b.html#mechanism">依据</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ⑤ 带着问题读论文：每块 id="paper-<论文 id>" -->
+    <section class="slide" id="slide-5" data-section="path">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>带着问题读论文</h2><span class="slide-no">05</span></div>
+        <p>建议顺序与理由（学习路径，不是历史路线）。</p>
+        <ol class="hub-path">
+          <li class="hub-path-step" id="paper-论文ID">
+            <span class="hub-path-no">01</span>
+            <div class="hub-path-body">
+              <h3><a href="../papers/论文ID.html">论文名</a></h3>
+              <p class="hub-path-role">在专题里的角色一句话。</p>
+              <p class="hub-path-q">带着什么问题读：…</p>
+              <p class="hub-path-links"><a href="../papers/论文ID.html#pitfalls">卡壳点</a> · <a href="../notes/papers/论文ID.html">完整笔记</a></p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ⑥ 跨篇卡壳点：复用历史问答带日期；新问题标「待讨论」 -->
+    <section class="slide" id="slide-6" data-section="pitfalls">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>跨篇卡壳点</h2><span class="slide-no">06</span></div>
+        <div class="qa-list">
+          <div class="qa" id="qa-专题-稳定id">
+            <p class="qa-q">问题（来源页与当时日期）</p>
+            <div class="qa-a"><p>解答；解释性内容就地标注证据状态。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 证据边界与来源：三类证据 + 关系记录投影 + SOURCE 双出口 -->
+    <section class="slide" id="slide-7" data-section="relations">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>证据边界与来源</h2><span class="slide-no">07</span></div>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>EVIDENCE</h3>
+            <div class="link-item"><span class="link-rel"><span class="evidence is-reported">原文报告</span></span><span>…</span></div>
+            <div class="link-item"><span class="link-rel"><span class="evidence is-synthesis">库内对照</span></span><span>…</span></div>
+            <div class="link-item"><span class="link-rel"><span class="evidence is-hypothesis">待验证假说</span></span><span>…</span></div>
+          </div>
+          <div class="link-group">
+            <h3>RELATION RECORDS</h3>
+            <div class="link-item hub-record" id="rel-专题-1"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/a.html">A</a> ↔ <a href="../papers/b.html">B</a>：一句主张 <a class="compare-ref" href="../notes/papers/a.html#relations">依据</a></span></div>
+          </div>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item"><span class="link-rel">完整专题笔记</span><span><a href="../notes/syntheses/专题ID.html">notes/syntheses/专题ID.html</a>（含关系记录规范表与 Mermaid 图稿）</span></div>
+            <div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/syntheses/专题ID.md">wiki/syntheses/专题ID.md</a></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-index.js?v=20260909-1"></script>
+<script src="../assets/wiki-slides.js?v=20260909-1"></script>
+</body>
+</html>

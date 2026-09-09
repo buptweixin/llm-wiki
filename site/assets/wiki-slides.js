@@ -1,7 +1,7 @@
 /*
  * llm-wiki 阅读层
- * 纯静态、无依赖。文章页：连续阅读、语义目录、回忆模式、并排比较；
- * 首页：专题与标签筛选、全文条目搜索（片段来自真实命中文本）。
+ * 纯静态、无依赖。文章页（论文速览 / 专题导读）：连续阅读、语义目录、回忆模式、并排比较、专题位置入口；
+ * 首页：专题与标签筛选、专题导读入口、全文条目搜索（片段来自真实命中文本，专题结果单独标注）。
  * 数据来自 site/assets/wiki-index.js（真源为 wiki markdown 与 review.md 的投影）。
  */
 (function () {
@@ -12,6 +12,25 @@
   var topics = window.WIKI_TOPICS || {};
   var TAGS_BY_ID = {};
   taxonomy.forEach(function (tag) { TAGS_BY_ID[tag.id] = tag; });
+
+  // 页面分两类：论文（paper）与专题导读（synthesis）。索引给出 href / noteHref / sourceHref，
+  // 这里不按 id 拼目录。hub 查找表：论文 id → 收录它的专题（主线成员或跨专题引用）。
+  function isHub(page) {
+    return !!page && page.type === "synthesis";
+  }
+  var hubPages = pages.filter(isHub);
+  var paperPages = pages.filter(function (page) { return !isHub(page); });
+  var HUB_BY_PAPER = {};
+  hubPages.forEach(function (hub) {
+    (hub.members || []).forEach(function (id) {
+      if (!HUB_BY_PAPER[id]) HUB_BY_PAPER[id] = { hub: hub, role: "member" };
+    });
+    (hub.refs || []).forEach(function (id) {
+      if (!HUB_BY_PAPER[id]) HUB_BY_PAPER[id] = { hub: hub, role: "ref" };
+    });
+  });
+  var HUB_BY_TOPIC = {};
+  hubPages.forEach(function (hub) { HUB_BY_TOPIC[hub.topic] = hub; });
 
   function qs(selector, root) {
     return (root || document).querySelector(selector);
@@ -125,7 +144,7 @@
     return !!(page.review && page.review.next && page.review.next <= todayCN());
   }
 
-  var STATUS_LABEL = { reported: "论文记录", synthesis: "库内综合", hypothesis: "待验证假说" };
+  var STATUS_LABEL = { reported: "原文报告", synthesis: "库内对照", hypothesis: "待验证假说" };
 
   var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
 
@@ -301,8 +320,9 @@
     return base + (base.indexOf("?") >= 0 ? "&" : "?") + query + hash;
   }
 
+  // 站内阅读页：同目录 *.html，或 ../papers/ ../topics/ ../notes/papers/ ../notes/syntheses/ 下的页面（可带锚点）
   function isLocalReaderHtml(href) {
-    return /^(?:\.\.\/notes\/papers\/)?[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href);
+    return /^(?:\.\.\/(?:papers|topics)\/|\.\.\/notes\/(?:papers|syntheses)\/)?[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href);
   }
 
   // 站内继续阅读链接统一继承来源条件（from），落地页顶部返回才能恢复首页筛选。
@@ -328,15 +348,22 @@
     var nav = qs(".topbar-nav");
     if (home) {
       home.textContent = "← 知识库";
-      home.href = "../index.html" + (fromQuery() ? "?" + fromQuery() : "");
+      // 有来源状态就恢复来源；专题导读页没有来源时回到该专题的筛选视图
+      var from = fromQuery();
+      home.href = "../index.html" + (from ? "?" + from : (isHub(page) ? "?topic=" + encodeURIComponent(page.topic) : ""));
     }
-    if (title && page) title.textContent = page.title;
+    if (title && page) title.textContent = isHub(page) ? page.title + " · 专题导读" : page.title;
     if (count) count.textContent = "连续阅读";
     if (!nav) return;
     while (nav.firstChild) nav.removeChild(nav.firstChild);
     var outlineLink = node("a", "topbar-link", "目录");
     outlineLink.href = "#reader-outline";
     nav.appendChild(outlineLink);
+    if (isHub(page)) {
+      var listLink = node("a", "topbar-link", "论文列表");
+      listLink.href = "#path";
+      nav.appendChild(listLink);
+    }
     var recallLink = node("a", "topbar-link", "先回忆");
     recallLink.href = "#pitfalls";
     recallLink.dataset.action = "recall";
@@ -394,48 +421,94 @@
     return { outline: outline, sections: sections };
   }
 
+  // 论文在专题导读中的稳定位置：topics/<hub>.html#paper-<论文 id>；返回专题靠这个锚点，不嵌套上一跳 URL
+  function hubPosition(paperId) {
+    var entry = HUB_BY_PAPER[paperId];
+    if (!entry) return null;
+    return { hub: entry.hub, role: entry.role, href: "../" + entry.hub.href + "#paper-" + paperId };
+  }
+
+  function appendHubEntry(container, page, className) {
+    var position = page ? hubPosition(page.id) : null;
+    if (!position) return null;
+    var block = node("div", className || "context-hub");
+    block.appendChild(node("span", "context-hub-kicker", "TOPIC"));
+    var link = node("a", "context-hub-link", "在「" + position.hub.title + "」专题中的位置");
+    link.href = withFrom(position.href);
+    block.appendChild(link);
+    block.appendChild(node("span", "context-hub-role", position.role === "member" ? "主线论文" : "跨专题引用"));
+    container.appendChild(block);
+    return block;
+  }
+
   function buildContext(deck, page) {
     var context = node("aside", "reader-context");
-    context.appendChild(node("p", "context-kicker", "CONTINUE READING"));
-    context.appendChild(node("h2", "", "为什么值得一起读"));
+    var hub = isHub(page);
+    context.appendChild(node("p", "context-kicker", hub ? "TOPIC MEMBERS" : "CONTINUE READING"));
+    context.appendChild(node("h2", "", hub ? "本专题收录的论文" : "为什么值得一起读"));
 
-    if (page && page.relations && page.relations.length) {
-      var list = node("div", "context-rel-list");
-      page.relations.forEach(function (rel) {
-        var target = getPage(rel.to);
-        var item = node("div", "context-rel");
-        var head = node("p", "context-rel-head");
-        var typeLabel = node("span", "context-rel-type", rel.type);
-        head.appendChild(typeLabel);
-        if (target) {
+    if (hub) {
+      var memberList = node("div", "context-rel-list");
+      [["主线", page.members || []], ["跨专题引用", page.refs || []]].forEach(function (group) {
+        group[1].forEach(function (id) {
+          var target = getPage(id);
+          if (!target) return;
+          var item = node("div", "context-rel");
+          var head = node("p", "context-rel-head");
+          head.appendChild(node("span", "context-rel-type", group[0]));
           var link = node("a", "", target.title);
-          link.href = withFrom(target.href.split("/").pop());
+          link.href = withFrom("../" + target.href);
           head.appendChild(link);
-        }
-        var status = node("span", "context-rel-status", STATUS_LABEL[rel.status] || rel.status);
-        if (rel.status === "hypothesis") status.classList.add("is-hypothesis");
-        head.appendChild(status);
-        item.appendChild(head);
-        item.appendChild(node("p", "context-rel-reason", rel.reason));
-        list.appendChild(item);
+          var position = node("a", "context-rel-status", "本页位置");
+          position.href = "#paper-" + id;
+          head.appendChild(position);
+          item.appendChild(head);
+          item.appendChild(node("p", "context-rel-reason", target.essence));
+          memberList.appendChild(item);
+        });
       });
-      context.appendChild(list);
+      context.appendChild(memberList);
+    } else {
+      appendHubEntry(context, page);
+      if (page && page.relations && page.relations.length) {
+        var list = node("div", "context-rel-list");
+        page.relations.forEach(function (rel) {
+          var target = getPage(rel.to);
+          var item = node("div", "context-rel");
+          var head = node("p", "context-rel-head");
+          var typeLabel = node("span", "context-rel-type", rel.type);
+          head.appendChild(typeLabel);
+          if (target) {
+            var link = node("a", "", target.title);
+            link.href = withFrom(isHub(target) ? "../" + target.href : target.href.split("/").pop());
+            head.appendChild(link);
+          }
+          var status = node("span", "context-rel-status", STATUS_LABEL[rel.status] || rel.status);
+          if (rel.status === "hypothesis") status.classList.add("is-hypothesis");
+          head.appendChild(status);
+          item.appendChild(head);
+          item.appendChild(node("p", "context-rel-reason", rel.reason));
+          list.appendChild(item);
+        });
+        context.appendChild(list);
+      }
     }
 
     if (page) {
       var review = node("div", "context-review");
-      review.appendChild(node("strong", "", "复测状态"));
+      review.appendChild(node("strong", "", hub ? "专题复测状态" : "复测状态"));
       review.appendChild(node("span", "", reviewLabel(page)));
+      if (hub) review.appendChild(node("span", "context-review-note", "成员通过不代表专题通过；本页练习不写入复测记录。"));
       context.appendChild(review);
     }
 
     if (page && page.noteHref) {
-      var note = node("a", "context-action", "阅读完整笔记");
+      var note = node("a", "context-action", hub ? "阅读完整专题笔记" : "阅读完整笔记");
       note.href = withFrom("../" + page.noteHref);
       context.appendChild(note);
     }
     var source = node("a", "context-action context-action-sub", "markdown 源文件");
-    source.href = "../../wiki/papers/" + (page ? page.id : pageIdFromPath()) + ".md";
+    source.href = "../../" + (page && page.sourceHref ? page.sourceHref : "wiki/papers/" + pageIdFromPath() + ".md");
     context.appendChild(source);
 
     if (page && (page.id === "2026-u-opsd" || page.id === "2026-s2vopd")) {
@@ -452,7 +525,8 @@
     if (!cover || !page) return;
     var insertionPoint = qs(".cover-meta", cover) || qs(".tagrow", cover);
     var takeaway = qs(".takeaway", deck);
-    if (takeaway) {
+    // 专题导读页的 takeaway 本就在封面里，不再复制一份
+    if (takeaway && !cover.contains(takeaway)) {
       var reminder = node("p", "mobile-cover-takeaway");
       reminder.innerHTML = takeaway.innerHTML;
       if (insertionPoint) cover.insertBefore(reminder, insertionPoint);
@@ -462,19 +536,27 @@
     var quick = node("div", "mobile-cover-links");
     quick.appendChild(node("span", "mobile-cover-kicker", "QUICK ACCESS"));
     if (page.noteHref) {
-      var note = node("a", "mobile-cover-link", "完整笔记");
+      var note = node("a", "mobile-cover-link", isHub(page) ? "完整专题笔记" : "完整笔记");
       note.href = withFrom("../" + page.noteHref);
       quick.appendChild(note);
     }
-    var relation = page.relations && page.relations.length ? getPage(page.relations[0].to) : null;
+    var position = isHub(page) ? null : hubPosition(page.id);
+    if (position) {
+      var hubLink = node("a", "mobile-cover-link", "专题位置：" + position.hub.title);
+      hubLink.href = withFrom(position.href);
+      quick.appendChild(hubLink);
+    }
+    var relation = null;
+    if (isHub(page)) relation = getPage((page.members || [])[0]);
+    else if (page.relations && page.relations.length) relation = getPage(page.relations[0].to);
     if (page.id === "2026-u-opsd" || page.id === "2026-s2vopd") {
       var compare = node("button", "mobile-cover-link", "比较 U-OPSD / S²VOPD");
       compare.type = "button";
       compare.dataset.action = "compare";
       quick.appendChild(compare);
     } else if (relation) {
-      var related = node("a", "mobile-cover-link", "重点关联：" + relation.title);
-      related.href = withFrom(relation.href.split("/").pop());
+      var related = node("a", "mobile-cover-link", (isHub(page) ? "先读：" : "重点关联：") + relation.title);
+      related.href = withFrom(isHub(page) ? "../" + relation.href : relation.href.split("/").pop());
       quick.appendChild(related);
     }
     if (insertionPoint) cover.insertBefore(quick, insertionPoint);
@@ -870,6 +952,49 @@
       return addQuery(target, params.join("&"));
     }
 
+    function appendHits(card, page, tokens, state, limit) {
+      rankEntries(matchingEntries(page, tokens), tokens).slice(0, limit).forEach(function (entry) {
+        var snippet = snippetAround(entry.t, tokens);
+        var hit = node("a", "idx-hit");
+        hit.href = cardHref(entry.a, state, false);
+        hit.innerHTML = "<strong>命中 " + escapeHtml(entry.h) + "</strong>" +
+          (snippet.exact ? highlight(snippet.text, tokens) : escapeHtml(snippet.text));
+        card.appendChild(hit);
+      });
+    }
+
+    // 专题导读卡：选中专题时为完整入口（问题、范围、两个动作），其余场景为紧凑卡，
+    // 搜索时排在论文命中之后，不让长导读卡把论文推出首屏。
+    function hubCard(hub, state, recallOn, tokens, compact) {
+      var card = node("article", "idx-card idx-hub" + (compact ? " idx-hub-compact" : ""));
+      card.appendChild(node("p", "idx-hub-kicker", "专题导读"));
+      var link = node("a", "idx-card-title", hub.title);
+      link.href = cardHref(hub.href, state, recallOn);
+      card.appendChild(link);
+      var members = (hub.members || []).length;
+      var refs = (hub.refs || []).length;
+      card.appendChild(node("p", "idx-card-meta", (topics[hub.topic] || "") + "  ·  主线 " + members + " 篇" +
+        (refs ? "  ·  跨专题引用 " + refs + " 篇" : "") + "  ·  " + reviewLabel(hub)));
+      var essence = node("p", "idx-card-essence");
+      essence.innerHTML = tokens.length ? highlight(hub.essence, tokens) : escapeHtml(hub.essence);
+      card.appendChild(essence);
+      if (!compact) {
+        var actions = node("p", "idx-hub-actions");
+        var view = node("a", "idx-hub-action", "查看关系与演进");
+        view.href = cardHref(hub.href + "#map", state, false);
+        actions.appendChild(view);
+        var path = node("a", "idx-hub-action", "带着问题读论文");
+        path.href = cardHref(hub.href + "#path", state, false);
+        actions.appendChild(path);
+        var note = node("a", "idx-hub-action idx-hub-action-sub", "完整专题笔记");
+        note.href = cardHref(hub.noteHref, state, false);
+        actions.appendChild(note);
+        card.appendChild(actions);
+      }
+      appendHits(card, hub, tokens, state, compact ? 1 : 2);
+      return card;
+    }
+
     function render() {
       var state = readState();
       filter.value = state.q;
@@ -878,22 +1003,36 @@
       });
       var tokens = tokensFor(state.q);
       var recallOn = document.documentElement.classList.contains("idx-recall");
-      var filtered = pages.filter(function (page) {
+      function matches(page) {
         if (state.topic !== "all" && page.topic !== state.topic) return false;
         if (state.tag && page.tags.indexOf(state.tag) < 0) return false;
         if (state.review === "due" && !reviewDue(page)) return false;
         return tokens.every(function (token) { return pageCorpus(page).indexOf(token) >= 0; });
-      });
-      if (tokens.length) filtered.sort(function (a, b) { return scorePage(b, tokens) - scorePage(a, tokens); });
+      }
+      var filtered = paperPages.filter(matches);
+      var matchedHubs = hubPages.filter(matches);
+      if (tokens.length) {
+        filtered.sort(function (a, b) { return scorePage(b, tokens) - scorePage(a, tokens); });
+        matchedHubs.sort(function (a, b) { return scorePage(b, tokens) - scorePage(a, tokens); });
+      }
 
       results.innerHTML = "";
       var heading = node("div", "idx-result-heading");
       heading.appendChild(node("h2", "", state.tag ? "标签筛选：" + tagLabel(state.tag) : "按研究问题阅读"));
-      heading.appendChild(node("span", "", filtered.length + " / " + pages.length + " 篇"));
+      heading.appendChild(node("span", "", filtered.length + " / " + paperPages.length + " 篇论文" +
+        (matchedHubs.length ? "  ·  专题导读 " + matchedHubs.length + " / " + hubPages.length : "")));
       results.appendChild(heading);
 
+      // 无搜索词：专题导读入口排在论文列表前；选中该专题时展开为完整入口，其余场景保持紧凑
+      if (!tokens.length && matchedHubs.length) {
+        var hubBlock = node("div", "idx-hub-list" + (state.topic !== "all" ? " is-focus" : ""));
+        matchedHubs.forEach(function (hub) {
+          hubBlock.appendChild(hubCard(hub, state, recallOn, tokens, state.topic === "all"));
+        });
+        results.appendChild(hubBlock);
+      }
+
       filtered.forEach(function (page) {
-        var hits = rankEntries(matchingEntries(page, tokens), tokens).slice(0, 2);
         var card = node("article", "idx-card");
         var link = node("a", "idx-card-title", page.title);
         // 标题入口 = 本篇阅读入口（回忆模式进速览回忆流程）；精确定位由下方命中片段负责。
@@ -912,23 +1051,27 @@
           tags.appendChild(button);
         });
         card.appendChild(tags);
-        hits.forEach(function (entry) {
-          var snippet = snippetAround(entry.t, tokens);
-          var hit = node("a", "idx-hit");
-          hit.href = cardHref(entry.a, state, false);
-          hit.innerHTML = "<strong>命中 " + escapeHtml(entry.h) + "</strong>" +
-            (snippet.exact ? highlight(snippet.text, tokens) : escapeHtml(snippet.text));
-          card.appendChild(hit);
-        });
+        appendHits(card, page, tokens, state, 2);
         results.appendChild(card);
       });
 
-      if (!filtered.length) {
+      // 搜索中：专题作为标明「专题导读」的紧凑结果排在论文命中之后
+      if (tokens.length && matchedHubs.length) {
+        var hubResults = node("div", "idx-hub-list is-search");
+        matchedHubs.forEach(function (hub) {
+          hubResults.appendChild(hubCard(hub, state, recallOn, tokens, true));
+        });
+        results.appendChild(hubResults);
+      }
+
+      if (!filtered.length && !matchedHubs.length) {
         var empty = node("div", "idx-empty");
         empty.textContent = "没有找到符合当前条件的页面。试试删掉一个关键词，或清除筛选。";
         results.appendChild(empty);
       }
-      if (count) count.textContent = filtered.length + " 篇可读";
+      if (count) {
+        count.textContent = filtered.length + " 篇论文" + (matchedHubs.length ? " · " + matchedHubs.length + " 篇专题导读" : "");
+      }
       if (stateLabel) {
         var labels = [];
         if (state.q) labels.push("搜索: " + state.q);
@@ -1174,7 +1317,7 @@
       if (home) home.href = addQuery("../../index.html", from);
       qsa(".topbar-nav a, .note-foot a").forEach(function (link) {
         var href = link.getAttribute("href") || "";
-        if (href.indexOf("../../papers/") < 0) return;
+        if (href.indexOf("../../papers/") < 0 && href.indexOf("../../topics/") < 0) return;
         link.href = addQuery(href, "from=" + encodeURIComponent(from));
       });
       // markdown 互链投影出的同目录笔记互链同样继承来源

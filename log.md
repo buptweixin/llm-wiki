@@ -351,3 +351,15 @@
 - 入库近端策略优化基石论文（Proximal Policy Optimization Algorithms, OpenAI 2017），结合 BipedalWalker 连续控制实战建立四大监控指标（Reward/Entropy/Clip/KL）因果闭环。
 - 深度拆解重要性采样比率、截断代理目标（悲观下界与外层 min 对负优势严重错误的保全拉回）、GAE 与 Actor-Critic 联合优化；费曼检验 3 题完全收敛。
 - 新增 wiki/papers/2017-ppo.md，更新 2026-open-mopd.md 互链，更新 taxonomy.md 词表并排入复测队列（+3 天）。
+
+## [2026-09-09] query | 站点专题导读与论文关系优化方案
+
+- 新增 docs/specs/site-topic-hubs.md：基于现有 10 篇论文规划专题入口、问题地图、方法分叉、Mermaid 静态图、比较表与阅读路径，首批为蒸馏和视频理解两个专题。
+- 明确关系证据与费曼准入、Markdown 真源、离线呈现、综合页索引扩展及验收要求；同步 index.md 维护文档入口。
+- 本次仅交付方案，未创建正式综合知识页、修改 schema、改造站点或部署。
+
+## [2026-09-09] ingest | 专题导读首批两个专题（蒸馏与训练预算 / 视频理解与响应）
+
+- 按 docs/specs/site-topic-hubs.md 阶段 A~C 实施：新增 templates/synthesis.md 与 wiki/syntheses/{distillation,video-understanding}.md（front-matter `type: synthesis` + `members`，「关系记录」表为规范记录：7+5 条，每条带类型/证据状态/依据锚点/依据指纹），Mermaid 图稿留在 markdown，静态 SVG 投影在 site/assets/diagrams/。所有实质主张均回指已通过复测的论文页段落；「信息可恢复性」等个人解释就地标待验证，两条新提的跨篇问题标待讨论并记入 questions.md。**专题级组织尚未经费曼复测**，review.md 各排一行待首测（+3 天），成员通过不代表专题通过。
+- 派生层：site/_topic-template.html、site/topics/*.html（essence/map/evolution/compare/path/pitfalls/relations，成员锚点 #paper-*，关系记录同 id 投影）、site/notes/syntheses/*.html；首页增加专题导读入口（选中专题时展开、搜索时作为标明「专题导读」的紧凑结果排在论文之后）并修正静态兜底（10 篇、五个专题按钮、两条导读入口）；论文页侧栏与手机快捷区增加「在专题中的位置」入口；证据状态显示改为原文报告 / 库内对照 / 待验证假说。资源版本升至 20260909-1。
+- 工具：scripts/build-wiki-index.mjs 支持 synthesis（成员主归属对账、关系记录校验、依据指纹失配拒绝生成、消费者读 href/noteHref/sourceHref）；新增 scripts/sync-hub-diagrams.mjs；scripts/check-site.mjs 扩到 C13（首页静态兜底、导读页结构与内嵌图稿一致），scripts/check-site-regressions.mjs 扩到 S4-a~e（章节锚点改名 / 依据锚点缺失 / 依据文字改动指纹失配 / 成员锚点缺失 / 成员主归属不符均拒绝且索引不变）。静态检查 1018 项全绿。经用户「根据 spec 优化」指令扩展 CLAUDE.md schema（专题综合页工作流、目录、site 规范与 lint 范围）。

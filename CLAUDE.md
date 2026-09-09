@@ -25,9 +25,12 @@ llm-wiki/
 │   ├── index.html   # 首页：专题 + 标签筛选 + 全文条目搜索
 │   ├── _template.html     # 速览页模板（连续阅读章节约定）
 │   ├── _note-template.html # 完整笔记阅读页模板（markdown 忠实投影约定）
-│   ├── assets/      # wiki-slides.css（全库唯一样式源）+ wiki-slides.js（阅读/搜索/回忆交互）+ wiki-index.js（可再生的静态索引投影）
-│   ├── papers/      # 速览页，文件名与 wiki/ 下 markdown 页同名（2026-xxx.html）
-│   └── notes/papers/ # 完整笔记阅读页，与速览页同名（markdown 的静态可读投影）
+│   ├── _topic-template.html # 专题导读页模板（问题地图/比较/阅读路径约定）
+│   ├── assets/      # wiki-slides.css（全库唯一样式源）+ wiki-slides.js（阅读/搜索/回忆交互）+ wiki-index.js（可再生的静态索引投影）+ diagrams/（专题关系图静态 SVG）
+│   ├── papers/      # 速览页，文件名与 wiki/papers/ 下 markdown 页同名（2026-xxx.html）
+│   ├── topics/      # 专题导读页，与 wiki/syntheses/ 下 markdown 同名（专题-id.html）
+│   ├── notes/papers/ # 完整笔记阅读页，与速览页同名（markdown 的静态可读投影）
+│   └── notes/syntheses/ # 完整专题笔记阅读页，与导读页同名（关系记录规范表与 Mermaid 的忠实投影）
 └── wiki/            # LLM 全权维护的知识页面
     ├── concepts/    # 概念页（attention、KV cache、RLHF ...）
     ├── papers/      # 论文页（命名：年份-简称，如 2017-transformer.md）
@@ -83,6 +86,16 @@ llm-wiki/
 
 用户 提问时优先基于 wiki 页面回答并注明引用页。需要跨页综合且有沉淀价值的回答，回填为 `wiki/syntheses/` 新页（同样走 index/log 簿记）——好答案也是资产。
 
+### 2b. Synthesis —— 专题导读（用户 说「出一个专题」「整理这组论文」时）
+
+`wiki/syntheses/` 是跨页综合页，把一组已通过费曼复测的论文整理成一个专题。**铁律：专题页不产生新的知识结论**——只做组织（共同问题、分叉、比较、阅读顺序）与跨篇对照。流程：
+
+1. **准入**：主线成员必须是已入库且通过首测的论文；成员的 `topic` 必须与综合页 `topic` 一致（跨专题引用只能进关系记录，不改成员主归属）。
+2. **关系记录（规范层）**：综合页「## 关系记录」章节用表格登记每条关系（`rel-<kebab>` ID / 起点 / 类型 / 终点 / 一句主张 / 证据状态 / 依据锚点 / 指纹）。类型：`compare` / `complement` / `prerequisite` / `possible-combination` / `tension` / `extends`（仅核实的方法继承）。证据状态：`reported`（原文报告）/ `synthesis`（库内对照）/ `hypothesis`（待验证）。依据锚点指向完整笔记真实段落；指纹由 `scripts/build-wiki-index.mjs` 用依据段落可见文字的 FNV-1a 计算（`PRINT_FINGERPRINTS=1` 打印，来源段落改动后失配，检查报错并要求复核后回填）。论文页的关系卡在迁移时逐条核对到这里的关系 ID。
+3. **跨篇解释的准入**：此前未讨论过的跨篇解释须做小轮费曼讲解与检验；无法讲清的留在方案草稿或 `questions.md`，不发布为结论。理解检验通过的个人假说仍须标 `hypothesis`。
+4. **派生层同步**：`site/topics/<同名>.html`（导读页，`data-section` 为 essence/map/evolution/compare/path/pitfalls/relations，每篇成员与跨专题引用有稳定锚点 `id="paper-<论文 id>"`）、`site/notes/syntheses/<同名>.html`（完整专题笔记，忠实投影含关系记录规范表与 Mermaid 图稿）、`site/assets/diagrams/<专题>-map.svg`（静态图稿，只用共享样式表的 class、不许内嵌样式；`scripts/sync-hub-diagrams.mjs` 把它内嵌进导读页）；首页增加该专题的导读入口；`wiki-index.js` 登记 `members`/`refs`/`records` 与全文搜索条目。
+5. **复测**：专题页排入 `review.md` 复测队列，但复测只测专题级组织（共同问题、分叉、最易混淆处），成员通过不代表专题通过；专题页的练习不写回复测记录。
+
 ### 3. Review —— 费曼复测（用户 说「复习」时）
 
 1. 从 `review.md` 挑「下次复测」最早的页面（或 用户 指定的页面）。
@@ -98,7 +111,7 @@ llm-wiki/
 - 页面间互相矛盾的结论；被新页面推翻但没更新的旧说法
 - 孤儿页（没有任何入链）；高频出现却没有独立页面的概念
 - `index.md` 与实际文件不一致；`questions.md` 里其实已经能回答的旧问题
-- `site/` 与 `wiki/` 一致性：每个 markdown 页有对应速览页 + 完整笔记页 + `wiki-index.js` 条目（漏更或残留死链）；索引条目的锚点在目标页面真实存在；front-matter 标签 ID 都在 `taxonomy.md` 词表内；`wiki-index.js` 复测投影与 `review.md` 一致；速览/完整笔记内容是否与真源冲突（含假说标注是否保留）
+- `site/` 与 `wiki/` 一致性：每个 markdown 页有对应速览页/导读页 + 完整笔记页 + `wiki-index.js` 条目（漏更或残留死链）；索引条目的锚点在目标页面真实存在；front-matter 标签 ID 都在 `taxonomy.md` 词表内；`wiki-index.js` 复测投影与 `review.md` 一致；速览/完整笔记内容是否与真源冲突（含假说标注是否保留）；综合页的 `members` 主归属对账、关系记录的类型/证据状态/依据锚点/指纹有效且与论文页关系卡一致；导读页内嵌图稿与独立 SVG 一致；首页 noscript 兜底计数与索引一致
 
 ## site/ 阅读库规范（伴生 HTML 阅读层）
 
@@ -107,7 +120,7 @@ llm-wiki/
 1. **markdown 是唯一真源**：速览页 / 完整笔记页 / 静态索引内容冲突时以 markdown 为准；只改派生层不改 markdown 没有意义。派生层不许出现真源没有的因果结论；个人假说必须带「待验证」标注，实验结论与解释假说分开呈现。
 2. **样式只用 `wiki-slides.css` 的 class 与 token**，禁止页内私设颜色/字体/圆角（禁止 `<style>` 块）；改设计就改唯一样式源，**并把全部页面的 `?v=` 版本串同步 +1**（assets 变更的缓存破除约定）。
 3. **全站零 em-dash（速览层与首页）**：正文禁用「——」「—」「–」，改写为冒号、句号或括号；数字一律 mono（metric-value / dtable td.num 自带）。完整笔记投影页为保真例外：原文标点按 markdown 原样保留。
-4. **连续阅读，不强制凑 slide 张数**：每页由 `data-section` 显式声明语义章节 ID（essence / overview / mechanism / mechanism-2 / evidence / pitfalls / relations），卡壳点章节必须保留（全库最值钱的部分），每条卡壳问答带稳定 `id="qa-*"` 且与完整笔记页同名问答一致；旧 `slide-N` 锚点作为兼容锚点保留。全页只有一个最高级强调（一条 takeaway）。
+4. **连续阅读，不强制凑 slide 张数**：论文页由 `data-section` 显式声明语义章节 ID（essence / overview / mechanism / mechanism-2 / evidence / pitfalls / relations）；专题导读页固定 7 节（essence / map / evolution / compare / path / pitfalls / relations），每篇成员与跨专题引用在「带着问题读论文」里有稳定锚点 `id="paper-<论文 id>"`，关系记录每条在导读页有同 id 的投影块。卡壳点章节必须保留（全库最值钱的部分），每条卡壳问答带稳定 `id="qa-*"` 且与完整笔记页同名问答一致；旧 `slide-N` 锚点作为兼容锚点保留。全页只有一个最高级强调（一条 takeaway）。问题与方法地图用内嵌 SVG（`scripts/sync-hub-diagrams.mjs` 从 `site/assets/diagrams/<专题>-map.svg` 同步，只用共享样式表的 class、不许内嵌样式），图下必须配可读的文字关系表，图不是唯一入口。
 5. **导航**：顶部「← 知识库」保留来源筛选状态；不设上一篇/下一篇接环，跨页阅读靠关系卡（提炼两三条：类型 + 一句原因 + 证据状态）与首页专题/标签。标签一律用 `taxonomy.md` 的受控 ID（front-matter 是归属真源，`wiki-index.js` 是投影，显示名与别名只作归一）；「已通过/待复测」不是标签，来自 `review.md` 投影。
 6. **完整笔记双出口**：速览页 SOURCE 区同时给「完整笔记」（`../notes/papers/<同名>.html`）与「源文件」（`../../wiki/<分类>/<同名>.md`）；Zotero 深链接保留 `zotero://select/items/<itemKey>`。
 7. 双击 `site/index.html`（file://）即可离线使用；纯静态零依赖，不引入任何构建工具与运行时服务；完整笔记页零脚本可读。

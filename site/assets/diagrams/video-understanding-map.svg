@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="../wiki-slides.css" type="text/css"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" class="hub-svg" role="group" aria-labelledby="hub-map-title hub-map-desc">
+  <title id="hub-map-title">视频理解与响应：问题与方法地图</title>
+  <desc id="hub-map-desc">专题分成三个并列子问题：感知成本（VideoChat3 在编码器内压缩并自适应分辨率）、思考时机（VST 查询前边看边想写入 FIFO 文本记忆）、证据获取（Video-o3 在共享上下文内多轮裁剪找线索并作答）。三条分支不是已验证的组合系统，也不表示先后。</desc>
+  <defs>
+    <marker id="hs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" class="hs-arrow"/>
+    </marker>
+  </defs>
+
+  <path class="hs-edge" d="M420 78 V112 H170 V148" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="295" y="105" text-anchor="middle">问题分解</text>
+  <path class="hs-edge" d="M500 78 V148" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="510" y="118">问题分解</text>
+  <path class="hs-edge" d="M580 78 V112 H830 V148" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="705" y="105" text-anchor="middle">问题分解</text>
+
+  <path class="hs-edge hs-edge-hi" d="M170 206 V298" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="180" y="256">对应方法</text>
+  <path class="hs-edge hs-edge-hi" d="M500 206 V298" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="510" y="256">对应方法</text>
+  <path class="hs-edge hs-edge-hi" d="M830 206 V298" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="840" y="256">对应方法</text>
+
+  <g class="hs-group">
+    <rect class="hs-node hs-node-root" x="340" y="20" width="320" height="58"/>
+    <text class="hs-title" x="500" y="44" text-anchor="middle">视频理解</text>
+    <text class="hs-sub" x="500" y="63" text-anchor="middle">感知、思考与证据获取</text>
+  </g>
+  <g class="hs-group">
+    <rect class="hs-node hs-node-q" x="20" y="148" width="300" height="58"/>
+    <text class="hs-title" x="170" y="172" text-anchor="middle">感知成本</text>
+    <text class="hs-sub" x="170" y="191" text-anchor="middle">减少进入 LLM 的视觉 token</text>
+  </g>
+  <g class="hs-group">
+    <rect class="hs-node hs-node-q" x="350" y="148" width="300" height="58"/>
+    <text class="hs-title" x="500" y="172" text-anchor="middle">思考时机</text>
+    <text class="hs-sub" x="500" y="191" text-anchor="middle">查询前积累文本记忆</text>
+  </g>
+  <g class="hs-group">
+    <rect class="hs-node hs-node-q" x="680" y="148" width="300" height="58"/>
+    <text class="hs-title" x="830" y="172" text-anchor="middle">证据获取</text>
+    <text class="hs-sub" x="830" y="191" text-anchor="middle">围绕问题主动裁剪细看</text>
+  </g>
+  <a href="../../topics/video-understanding.html#paper-2026-videochat3" class="hs-link">
+    <rect class="hs-node hs-node-paper" x="20" y="298" width="300" height="66"/>
+    <text class="hs-title" x="170" y="324" text-anchor="middle">VideoChat3</text>
+    <text class="hs-sub" x="170" y="345" text-anchor="middle">编码器内压缩与自适应分辨率</text>
+  </a>
+  <a href="../../topics/video-understanding.html#paper-2026-vst" class="hs-link">
+    <rect class="hs-node hs-node-paper" x="350" y="298" width="300" height="66"/>
+    <text class="hs-title" x="500" y="324" text-anchor="middle">VST</text>
+    <text class="hs-sub" x="500" y="345" text-anchor="middle">边看边想与 FIFO 文本记忆</text>
+  </a>
+  <a href="../../topics/video-understanding.html#paper-2026-video-o3" class="hs-link">
+    <rect class="hs-node hs-node-paper" x="680" y="298" width="300" height="66"/>
+    <text class="hs-title" x="830" y="324" text-anchor="middle">Video-o3</text>
+    <text class="hs-sub" x="830" y="345" text-anchor="middle">共享上下文内找线索并作答</text>
+  </a>
+</svg>

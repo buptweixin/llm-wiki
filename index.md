@@ -2,7 +2,7 @@
 
 > 由 LLM 维护：任何页面新增/改名/删除后必须同步本文件。
 > 条目格式：`- [标题](路径) — 一句话摘要`
-> 快速查阅：本库有伴生 HTML 阅读层 [site/index.html](site/index.html)（连续阅读、专题筛选、标签与全文片段搜索）；markdown 页仍是唯一完整真源。
+> 快速查阅：本库有伴生 HTML 阅读层 [site/index.html](site/index.html)（连续阅读、专题筛选与专题导读、标签与全文片段搜索）；markdown 页仍是唯一完整真源。
 
 ## 概念 Concepts
 
@@ -27,10 +27,12 @@ _暂无_
 
 ## 综合 Syntheses
 
-_暂无_
+- [专题：蒸馏与训练预算](wiki/syntheses/distillation.md) — 教师凭什么能教（信息差从哪来：U-OPSD 给教师加自投票轨迹、S²VOPD 从学生减清晰像素），多个教师又该怎样分配训练预算（Open-MOPD 三层预算错配）；含 7 条带依据锚点与指纹的关系记录、Mermaid 图稿、比较表与阅读顺序，PPO 为跨专题前置。导读页 [site/topics/distillation.html](site/topics/distillation.html)。专题级组织待首测。
+- [专题：视频理解与响应](wiki/syntheses/video-understanding.md) — 看多少（VideoChat3 感知成本）、何时想（VST 思考时机）、怎样找证据（Video-o3 证据获取）三条并列分支，不是已验证的组合系统；含 5 条关系记录、图稿、比较表与阅读顺序（与公开顺序相反），GenLIP 为跨专题引用。导读页 [site/topics/video-understanding.html](site/topics/video-understanding.html)。专题级组织待首测。
 
 ## 维护文档
 
+- [站点专题导读与论文关系方案](docs/specs/site-topic-hubs.md) — 在主题筛选之上增加专题阅读页，以问题地图、方法分叉、Mermaid、比较表和阅读路径串联论文；包含首批专题示例、证据规则与实施验收标准。2026-09-09 已按阶段 A~C 实施首批两个专题（蒸馏、视频理解），阶段 D 待内容成熟。
 - [站点阅读体验改造 Spec](docs/specs/site-reading-redesign.md) — 自然滚动阅读、问题专题、标签与关联、全文搜索、复测状态及分阶段迁移计划；工程维护文档，不计入费曼知识页。
 - [站点标签词表](taxonomy.md) — 专题、机制与目标标签的受控 ID、显示名和适用范围；工程维护文档，不计入费曼知识页。
 - [站点阅读改造验收报告](docs/reviews/site-reading-redesign-review-2026-09-07.md) — 对提交 b35b7b2 的功能与 spec 验收，记录复现步骤、优先级和返工顺序。

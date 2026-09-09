@@ -2124,6 +2124,473 @@ p, li, dd {
   }
 }
 
+/* ============================================================
+   2026-09-09 专题导读 (site/topics/): 问题地图、比较表、阅读路径、
+   证据状态、首页导读入口。SVG 图稿只带 class，颜色与字体全部走 token。
+   ============================================================ */
+
+/* ---------- 证据状态标签: 原文报告 / 库内对照 / 待验证假说 ---------- */
+.evidence {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  padding: 0 6px;
+  border: 1px solid var(--hairline);
+  color: var(--ink-2);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.evidence.is-reported {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.evidence.is-hypothesis {
+  border-style: dashed;
+  border-color: var(--accent-line);
+  color: var(--accent-ink);
+}
+
+/* ---------- 问题与方法地图: 内嵌 SVG ---------- */
+.hub-fig {
+  margin: var(--sp-4) 0;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  padding: 14px 14px 10px;
+}
+
+.hub-fig .fig-note {
+  margin-top: 10px;
+}
+
+.hub-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-sans);
+}
+
+.hs-node {
+  fill: var(--surface);
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.hs-node-root {
+  fill: var(--surface-2);
+  stroke: var(--ink);
+}
+
+.hs-node-q {
+  stroke: var(--ink-3);
+}
+
+.hs-node-paper {
+  stroke: var(--accent-line);
+  stroke-width: 1.5;
+}
+
+.hs-node-ref {
+  stroke: var(--ink-3);
+  stroke-dasharray: 4 3;
+}
+
+.hs-title {
+  fill: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.hs-sub {
+  fill: var(--ink-2);
+  font-size: 11.5px;
+}
+
+.hs-edge {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.2;
+}
+
+.hs-edge-hi {
+  stroke: var(--accent);
+}
+
+.hs-edge-dash {
+  stroke-dasharray: 5 4;
+}
+
+.hs-edge-label {
+  fill: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.hs-arrow {
+  fill: var(--ink-3);
+}
+
+.hs-edge-hi + .hs-edge-label {
+  fill: var(--accent-ink);
+}
+
+.hs-link {
+  cursor: pointer;
+  outline: none;
+}
+
+.hs-link:hover .hs-node,
+.hs-link:focus-visible .hs-node {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+.hs-link:hover .hs-title,
+.hs-link:focus-visible .hs-title {
+  fill: var(--accent-ink);
+}
+
+/* 独立打开的 SVG 文件: 跟随主题底色 */
+svg.hub-svg:root {
+  background: var(--bg);
+}
+
+/* ---------- 分叉与演进 ---------- */
+.hub-evo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-3);
+  margin: var(--sp-4) 0;
+}
+
+.hub-evo-item {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  padding: 14px 16px 12px;
+}
+
+.hub-evo-item h3 {
+  font-size: 15px;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+
+.hub-evo-item h3 a {
+  border-bottom: 0;
+  color: var(--ink);
+}
+
+.hub-evo-item h3 a:hover {
+  color: var(--accent-ink);
+  background: none;
+}
+
+.hub-evo-item dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.hub-evo-item dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  padding-top: 3px;
+  white-space: nowrap;
+}
+
+.hub-evo-item dd {
+  color: var(--ink-2);
+}
+
+.hub-evo-item dd:last-child {
+  color: var(--accent-ink);
+}
+
+.hub-timeline td:first-child {
+  font-weight: 600;
+}
+
+/* ---------- 关键维度比较: 复用 compare-table, 这里给页内版留出行距 ---------- */
+.hub-compare {
+  margin: var(--sp-3) 0 var(--sp-4);
+}
+
+.hub-compare thead th:first-child {
+  width: 16%;
+}
+
+.hub-compare td p {
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.hub-note {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  line-height: 1.8;
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: var(--sp-2);
+}
+
+.hub-note .evidence {
+  margin-right: 4px;
+}
+
+/* ---------- 带着问题读论文: 每块 id=paper-<论文> 是稳定落点 ---------- */
+.hub-path {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  margin-top: var(--sp-3);
+}
+
+.hub-path-step {
+  display: grid;
+  grid-template-columns: 3.2em 1fr;
+  gap: var(--sp-3);
+  padding: 16px 0;
+  border-top: 1px solid var(--hairline);
+  scroll-margin-top: calc(var(--topbar-h) + 24px);
+}
+
+.hub-path-step:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.hub-path-step:target {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-left: 12px;
+  margin-left: -12px;
+}
+
+.hub-path-no {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  padding-top: 5px;
+}
+
+.hub-path-body h3 {
+  font-size: 17px;
+  font-weight: 650;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hub-path-body h3 a {
+  border-bottom: 0;
+  color: var(--ink);
+}
+
+.hub-path-body h3 a:hover {
+  color: var(--accent-ink);
+  background: none;
+}
+
+.hub-path-body h3 .tag {
+  font-weight: 400;
+}
+
+.hub-path-role {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.hub-path-q {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.75;
+  border-left: 2px solid var(--accent-line);
+  padding-left: 10px;
+}
+
+.hub-path-links {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.hub-path-ref .hub-path-no {
+  color: var(--accent-ink);
+}
+
+/* 关系记录投影: 每条带关系 ID, 深链落点高亮 */
+.hub-record:target {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-left: 12px;
+  margin-left: -12px;
+}
+
+.hub-record .link-rel .evidence {
+  margin-left: 2px;
+}
+
+/* ---------- 论文页侧栏: 在专题中的位置 ---------- */
+.context-hub {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--surface);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.context-hub-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+.context-hub-link {
+  border-bottom: 0;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.context-hub-role {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+.reader-context .context-review-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.reader-recall .context-hub {
+  display: none;
+}
+
+/* ---------- 首页: 专题导读入口 ---------- */
+.idx-hub-list {
+  display: grid;
+  gap: 0;
+}
+
+.idx-hub-list.is-search {
+  margin-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+.idx-hub {
+  position: relative;
+  padding-left: 14px;
+  box-shadow: inset 2px 0 0 var(--accent-line);
+}
+
+.idx-hub-list.is-focus .idx-hub {
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--surface);
+  padding: 18px 18px 18px 20px;
+  margin: 12px 0 4px;
+  box-shadow: none;
+}
+
+.idx-hub-kicker {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--accent-ink);
+  margin-bottom: 4px;
+}
+
+.idx-hub-compact .idx-card-title {
+  font-size: 17px;
+}
+
+.idx-hub-compact .idx-card-essence {
+  font-size: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.idx-hub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.idx-hub-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 1px solid var(--accent-line);
+  color: var(--accent-ink);
+  font-size: 13px;
+}
+
+.idx-hub-action-sub {
+  border-color: var(--hairline);
+  color: var(--ink-2);
+}
+
+.idx-recall .idx-hub-actions,
+.idx-recall .idx-hub-kicker {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .hub-fig {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 10px 8px;
+  }
+  .hub-svg {
+    min-width: 640px;
+  }
+  .hub-evo {
+    grid-template-columns: 1fr;
+  }
+  .hub-evo-item dl {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .hub-evo-item dt {
+    padding-top: 6px;
+  }
+  .hub-path-step {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .hub-path-step:target,
+  .hub-record:target {
+    padding-left: 10px;
+    margin-left: -10px;
+  }
+  .hub-compare td p {
+    font-size: 14px;
+  }
+  .idx-hub-action {
+    min-height: 44px;
+  }
+  .idx-hub-list.is-focus .idx-hub {
+    padding: 14px 14px 14px 16px;
+  }
+}
+
 /* ---------- 打印: 每 slide 一页, 可导出 PDF ---------- */
 @media print {
   .page {

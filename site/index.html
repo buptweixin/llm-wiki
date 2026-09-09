@@ -3,34 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="llm-wiki 的费曼式知识阅读库：按研究问题查找论文、重建机制、回看卡壳点。">
+  <meta name="description" content="llm-wiki 的费曼式知识阅读库：按研究问题查找论文、读专题导读理解一组论文的分工、重建机制、回看卡壳点。">
   <title>llm-wiki · 知识阅读库</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-  <link rel="stylesheet" href="assets/wiki-slides.css?v=20260908-7">
+  <link rel="stylesheet" href="assets/wiki-slides.css?v=20260909-1">
 </head>
 <body>
 <div class="idx-wrap">
   <header class="idx-header">
     <p class="idx-kicker">LLM-WIKI / READING LIBRARY</p>
     <h1>找到一个知识点，接着往下读</h1>
-    <p class="idx-sub">按研究问题、机制或曾经卡住的地方查找。文章为连续阅读；速览未收录的细节有完整笔记页兜底。</p>
+    <p class="idx-sub">按研究问题、机制或曾经卡住的地方查找。选中一个专题会先看到它的导读：这组论文分别解决哪一部分问题。文章为连续阅读；速览未收录的细节有完整笔记页兜底。</p>
   </header>
 
   <section class="idx-search-panel" aria-label="知识库搜索与筛选">
-    <input class="idx-filter" type="search" placeholder="搜索论文、机制或困惑，例如：y+、attention sink、流式 掩码" aria-label="搜索知识库">
+    <input class="idx-filter" type="search" placeholder="搜索论文、专题、机制或困惑，例如：y+、attention sink、流式 掩码" aria-label="搜索知识库">
     <div class="idx-topics" aria-label="研究专题">
       <button class="topic-filter" type="button" data-topic="all" aria-pressed="true">全部</button>
       <button class="topic-filter" type="button" data-topic="video-understanding" aria-pressed="false">视频理解与响应</button>
       <button class="topic-filter" type="button" data-topic="visual-encoders" aria-pressed="false">视觉编码器</button>
       <button class="topic-filter" type="button" data-topic="distillation" aria-pressed="false">蒸馏与训练预算</button>
       <button class="topic-filter" type="button" data-topic="structured-output" aria-pressed="false">结构化输出与定位</button>
+      <button class="topic-filter" type="button" data-topic="reinforcement-learning" aria-pressed="false">强化学习与对齐</button>
     </div>
     <div class="idx-mobile-cue">
       <a class="idx-due-link" id="idx-due-mobile" href="?review=due" hidden>今天待复测</a>
       <button class="idx-recall-toggle" type="button" aria-pressed="false">先回忆</button>
     </div>
     <div class="idx-state">
-      <span id="idx-count">9 篇可读</span>
+      <span id="idx-count">10 篇论文 · 2 篇专题导读</span>
       <span id="idx-state-label"></span>
       <span class="idx-search-hint">按 <kbd>/</kbd> 搜索 · <kbd>Esc</kbd> 清除</span>
       <button class="idx-clear" id="idx-clear" type="button" hidden>清除筛选</button>
@@ -40,7 +41,10 @@
   <main class="idx-main">
     <section class="idx-results" aria-live="polite">
       <noscript>
-        <div class="idx-result-heading"><h2>按研究问题阅读</h2><span>9 篇</span></div>
+        <div class="idx-result-heading"><h2>专题导读</h2><span>2 篇</span></div>
+        <article class="idx-card idx-hub"><p class="idx-hub-kicker">专题导读</p><a class="idx-card-title" href="topics/distillation.html">蒸馏与训练预算</a><p class="idx-card-essence">教师凭什么能教，多个教师又该怎样分配训练预算？主线 3 篇（U-OPSD、S²VOPD、Open-MOPD），跨专题引用 PPO。</p></article>
+        <article class="idx-card idx-hub"><p class="idx-hub-kicker">专题导读</p><a class="idx-card-title" href="topics/video-understanding.html">视频理解与响应</a><p class="idx-card-essence">看多少、何时想、怎样找证据？主线 3 篇（VideoChat3、VST、Video-o3），跨专题引用 GenLIP。</p></article>
+        <div class="idx-result-heading"><h2>按研究问题阅读</h2><span>10 篇</span></div>
         <article class="idx-card"><a class="idx-card-title" href="papers/2026-videochat3.html">VideoChat3</a><p class="idx-card-essence">4B 全开源 Video MLLM：在视觉编码器里压缩视频 token，再用状态机自适应处理流式视频。</p></article>
         <article class="idx-card"><a class="idx-card-title" href="papers/2026-vst.html">VST</a><p class="idx-card-essence">把 CoT 推理塞进视频流的等待空档，查询时直接读取 FIFO 文本记忆。</p></article>
         <article class="idx-card"><a class="idx-card-title" href="papers/2026-genlip.html">GenLIP</a><p class="idx-card-essence">让 ViT 直接预测文本 token，用生成式预训练改善视觉表示。</p></article>
@@ -50,6 +54,7 @@
         <article class="idx-card"><a class="idx-card-title" href="papers/2026-open-mopd.html">Open-MOPD</a><p class="idx-card-essence">多教师蒸馏的核心问题是训练预算错配，而不是教师冲突。</p></article>
         <article class="idx-card"><a class="idx-card-title" href="papers/2026-s2vopd.html">S²VOPD</a><p class="idx-card-essence">故意弄坏学生输入，让看清原图的 EMA 教师提供免费不对称。</p></article>
         <article class="idx-card"><a class="idx-card-title" href="papers/2026-locateanything.html">LocateAnything</a><p class="idx-card-essence">把整个框当固定长块并行解码，减少坐标 token 的逐个等待。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2017-ppo.html">PPO</a><p class="idx-card-essence">用截断的重要性比率限制策略偏离，在同一批样本上安全跑多轮更新。</p></article>
       </noscript>
     </section>
 
@@ -58,7 +63,12 @@
         <h2>今天先做什么</h2>
         <div id="idx-due-entry" hidden><a class="idx-due-link" href="?review=due">查看今天待复测</a></div>
         <button class="idx-recall-toggle" id="idx-recall-toggle" type="button" aria-pressed="false">先回忆</button>
-        <p>回忆模式只显示论文标题：先凭记忆复述，再进入文章点「显示检验问题」逐题核对。</p>
+        <p>回忆模式只显示论文与专题标题：先凭记忆复述，再进入文章点「显示检验问题」逐题核对。</p>
+      </div>
+      <div class="idx-side-block">
+        <h2>专题导读</h2>
+        <p>成熟的专题有独立导读页：共同问题、问题与方法地图、关键维度比较、带着问题读论文的顺序，以及跨篇最容易混淆的地方。</p>
+        <p>关系和比较值都能回到论文笔记的具体段落；个人解释就地标「待验证」。</p>
       </div>
       <div class="idx-side-block">
         <h2>阅读方式</h2>
@@ -69,11 +79,11 @@
   </main>
 
   <footer class="idx-foot">
-    <span>9 篇 · 静态离线可用 · Markdown 是唯一真源</span>
-    <a href="../docs/specs/site-reading-redesign.md">阅读改造说明</a>
+    <span>10 篇论文 · 2 篇专题导读 · 静态离线可用 · Markdown 是唯一真源</span>
+    <span><a href="../docs/specs/site-reading-redesign.md">阅读改造说明</a> · <a href="../docs/specs/site-topic-hubs.md">专题导读说明</a></span>
   </footer>
 </div>
-<script src="assets/wiki-index.js?v=20260908-7"></script>
-<script src="assets/wiki-slides.js?v=20260908-7"></script>
+<script src="assets/wiki-index.js?v=20260909-1"></script>
+<script src="assets/wiki-slides.js?v=20260909-1"></script>
 </body>
 </html>
