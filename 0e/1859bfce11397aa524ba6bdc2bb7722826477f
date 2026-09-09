@@ -1,0 +1,41 @@
+site/notes/papers/2017-ppo.html
+  s_212b182b6e565d::t_c6e1f0385a4684 244,251,263
+  s_212b182b6e565d::t_82f6d9697a2c12 1-243,245-250,252-262,264-288
+site/assets/wiki-index.js
+  s_212b182b6e565d::t_b1fb68de9054b8 1267-1272,1789-1796,1799-1801,1804-1806,1809-1811,1814-1816,1819-1821,1824-1826,1829-1831,1834-1836,1839-1851,1912
+  s_212b182b6e565d::t_f4cce5bbea1a81 1852-1911
+  s_212b182b6e565d::t_ed32f8d9434ca1 10-11,165-203,251-255,1389,1761-1788,1797-1798,1802-1803,1807-1808,1812-1813,1817-1818,1822-1823,1827-1828,1832-1833,1837-1838,1913
+  s_212b182b6e565d::t_5b158a2256870c 256
+site/papers/2017-ppo.html
+  s_212b182b6e565d::t_a5fea6a6e40181 1-244
+wiki/papers/2017-ppo.md
+  s_212b182b6e565d::t_8356a838c1e4aa 1-199
+site/notes/papers/2026-open-mopd.html
+  s_212b182b6e565d::t_f8e8749d3753e5 8,35,44
+index.md
+  s_212b182b6e565d::t_eec1e20cd581c1 22,44
+log.md
+  s_212b182b6e565d::t_94bb48e70f62d2 336-353
+review.md
+  s_212b182b6e565d::t_522261de8993f2 17
+taxonomy.md
+  s_212b182b6e565d::t_ec91f4ad7887d7 15,39-42,56
+wiki/papers/2026-open-mopd.md
+  s_212b182b6e565d::t_bb2a593a0d3b9e 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0e1859bfce11397aa524ba6bdc2bb7722826477f",
+  "prompts": {},
+  "sessions": {
+    "s_212b182b6e565d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a07f33-4893-71e0-94b7-44380f4be830",
+        "model": "gemini-3.8-flash-high"
+      },
+      "human_author": "buptweixin <weixin.bupt.ml@gmail.com>"
+    }
+  }
+}
