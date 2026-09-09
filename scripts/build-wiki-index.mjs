@@ -328,6 +328,26 @@ function anchorText(sitePath, anchor) {
   return null;
 }
 
+// 论文依据锚点 → 对应真源 Markdown 段落文字
+// 锚点语义（与 sourceSections / 投影约定一致）：
+//   qa-<id>  → 完整笔记 #pitfalls 章节内同名 qa 块对应的「卡壳点与解答」段落
+//   <sec-id> → 真源「## <对应标题>」章节正文（problem/intuition/mechanism/evidence/ai-notes/restatement/pitfalls/open/relations）
+function paperMdAnchorText(markdown, anchor) {
+  const sections = sourceSections(markdown, paperSectionId);
+  const sectionByAnchor = new Map(sections.map(s => [s.id, s]));
+  if (anchor === "pitfalls" || anchor === "relations") return sectionByAnchor.get(anchor)?.bodyText ?? null;
+  if (anchor.startsWith("qa-")) {
+    const block = sectionByAnchor.get("pitfalls");
+    if (!block) return null;
+    const qaMatch = block.bodyText.split(/(?:^|\n)Q：([^\n]+)/).slice(1);
+    for (let i = 0; i < qaMatch.length; i += 2) {
+      if (block.bodyText.includes(anchor)) return qaMatch[i + 1];
+    }
+    return block.bodyText;
+  }
+  return sectionByAnchor.get(anchor)?.bodyText ?? null;
+}
+
 // FNV-1a 32 位，8 位十六进制；只求「变了没变」，不求防碰撞
 function fingerprintOf(text) {
   let hash = 0x811c9dc5;
@@ -338,13 +358,71 @@ function fingerprintOf(text) {
   return hash.toString(16).padStart(8, "0");
 }
 
+// 关系记录投影一致性：导读页用 `.hub-record` div，证据状态写在 .evidence span；完整笔记用 table tr，
+// 证据状态是 td.num 列的纯文本（reported/synthesis/hypothesis）。两种格式都要与真源一致。
+// 论文页关系卡不强制逐字段对账（它的 relations 是编辑判断字段，迁移时人工核对）。
+const relProjectionCache = new Map();
+function escapeRegex(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function relationProjectionStatus(html, relId) {
+  const key = `${relId}::${html.length}`;
+  if (relProjectionCache.has(key)) return relProjectionCache.get(key);
+  const escaped = escapeRegex(relId);
+  // 导读页投影：div.hub-record#relId 内含 .evidence.is-<status>
+  const divBlock = new RegExp(`class="link-item hub-record" id="${escaped}"[\\s\\S]*?(?=<div class="link-item|$)`).exec(html);
+  if (divBlock) {
+    const result = {
+      reported: /evidence is-reported/.test(divBlock[0]),
+      synthesis: /evidence is-synthesis/.test(divBlock[0]),
+      hypothesis: /evidence is-hypothesis/.test(divBlock[0])
+    };
+    relProjectionCache.set(key, result);
+    return result;
+  }
+  // 完整笔记投影：tr 内首列文本为 relId，证据状态列文本为 reported/synthesis/hypothesis
+  // 注意笔记 HTML 可能出现 </tr>tr>（缺 <）的写法，正则用 \s*<?tr 兼容
+  const trMatch = new RegExp(`<?tr[^>]*>\\s*<td[^>]*>${escaped}</td>[\\s\\S]*?</tr>`).exec(html);
+  if (trMatch) {
+    const row = trMatch[0];
+    const result = {
+      reported: /<td[^>]*>\s*reported/.test(row),
+      synthesis: /<td[^>]*>\s*synthesis/.test(row),
+      hypothesis: /<td[^>]*>\s*hypothesis/.test(row)
+    };
+    relProjectionCache.set(key, result);
+    return result;
+  }
+  relProjectionCache.set(key, null);
+  return null;
+}
+
+function validateRelationProjection(label, where, html, rec) {
+  const status = relationProjectionStatus(html, rec.id);
+  if (!status) {
+    fail(`${label} 在${where}没有同 id 的投影块（id="${rec.id}"）`);
+    return;
+  }
+  const active = Object.keys(status).filter(k => status[k]);
+  if (active.length !== 1 || !active.includes(rec.status)) {
+    fail(`${label} 在${where}的证据状态投影与真源不一致（真源 ${rec.status}，投影 ${active.join("/") || "未标注"}）`);
+  }
+}
+
+// 依据指纹 = 关联论文真源 Markdown 段落文字 + 完整笔记投影段落文字 的联合指纹。
+// 任何一方改动都会失配，要求复核后回填；只改派生 HTML 不改真源的「漂移更新」会被拦下。
 function evidenceFingerprint(anchors) {
   const parts = [];
   for (const href of anchors) {
     const { sitePath, anchor } = splitAnchor(href);
-    const text = anchor ? anchorText(sitePath, anchor) : null;
-    if (text === null) return null;
-    parts.push(text);
+    if (!anchor) return null;
+    const htmlText = anchorText(sitePath, anchor);
+    if (htmlText === null) return null;
+    // sitePath 形如 notes/papers/<id>.html → 真源 wiki/papers/<id>.md
+    const paperId = sitePath.replace(/^notes\/papers\//, "").replace(/\.html$/, "");
+    const mdPath = path.join(root, "wiki/papers", `${paperId}.md`);
+    if (!fs.existsSync(mdPath)) return null;
+    const mdText = paperMdAnchorText(fs.readFileSync(mdPath, "utf8"), anchor);
+    if (mdText === null) return null;
+    parts.push(`${mdText}\n${htmlText}`);
   }
   return fingerprintOf(parts.join("\n"));
 }
@@ -502,8 +580,14 @@ for (const { id, kind } of manifest) {
       const current = evidenceFingerprint(rec.evidence);
       if (process.env.PRINT_FINGERPRINTS) console.log(`${rec.id}\t${current}`);
       if (current && rec.fingerprint !== current) {
-        fail(`${label} 依据指纹失配（记录 ${rec.fingerprint}，当前 ${current}）：来源段落已变化，请复核主张后回填新指纹`);
+        fail(`${label} 依据指纹失配（记录 ${rec.fingerprint}，当前 ${current}）：真源或投影段落已变化，请复核主张后回填新指纹`);
       }
+      // 导读页与完整笔记投影必须与真源关系记录逐字段一致：类型、证据状态、主张可追溯。
+      // 只改真源不改派生 HTML 的漂移更新会被拦下，避免「关系表是规范记录」的约定只停在声明。
+      const topicHtml = siteHtml(href) || "";
+      const noteHtmlText = siteHtml(noteHref) || "";
+      validateRelationProjection(label, "导读页", topicHtml, rec);
+      validateRelationProjection(label, "完整专题笔记", noteHtmlText, rec);
     }
     // 导读页必须为每个主线成员与跨专题引用提供稳定锚点 #paper-<id>
     for (const paperId of [...members, ...refs]) {

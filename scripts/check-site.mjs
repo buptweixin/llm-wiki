@@ -71,7 +71,8 @@ function markdownText(value) {
     .replace(/`([^`]+)`/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(/——|—|–/g, "：");
 }
 
 function paperSectionId(heading, state) {
@@ -156,6 +157,39 @@ function fingerprintOf(text) {
 function splitAnchor(href) {
   const at = href.lastIndexOf("#");
   return { sitePath: at >= 0 ? href.slice(0, at) : href, anchor: at >= 0 ? href.slice(at + 1) : "" };
+}
+
+// 依据指纹 = 关联论文真源 Markdown 段落文字 + 完整笔记投影段落文字 的联合指纹（与生成器一致）
+function checkMdAnchorText(markdown, anchor) {
+  const sections = sourceSections(markdown, paperSectionId);
+  const byAnchor = new Map(sections.map(s => [s.id, s]));
+  if (anchor === "pitfalls" || anchor === "relations") return byAnchor.get(anchor)?.bodyText ?? null;
+  if (anchor.startsWith("qa-")) {
+    const block = byAnchor.get("pitfalls");
+    if (!block) return null;
+    const qaMatch = block.bodyText.split(/(?:^|\n)Q：([^\n]+)/).slice(1);
+    for (let i = 0; i < qaMatch.length; i += 2) {
+      if (block.bodyText.includes(anchor)) return qaMatch[i + 1];
+    }
+    return block.bodyText;
+  }
+  return byAnchor.get(anchor)?.bodyText ?? null;
+}
+function evidenceFingerprint(anchors) {
+  const parts = [];
+  for (const href of anchors) {
+    const { sitePath, anchor } = splitAnchor(href);
+    if (!anchor) return null;
+    const htmlText = anchorText(sitePath, anchor);
+    if (htmlText === null) return null;
+    const paperId = sitePath.replace(/^notes\/papers\//, "").replace(/\.html$/, "");
+    const mdPath = path.join(root, "wiki/papers", `${paperId}.md`);
+    if (!fs.existsSync(mdPath)) return null;
+    const mdText = checkMdAnchorText(fs.readFileSync(mdPath, "utf8"), anchor);
+    if (mdText === null) return null;
+    parts.push(`${mdText}\n${htmlText}`);
+  }
+  return fingerprintOf(parts.join("\n"));
 }
 function parseRelationRecords(markdown) {
   const start = markdown.search(/^## 关系记录\s*$/m);
@@ -274,18 +308,9 @@ for (const hub of hubs) {
     check(RELATION_TYPES.includes(rec.type), `${label} 类型「${rec.type}」在受控集合内`);
     check(EVIDENCE_STATUS.includes(rec.status), `${label} 证据状态「${rec.status}」有效`);
     check(rec.evidence.length > 0, `${label} 有依据锚点`);
-    const texts = [];
-    for (const href of rec.evidence) {
-      const { sitePath, anchor } = splitAnchor(href);
-      const text = anchor ? anchorText(sitePath, anchor) : null;
-      check(text !== null, `${label} 依据「${href}」指向真实段落`);
-      if (text !== null) texts.push(text);
-    }
-    if (texts.length === rec.evidence.length) {
-      const current = fingerprintOf(texts.join("\n"));
+      const current = evidenceFingerprint(rec.evidence);
       check(current === rec.fingerprint, `${label} 依据指纹一致（记录 ${rec.fingerprint} / 当前 ${current}）`);
-    }
-    // 导读页把每条关系记录投影为同 id 的可见块
+      // 导读页把每条关系记录投影为同 id 的可见块
     check(anchorOk(hub.href, rec.id), `${label} 在导读页有同 id 的投影块`);
   }
   check(JSON.stringify(refs) === JSON.stringify(hub.refs || []), `${hub.id} 跨专题引用由关系记录推导一致（${refs.join(", ") || "无"}）`);

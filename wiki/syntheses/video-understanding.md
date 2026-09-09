@@ -61,11 +61,12 @@ flowchart TB
 
 | 关系 ID | 起点 | 类型 | 终点 | 一句主张 | 证据状态 | 依据锚点 | 指纹 |
 |---|---|---|---|---|---|---|---|
-| rel-video-perception-vs-timing | 2026-videochat3 | complement | 2026-vst | VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 | reported | notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations | 90f5759a |
-| rel-video-timing-before-vs-after | 2026-vst | compare | 2026-video-o3 | 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 | synthesis | notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations | 30957a7d |
-| rel-video-how-much-vs-where | 2026-videochat3 | complement | 2026-video-o3 | VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） | synthesis | notes/papers/2026-video-o3.html#relations | 8c11c2ed |
-| rel-video-combination-timing-conflict | 2026-vst | possible-combination | 2026-video-o3 | VST 文本记忆与 Video-o3 工具裁剪可以组合，但「查询即答」与「多轮探索后才答」在响应时机上冲突，需要新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 | synthesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | 2f2a9c78 |
-| rel-video-encoder-pretraining | 2026-genlip | complement | 2026-videochat3 | VideoChat3 的 I3D-ViT 把图像 ViT 撑成 3D 处理视频，但没讨论这个 ViT 怎么预训练；GenLIP 回答这一层，训出的 ViT 可被 inflate 成 3D 使用 | synthesis | notes/papers/2026-videochat3.html#relations | 4770459a |
+| rel-video-perception-vs-timing | 2026-videochat3 | complement | 2026-vst | VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 | reported | notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations | 4e0e4225 |
+| rel-video-timing-before-vs-after | 2026-vst | compare | 2026-video-o3 | 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 | synthesis | notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations | 85af28c3 |
+| rel-video-how-much-vs-where | 2026-videochat3 | complement | 2026-video-o3 | VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） | synthesis | notes/papers/2026-video-o3.html#relations | d0574842 |
+| rel-video-combine-feasible | 2026-vst | possible-combination | 2026-video-o3 | 组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度 | hypothesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | aaa025f0 |
+| rel-video-combine-timing-conflict | 2026-vst | tension | 2026-video-o3 | 组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 | synthesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | aaa025f0 |
+| rel-video-encoder-pretraining | 2026-genlip | complement | 2026-videochat3 | VideoChat3 的 I3D-ViT 把图像 ViT 撑成 3D 处理视频，但没讨论这个 ViT 怎么预训练；GenLIP 回答这一层，训出的 ViT 可被 inflate 成 3D 使用 | synthesis | notes/papers/2026-videochat3.html#relations | b8df1d10 |
 
 ## 分叉与演进
 
@@ -109,7 +110,7 @@ flowchart TB
 A：VST 在查询前：播放期边看边想写笔记，查询到直接读笔记秒答（0.56s）。Video-o3 在查询后：拿到问题后在单一上下文里多轮调工具找线索，每轮裁剪与推理交替（MLVU 10.2s）。一句话：VST 是先把笔记做好、问就秒答；Video-o3 是拿到问题才去翻监控放大看。两个延迟数字的前提不同（VST 的思考成本被分摊到播放期），不能直接比大小。
 
 **Q：VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？（VST 页 2026-08-17 首验 Q3）**
-A：不是。VideoChat3 在视觉编码器里压 token、用状态机决定看多少像素，管的是感知效率；VST 用文本记录前序片段、把推理挪到查询前，管的是认知时机。用户当时的原话：VST 用文本记录流式输入的前序片段信息汇总回答，VideoChat 通过压缩视频帧 token 记更多上下文，两者可以同时进行。组合后的真实问题是 VideoChat3 的状态 token 与 VST 的「查询即答」在响应时机上要统一调度，双轨记忆冲突时要决定信谁。
+A：不是。VideoChat3 在视觉编码器里压 token、用状态机决定看多少像素，管的是感知效率；VST 用文本记录前序片段、把推理挪到查询前，管的是认知时机。用户当时的原话（[VST 我的复述](../papers/2026-vst.md#我的复述)）：「VST 用文本记录流式输入的前序所有片段+前序少数视频帧信息汇总合成回答，而 VideoChat 通过压缩视频帧的token数记更多上下文。两者可以同时进行。」组合后的真实问题是 VideoChat3 的状态 token 与 VST 的「查询即答」在响应时机上要统一调度，双轨记忆冲突时要决定信谁。
 
 **Q：VST 与 Video-o3 组合后除了证据冲突还会引入什么结构性问题？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测通过）**
 A：「查询即答」和「多轮探索后才答」在响应时机上逻辑冲突，需要新的统一调度决定何时秒答、何时探索；这和 VideoChat3 加 VST 组合时的问题是同一个。证据冲突（文本笔记与局部裁剪片段互相排斥时采信谁）是第二层问题。

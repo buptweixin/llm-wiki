@@ -11,7 +11,7 @@ updated: 2026-09-09
 
 # 蒸馏与训练预算：教师凭什么能教，多个教师又该怎样分配训练预算？
 
-> **一句话本质**：on-policy 蒸馏的学习信号只能从「教师知道、学生不知道」的信息差里长出来；这组论文分别回答两件事：单个教师的信息差从哪里来（加教师信息，还是减学生信息），以及多个教师同时教时训练预算怎样才不会分错。
+> **一句话本质**：前两篇在自蒸馏里构造师生信息差（U-OPSD 给教师加一条自投票轨迹，S²VOPD 从学生减清晰像素），第三篇回答多个教师同时教时训练预算怎么分（Open-MOPD 证伪教师冲突、定位三层预算错配）。
 
 > 主线论文：3 篇（U-OPSD、S²VOPD、Open-MOPD）｜ 跨专题引用：1 篇（PPO，理解 Open-MOPD 机制三的前置，主归属仍是强化学习与对齐）｜ 更新：2026-09-09
 
@@ -19,14 +19,14 @@ updated: 2026-09-09
 
 ## 专题本质
 
-OPD（on-policy distillation，在学生自己采样的轨迹上逐 token 对齐教师分布）家族有一条命门：教师必须比学生多知道点什么，否则师生分布相同、KL 恒为 0，没有学习信号（[U-OPSD 关键机制](../papers/2026-u-opsd.md#关键机制)、[S²VOPD 解决什么问题](../papers/2026-s2vopd.md#解决什么问题)）。
+三篇论文围绕 on-policy 蒸馏（OPD，在学生自己采样的轨迹上逐 token 对齐教师分布）分成两个子问题：前两篇在自蒸馏里构造师生信息差（U-OPSD 给教师拼进一条多数投票出的完整解题轨迹，S²VOPD 反过来把学生的输入图退化），第三篇回答多个教师同时教时训练预算怎么分。Open-MOPD 的教师是三个不同的域专家，教师与学生本就是不同模型，不需要靠额外输入制造差异；因此本页不把它当作「信息差来源」谱系的一员。
 
-三篇论文围绕这条命门分成两个子问题：
+**自蒸馏里的信息差为什么必要**：U-OPSD 与 S²VOPD 的教师与学生共享参数，若两者上下文也完全相同，分布就一致、逐 token KL 为零、无学习信号（[U-OPSD 关键机制](../papers/2026-u-opsd.md#关键机制)：学生也看了 y+ 则教师=学生 KL 恒 0；[S²VOPD 解决什么问题](../papers/2026-s2vopd.md#解决什么问题)：教师比学生多知道点什么才有信息量）。这条命题只在这类「同模型、同条件」的自蒸馏设置里成立，本页不把它外推为整个 OPD 家族的普适必要条件：教师与学生是不同模型时，分布差异天然存在，但不自动等于蒸馏信号有用。
 
-1. **教师的信息差从哪里来？** 传统答案都要外部资源（更大的模型、GT 答案、GT 区域标注）。U-OPSD 用模型自己多数投票出来的完整解题轨迹给教师加信息；S²VOPD 反过来，把学生的输入图退化，从学生身上减信息。两篇是同一作者线在文本推理域与视觉感知域的两个答案。
+1. **教师的信息差从哪里来？**（自蒸馏设置）传统答案都要外部资源（更大的模型、GT 答案、GT 区域标注）。U-OPSD 用模型自己多数投票出来的完整解题轨迹给教师加信息；S²VOPD 反过来，把学生的输入图退化，从学生身上减信息。两篇是同一作者线在文本推理域与视觉感知域的两个答案。
 2. **多个教师同时教，训练预算怎么分？** Open-MOPD 证伪了「教师冲突」这个流行嫌疑人，把掉分归因到 token 级优化预算在三个时间尺度上的系统性错配，并用三个正交机制修复。
 
-范围说明：本专题不覆盖尚未入库的 OPD 基础工作（DistiLLM 系列、GKD）与 SFT / OPD / OPSD 三个谱系背景节点，它们只作为有来源说明的背景出现，不制造未入库论文的阅读卡。
+范围说明：本专题不覆盖尚未入库的 OPD 基础工作（DistiLLM 系列、GKD）与 SFT / OPD / OPSD 三个谱系背景节点，它们只作为有来源说明的背景出现，不制造未入库论文的阅读卡。Open-MOPD 的教师是与学生不同的域专家，不属于「自蒸馏信息差来源」这一子问题，本专题只把它作为正交的「多教师预算」切片引用。
 
 ## 问题与方法地图
 
@@ -51,7 +51,7 @@ flowchart TB
 
 | 边 | 说明 | 证据状态 |
 |---|---|---|
-| 蒸馏 → 教师凭什么提供更有用的分布 | 单教师 OPD 的共同前提：师生分布必须有信息差，否则无信号 | 库内对照（两篇论文各自陈述，本页归为一个子问题） |
+| 蒸馏 → 教师凭什么提供更有用的分布 | 自蒸馏子问题：师生共享参数时必须靠额外信息差制造学习信号，否则分布相同、KL 为零 | 库内对照（两篇自蒸馏论文各自陈述，本页归为一个子问题） |
 | 蒸馏 → 多个教师的训练预算如何分配 | 多教师 OPD 的独立问题：即便每个教师都合格，合并训练仍会掉分 | 库内对照 |
 | 信号来源 → U-OPSD | 教师上下文里多拼进一条多数投票出的完整解题轨迹 y+，学生只看题目与答错前缀 | 原文报告 |
 | 信号来源 → S²VOPD | 教师看原图、学生看降采样加噪的退化图，不对称来自减少学生的信息 | 原文报告 |
@@ -64,13 +64,14 @@ flowchart TB
 
 | 关系 ID | 起点 | 类型 | 终点 | 一句主张 | 证据状态 | 依据锚点 | 指纹 |
 |---|---|---|---|---|---|---|---|
-| rel-distill-asymmetry-source | 2026-u-opsd | compare | 2026-s2vopd | 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 | synthesis | notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations | 6b2fccfe |
-| rel-distill-divergence-fact | 2026-u-opsd | tension | 2026-s2vopd | 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 必须 forward KL（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 | reported | notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence | 054c1986 |
-| rel-distill-recoverability | 2026-u-opsd | compare | 2026-s2vopd | 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 | hypothesis | notes/papers/2026-s2vopd.html#open | 0efe7bcd |
-| rel-distill-orthogonal-slices | 2026-u-opsd | complement | 2026-open-mopd | 单教师信号从哪来与多教师预算怎么分账是正交切片；「多个自蒸馏伪教师 + Open-MOPD 三机制」的组合方案在两页关联节中均成立，但库内未做实验 | synthesis | notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations | 8a567ee8 |
-| rel-distill-divergence-slot | 2026-u-opsd | compare | 2026-open-mopd | 散度的角色不同：U-OPSD 的 forward KL 直接当损失（reverse 方向直接优化会塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 clip 兜底）；同方向不同框架，不矛盾 | reported | notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations | 8a567ee8 |
-| rel-distill-self-asymmetry-in-multi | 2026-s2vopd | possible-combination | 2026-open-mopd | 多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权）；这是组合设想，库内无实验 | synthesis | notes/papers/2026-s2vopd.html#relations | 6352c6bb |
-| rel-distill-ppo-prerequisite | 2017-ppo | prerequisite | 2026-open-mopd | Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，75.8% 的 token 预算被冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob | reported | notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse | f57a9a2e |
+| rel-distill-asymmetry-source | 2026-u-opsd | compare | 2026-s2vopd | 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 | synthesis | notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations | 331065dd |
+| rel-distill-divergence-fact | 2026-u-opsd | tension | 2026-s2vopd | 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 必须 forward KL（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 | reported | notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence | 7b1dc6e1 |
+| rel-distill-recoverability | 2026-u-opsd | compare | 2026-s2vopd | 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 | hypothesis | notes/papers/2026-s2vopd.html#open | 741401a2 |
+| rel-distill-orthogonal-slices | 2026-u-opsd | complement | 2026-open-mopd | 单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖 | synthesis | notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations | 2d777e3b |
+| rel-distill-combine-self-teachers | 2026-u-opsd | possible-combination | 2026-open-mopd | 组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节都说成立，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额 | hypothesis | notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations | 2d777e3b |
+| rel-distill-divergence-slot | 2026-u-opsd | compare | 2026-open-mopd | 散度的角色不同：U-OPSD 的 forward KL 直接当损失（reverse 方向直接优化会塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 clip 兜底）；同方向不同框架，不矛盾 | reported | notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations | 2d777e3b |
+| rel-distill-self-asymmetry-in-multi | 2026-s2vopd | possible-combination | 2026-open-mopd | 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） | hypothesis | notes/papers/2026-s2vopd.html#relations | 631ca39c |
+| rel-distill-ppo-prerequisite | 2017-ppo | prerequisite | 2026-open-mopd | Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，75.8% 的 token 预算被冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob | reported | notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse | 98dace7f |
 
 ## 分叉与演进
 

@@ -363,3 +363,16 @@
 - 按 docs/specs/site-topic-hubs.md 阶段 A~C 实施：新增 templates/synthesis.md 与 wiki/syntheses/{distillation,video-understanding}.md（front-matter `type: synthesis` + `members`，「关系记录」表为规范记录：7+5 条，每条带类型/证据状态/依据锚点/依据指纹），Mermaid 图稿留在 markdown，静态 SVG 投影在 site/assets/diagrams/。所有实质主张均回指已通过复测的论文页段落；「信息可恢复性」等个人解释就地标待验证，两条新提的跨篇问题标待讨论并记入 questions.md。**专题级组织尚未经费曼复测**，review.md 各排一行待首测（+3 天），成员通过不代表专题通过。
 - 派生层：site/_topic-template.html、site/topics/*.html（essence/map/evolution/compare/path/pitfalls/relations，成员锚点 #paper-*，关系记录同 id 投影）、site/notes/syntheses/*.html；首页增加专题导读入口（选中专题时展开、搜索时作为标明「专题导读」的紧凑结果排在论文之后）并修正静态兜底（10 篇、五个专题按钮、两条导读入口）；论文页侧栏与手机快捷区增加「在专题中的位置」入口；证据状态显示改为原文报告 / 库内对照 / 待验证假说。资源版本升至 20260909-1。
 - 工具：scripts/build-wiki-index.mjs 支持 synthesis（成员主归属对账、关系记录校验、依据指纹失配拒绝生成、消费者读 href/noteHref/sourceHref）；新增 scripts/sync-hub-diagrams.mjs；scripts/check-site.mjs 扩到 C13（首页静态兜底、导读页结构与内嵌图稿一致），scripts/check-site-regressions.mjs 扩到 S4-a~e（章节锚点改名 / 依据锚点缺失 / 依据文字改动指纹失配 / 成员锚点缺失 / 成员主归属不符均拒绝且索引不变）。静态检查 1018 项全绿。经用户「根据 spec 优化」指令扩展 CLAUDE.md schema（专题综合页工作流、目录、site 规范与 lint 范围）。
+
+## [2026-09-09] lint | 专题导读首轮验收
+
+- 对 1e4eb79 的两个专题进行方案、代码与浏览器验收，现有静态检查全绿，搜索、依据定位与返回筛选抽查通过；发现三项内容问题与两项真源一致性漏检。
+- 新增 docs/reviews/site-topic-hubs-review-2026-09-09.md，记录五项 P2、两组临时副本反例、手机阅读优化建议与修复标准；同步 index.md。
+- 本次仅审阅并记录，未修改实现、知识页或 schema，未部署；临时副本、浏览器验收页与本地服务已清理。
+
+## [2026-09-09] lint | 专题导读首轮验收修复（R1~R5）
+
+- 按首轮验收报告五项 P2 修复：R1 蒸馏本质句把「KL 恒为 0」的局部自蒸馏条件限定回原设置，不再外推为 OPD 家族普适必要条件；R2 组合设想从 synthesis 降为 hypothesis 并拆出独立关系记录（rel-distill-combine-self-teachers、rel-video-combine-feasible/timing-conflict）；R5 视频专题用户原话改为逐字引用不省略。
+- R3 依据指纹从「只看完整笔记 HTML」改为「Markdown 真源段落 + 完整笔记投影段落」联合指纹；只改派生 HTML 不改真源的漂移更新、只改 Markdown 不改 HTML 的过期投影均会被拦下。R4 生成器增加关系记录投影一致性校验：导向页与完整笔记的证据状态必须与真源逐字段一致，改了真源没改派生 HTML 的漂移更新直接拒绝生成。
+- 回归样例扩到 S4-a~g（新增 S4-f 只改 Markdown / S4-g 关系状态漂移）；静态检查与回归全绿（7 样例 PASS）。
+- 已更新：wiki/syntheses/{distillation,video-understanding}.md（真源）、site/topics/ + site/notes/syntheses/ 对应 HTML（派生层）、scripts/{build-wiki-index,check-site,check-site-regressions}.mjs、wiki-index.js。资源版本不变（20260909-1）。

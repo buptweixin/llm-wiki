@@ -2014,8 +2014,20 @@ window.WIKI_INDEX = [
         "from": "2026-u-opsd",
         "type": "complement",
         "to": "2026-open-mopd",
-        "claim": "单教师信号从哪来与多教师预算怎么分账是正交切片；「多个自蒸馏伪教师 + Open-MOPD 三机制」的组合方案在两页关联节中均成立，但库内未做实验",
+        "claim": "单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖",
         "status": "synthesis",
+        "evidence": [
+          "notes/papers/2026-u-opsd.html#relations",
+          "notes/papers/2026-open-mopd.html#relations"
+        ]
+      },
+      {
+        "id": "rel-distill-combine-self-teachers",
+        "from": "2026-u-opsd",
+        "type": "possible-combination",
+        "to": "2026-open-mopd",
+        "claim": "组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节都说成立，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额",
+        "status": "hypothesis",
         "evidence": [
           "notes/papers/2026-u-opsd.html#relations",
           "notes/papers/2026-open-mopd.html#relations"
@@ -2038,8 +2050,8 @@ window.WIKI_INDEX = [
         "from": "2026-s2vopd",
         "type": "possible-combination",
         "to": "2026-open-mopd",
-        "claim": "多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权）；这是组合设想，库内无实验",
-        "status": "synthesis",
+        "claim": "组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权）",
+        "status": "hypothesis",
         "evidence": [
           "notes/papers/2026-s2vopd.html#relations"
         ]
@@ -2111,17 +2123,17 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 专题本质",
         "a": "notes/syntheses/distillation.html#essence",
-        "t": "专题本质 OPD（on-policy distillation，在学生自己采样的轨迹上逐 token 对齐教师分布）家族有一条命门：教师必须比学生多知道点什么，否则师生分布相同、KL 恒为 0，没有学习信号（U-OPSD 关键机制、S²VOPD 解决什么问题）。 三篇论文围绕这条命门分成两个子问题： 教师的信息差从哪里来？ 传统答案都要外部资源（更大的模型、GT 答案、GT 区域标注）。U-OPSD 用模型自己多数投票出来的完整解题轨迹给教师加信息；S²VOPD 反过来，把学生的输入图退化，从学生身上减信息。两篇是同一作者线在文本推理域与视觉感知域的两个答案。 多个教师同时教，训练预算怎么分？ Open-MOPD 证伪了「教师冲突」这个流行嫌疑人，把掉分归因到 token 级优化预算在三个时间尺度上的系统性错配，并用三个正交机制修复。 范围说明：本专题不覆盖尚未入库的 OPD 基础工作（DistiLLM 系列、GKD）与 SFT / OPD / OPSD 三个谱系背景节点，它们只作为有来源说明的背景出现，不制造未入库论文的阅读卡。"
+        "t": "专题本质 三篇论文围绕 on-policy 蒸馏（OPD，在学生自己采样的轨迹上逐 token 对齐教师分布）分成两个子问题：前两篇在自蒸馏里构造师生信息差（U-OPSD 给教师拼进一条多数投票出的完整解题轨迹，S²VOPD 反过来把学生的输入图退化），第三篇回答多个教师同时教时训练预算怎么分。Open-MOPD 的教师是三个不同的域专家，教师与学生本就是不同模型，不需要靠额外输入制造差异；因此本页不把它当作「信息差来源」谱系的一员。 自蒸馏里的信息差为什么必要：U-OPSD 与 S²VOPD 的教师与学生共享参数，若两者上下文也完全相同，分布就一致、逐 token KL 为零、无学习信号（U-OPSD 关键机制：学生也看了 y+ 则教师=学生 KL 恒 0；S²VOPD 解决什么问题：教师比学生多知道点什么才有信息量）。这条命题只在这类「同模型、同条件」的自蒸馏设置里成立，本页不把它外推为整个 OPD 家族的普适必要条件：教师与学生是不同模型时，分布差异天然存在，但不自动等于蒸馏信号有用。 教师的信息差从哪里来？（自蒸馏设置）传统答案都要外部资源（更大的模型、GT 答案、GT 区域标注）。U-OPSD 用模型自己多数投票出来的完整解题轨迹给教师加信息；S²VOPD 反过来，把学生的输入图退化，从学生身上减信息。两篇是同一作者线在文本推理域与视觉感知域的两个答案。 多个教师同时教，训练预算怎么分？ Open-MOPD 证伪了「教师冲突」这个流行嫌疑人，把掉分归因到 token 级优化预算在三个时间尺度上的系统性错配，并用三个正交机制修复。 范围说明：本专题不覆盖尚未入库的 OPD 基础工作（DistiLLM 系列、GKD）与 SFT / OPD / OPSD 三个谱系背景节点，它们只作为有来源说明的背景出现，不制造未入库论文的阅读卡。Open-MOPD 的教师是与学生不同的域专家，不属于「自蒸馏信息差来源」这一子问题，本专题只把它作为正交的「多教师预算」切片引用。"
       },
       {
         "h": "全文 · 问题与方法地图",
         "a": "notes/syntheses/distillation.html#map",
-        "t": "问题与方法地图 图稿依据三篇论文页的「解决什么问题」与「关联」节组织。连线「问题分解」是库内组织方式；「对应方法」连线来自各论文自述。PPO 到 Open-MOPD 的虚线只表示理解前置，不表示论文继承。 flowchart TB root[\"蒸馏：教师信号与训练预算\"] signal[\"教师凭什么提供更有用的分布？\"] budget[\"多个教师的训练预算如何分配？\"] u[\"U-OPSD：教师多看自投票产生的完整轨迹\"] s[\"S²VOPD：教师看清晰图，学生看退化图\"] m[\"Open-MOPD：修复多教师 token 预算错配\"] p[\"PPO：理解策略更新的前置知识\"] root --> 问题分解 signal root --> 问题分解 budget signal --> 文本信息差：给教师加信息 u signal --> 视觉信息差：从学生减信息 s budget --> 对应方法 m p -.-> 理解前置，不表示论文继承 m 边 说明 证据状态 --- --- --- 蒸馏 → 教师凭什么提供更有用的分布 单教师 OPD 的共同前提：师生分布必须有信息差，否则无信号 库内对照（两篇论文各自陈述，本页归为一个子问题） 蒸馏 → 多个教师的训练预算如何分配 多教师 OPD 的独立问题：即便每个教师都合格，合并训练仍会掉分 库内对照 信号来源 → U-OPSD 教师上下文里多拼进一条多数投票出的完整解题轨迹 y+，学生只看题目与答错前缀 原文报告 信号来源 → S²VOPD 教师看原图、学生看降采样加噪的退化图，不对称来自减少学生的信息 原文报告 预算分配 → Open-MOPD 掉分主因是 token 份额、reward 幅度、reward 新鲜度三层预算错配，三个机制逐一修复 原文报告 PPO ⇢ Open-MOPD 机制三 reward refresh 建立在 PPO 的重要性比率与 clip 之上；不理解 clip 就看不出 75.8% 预算被冻结的含义 原文报告（Open-MOPD 关联节明确指出）"
+        "t": "问题与方法地图 图稿依据三篇论文页的「解决什么问题」与「关联」节组织。连线「问题分解」是库内组织方式；「对应方法」连线来自各论文自述。PPO 到 Open-MOPD 的虚线只表示理解前置，不表示论文继承。 flowchart TB root[\"蒸馏：教师信号与训练预算\"] signal[\"教师凭什么提供更有用的分布？\"] budget[\"多个教师的训练预算如何分配？\"] u[\"U-OPSD：教师多看自投票产生的完整轨迹\"] s[\"S²VOPD：教师看清晰图，学生看退化图\"] m[\"Open-MOPD：修复多教师 token 预算错配\"] p[\"PPO：理解策略更新的前置知识\"] root --> 问题分解 signal root --> 问题分解 budget signal --> 文本信息差：给教师加信息 u signal --> 视觉信息差：从学生减信息 s budget --> 对应方法 m p -.-> 理解前置，不表示论文继承 m 边 说明 证据状态 --- --- --- 蒸馏 → 教师凭什么提供更有用的分布 自蒸馏子问题：师生共享参数时必须靠额外信息差制造学习信号，否则分布相同、KL 为零 库内对照（两篇自蒸馏论文各自陈述，本页归为一个子问题） 蒸馏 → 多个教师的训练预算如何分配 多教师 OPD 的独立问题：即便每个教师都合格，合并训练仍会掉分 库内对照 信号来源 → U-OPSD 教师上下文里多拼进一条多数投票出的完整解题轨迹 y+，学生只看题目与答错前缀 原文报告 信号来源 → S²VOPD 教师看原图、学生看降采样加噪的退化图，不对称来自减少学生的信息 原文报告 预算分配 → Open-MOPD 掉分主因是 token 份额、reward 幅度、reward 新鲜度三层预算错配，三个机制逐一修复 原文报告 PPO ⇢ Open-MOPD 机制三 reward refresh 建立在 PPO 的重要性比率与 clip 之上；不理解 clip 就看不出 75.8% 预算被冻结的含义 原文报告（Open-MOPD 关联节明确指出）"
       },
       {
         "h": "全文 · 关系记录",
         "a": "notes/syntheses/distillation.html#relations",
-        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-distill-asymmetry-source 2026-u-opsd compare 2026-s2vopd 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations 6b2fccfe rel-distill-divergence-fact 2026-u-opsd tension 2026-s2vopd 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 必须 forward KL（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 reported notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence 054c1986 rel-distill-recoverability 2026-u-opsd compare 2026-s2vopd 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 hypothesis notes/papers/2026-s2vopd.html#open 0efe7bcd rel-distill-orthogonal-slices 2026-u-opsd complement 2026-open-mopd 单教师信号从哪来与多教师预算怎么分账是正交切片；「多个自蒸馏伪教师 + Open-MOPD 三机制」的组合方案在两页关联节中均成立，但库内未做实验 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 8a567ee8 rel-distill-divergence-slot 2026-u-opsd compare 2026-open-mopd 散度的角色不同：U-OPSD 的 forward KL 直接当损失（reverse 方向直接优化会塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 clip 兜底）；同方向不同框架，不矛盾 reported notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 8a567ee8 rel-distill-self-asymmetry-in-multi 2026-s2vopd possible-combination 2026-open-mopd 多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权）；这是组合设想，库内无实验 synthesis notes/papers/2026-s2vopd.html#relations 6352c6bb rel-distill-ppo-prerequisite 2017-ppo prerequisite 2026-open-mopd Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，75.8% 的 token 预算被冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob reported notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse f57a9a2e"
+        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-distill-asymmetry-source 2026-u-opsd compare 2026-s2vopd 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations 331065dd rel-distill-divergence-fact 2026-u-opsd tension 2026-s2vopd 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 必须 forward KL（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 reported notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence 7b1dc6e1 rel-distill-recoverability 2026-u-opsd compare 2026-s2vopd 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 hypothesis notes/papers/2026-s2vopd.html#open 741401a2 rel-distill-orthogonal-slices 2026-u-opsd complement 2026-open-mopd 单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 2d777e3b rel-distill-combine-self-teachers 2026-u-opsd possible-combination 2026-open-mopd 组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节都说成立，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额 hypothesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 2d777e3b rel-distill-divergence-slot 2026-u-opsd compare 2026-open-mopd 散度的角色不同：U-OPSD 的 forward KL 直接当损失（reverse 方向直接优化会塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 clip 兜底）；同方向不同框架，不矛盾 reported notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 2d777e3b rel-distill-self-asymmetry-in-multi 2026-s2vopd possible-combination 2026-open-mopd 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） hypothesis notes/papers/2026-s2vopd.html#relations 631ca39c rel-distill-ppo-prerequisite 2017-ppo prerequisite 2026-open-mopd Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，75.8% 的 token 预算被冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob reported notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse 98dace7f"
       },
       {
         "h": "全文 · 分叉与演进",
@@ -2249,11 +2261,23 @@ window.WIKI_INDEX = [
         ]
       },
       {
-        "id": "rel-video-combination-timing-conflict",
+        "id": "rel-video-combine-feasible",
         "from": "2026-vst",
         "type": "possible-combination",
         "to": "2026-video-o3",
-        "claim": "VST 文本记忆与 Video-o3 工具裁剪可以组合，但「查询即答」与「多轮探索后才答」在响应时机上冲突，需要新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题",
+        "claim": "组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度",
+        "status": "hypothesis",
+        "evidence": [
+          "notes/papers/2026-video-o3.html#qa-combine",
+          "notes/papers/2026-vst.html#relations"
+        ]
+      },
+      {
+        "id": "rel-video-combine-timing-conflict",
+        "from": "2026-vst",
+        "type": "tension",
+        "to": "2026-video-o3",
+        "claim": "组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题",
         "status": "synthesis",
         "evidence": [
           "notes/papers/2026-video-o3.html#qa-combine",
@@ -2336,7 +2360,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关系记录",
         "a": "notes/syntheses/video-understanding.html#relations",
-        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-video-perception-vs-timing 2026-videochat3 complement 2026-vst VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 reported notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations 90f5759a rel-video-timing-before-vs-after 2026-vst compare 2026-video-o3 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 synthesis notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations 30957a7d rel-video-how-much-vs-where 2026-videochat3 complement 2026-video-o3 VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） synthesis notes/papers/2026-video-o3.html#relations 8c11c2ed rel-video-combination-timing-conflict 2026-vst possible-combination 2026-video-o3 VST 文本记忆与 Video-o3 工具裁剪可以组合，但「查询即答」与「多轮探索后才答」在响应时机上冲突，需要新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 synthesis notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations 2f2a9c78 rel-video-encoder-pretraining 2026-genlip complement 2026-videochat3 VideoChat3 的 I3D-ViT 把图像 ViT 撑成 3D 处理视频，但没讨论这个 ViT 怎么预训练；GenLIP 回答这一层，训出的 ViT 可被 inflate 成 3D 使用 synthesis notes/papers/2026-videochat3.html#relations 4770459a"
+        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-video-perception-vs-timing 2026-videochat3 complement 2026-vst VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 reported notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations 4e0e4225 rel-video-timing-before-vs-after 2026-vst compare 2026-video-o3 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 synthesis notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations 85af28c3 rel-video-how-much-vs-where 2026-videochat3 complement 2026-video-o3 VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） synthesis notes/papers/2026-video-o3.html#relations d0574842 rel-video-combine-feasible 2026-vst possible-combination 2026-video-o3 组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度 hypothesis notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations aaa025f0 rel-video-combine-timing-conflict 2026-vst tension 2026-video-o3 组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 synthesis notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations aaa025f0 rel-video-encoder-pretraining 2026-genlip complement 2026-videochat3 VideoChat3 的 I3D-ViT 把图像 ViT 撑成 3D 处理视频，但没讨论这个 ViT 怎么预训练；GenLIP 回答这一层，训出的 ViT 可被 inflate 成 3D 使用 synthesis notes/papers/2026-videochat3.html#relations b8df1d10"
       },
       {
         "h": "全文 · 分叉与演进",
@@ -2356,7 +2380,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 跨篇卡壳点",
         "a": "notes/syntheses/video-understanding.html#pitfalls",
-        "t": "跨篇卡壳点 前三条复用论文页的历史问答（保留当时日期），第四条是本专题新提出的问题，标「待讨论」。 Q：VST 和 Video-o3 的推理时机分别放在哪里？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测首答焊死） A：VST 在查询前：播放期边看边想写笔记，查询到直接读笔记秒答（0.56s）。Video-o3 在查询后：拿到问题后在单一上下文里多轮调工具找线索，每轮裁剪与推理交替（MLVU 10.2s）。一句话：VST 是先把笔记做好、问就秒答；Video-o3 是拿到问题才去翻监控放大看。两个延迟数字的前提不同（VST 的思考成本被分摊到播放期），不能直接比大小。 Q：VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？（VST 页 2026-08-17 首验 Q3） A：不是。VideoChat3 在视觉编码器里压 token、用状态机决定看多少像素，管的是感知效率；VST 用文本记录前序片段、把推理挪到查询前，管的是认知时机。用户当时的原话：VST 用文本记录流式输入的前序片段信息汇总回答，VideoChat 通过压缩视频帧 token 记更多上下文，两者可以同时进行。组合后的真实问题是 VideoChat3 的状态 token 与 VST 的「查询即答」在响应时机上要统一调度，双轨记忆冲突时要决定信谁。 Q：VST 与 Video-o3 组合后除了证据冲突还会引入什么结构性问题？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测通过） A：「查询即答」和「多轮探索后才答」在响应时机上逻辑冲突，需要新的统一调度决定何时秒答、何时探索；这和 VideoChat3 加 VST 组合时的问题是同一个。证据冲突（文本笔记与局部裁剪片段互相排斥时采信谁）是第二层问题。 Q（待讨论，2026-09-09 本专题新提）：VST 的流式注意力掩码与 Video-o3 的 TDAM 都是训练期掩码，它们解决的是同一类问题吗？ A：库内只能对照，不能下结论。两页各自的事实：VST 的掩码让训练可见性照推理来（视觉只看最近 L 个、文本全可见），同时堵住未来信息泄露与训练-推理分布漂移；TDAM 是分工掩码，调工具时禁看局部裁剪、答题时禁看全局视频，只对 10% 数据施加，防注意力分散与 Fake Thinking。可对照的差别是：前者把「能看到什么」钉在推理架构上，后者把「该看什么」钉在任务阶段上。是否能归纳成一条共同原理，等复测时讨论。"
+        "t": "跨篇卡壳点 前三条复用论文页的历史问答（保留当时日期），第四条是本专题新提出的问题，标「待讨论」。 Q：VST 和 Video-o3 的推理时机分别放在哪里？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测首答焊死） A：VST 在查询前：播放期边看边想写笔记，查询到直接读笔记秒答（0.56s）。Video-o3 在查询后：拿到问题后在单一上下文里多轮调工具找线索，每轮裁剪与推理交替（MLVU 10.2s）。一句话：VST 是先把笔记做好、问就秒答；Video-o3 是拿到问题才去翻监控放大看。两个延迟数字的前提不同（VST 的思考成本被分摊到播放期），不能直接比大小。 Q：VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？（VST 页 2026-08-17 首验 Q3） A：不是。VideoChat3 在视觉编码器里压 token、用状态机决定看多少像素，管的是感知效率；VST 用文本记录前序片段、把推理挪到查询前，管的是认知时机。用户当时的原话（VST 我的复述）：「VST 用文本记录流式输入的前序所有片段+前序少数视频帧信息汇总合成回答，而 VideoChat 通过压缩视频帧的token数记更多上下文。两者可以同时进行。」组合后的真实问题是 VideoChat3 的状态 token 与 VST 的「查询即答」在响应时机上要统一调度，双轨记忆冲突时要决定信谁。 Q：VST 与 Video-o3 组合后除了证据冲突还会引入什么结构性问题？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测通过） A：「查询即答」和「多轮探索后才答」在响应时机上逻辑冲突，需要新的统一调度决定何时秒答、何时探索；这和 VideoChat3 加 VST 组合时的问题是同一个。证据冲突（文本笔记与局部裁剪片段互相排斥时采信谁）是第二层问题。 Q（待讨论，2026-09-09 本专题新提）：VST 的流式注意力掩码与 Video-o3 的 TDAM 都是训练期掩码，它们解决的是同一类问题吗？ A：库内只能对照，不能下结论。两页各自的事实：VST 的掩码让训练可见性照推理来（视觉只看最近 L 个、文本全可见），同时堵住未来信息泄露与训练-推理分布漂移；TDAM 是分工掩码，调工具时禁看局部裁剪、答题时禁看全局视频，只对 10% 数据施加，防注意力分散与 Fake Thinking。可对照的差别是：前者把「能看到什么」钉在推理架构上，后者把「该看什么」钉在任务阶段上。是否能归纳成一条共同原理，等复测时讨论。"
       },
       {
         "h": "全文问答 · Q：VST 和 Video-o3 的推理时机分别放在哪里？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测首答焊死）",
@@ -2366,7 +2390,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？（VST 页 2026-08-17 首验 Q3）",
         "a": "notes/syntheses/video-understanding.html#qa-video-compress-vs-memory",
-        "t": "Q：VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？（VST 页 2026-08-17 首验 Q3） 不是。VideoChat3 在视觉编码器里压 token、用状态机决定看多少像素，管的是感知效率；VST 用文本记录前序片段、把推理挪到查询前，管的是认知时机。用户当时的原话：VST 用文本记录流式输入的前序片段信息汇总回答，VideoChat 通过压缩视频帧 token 记更多上下文，两者可以同时进行。组合后的真实问题是 VideoChat3 的状态 token 与 VST 的「查询即答」在响应时机上要统一调度，双轨记忆冲突时要决定信谁。"
+        "t": "Q：VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？（VST 页 2026-08-17 首验 Q3） 不是。VideoChat3 在视觉编码器里压 token、用状态机决定看多少像素，管的是感知效率；VST 用文本记录前序片段、把推理挪到查询前，管的是认知时机。用户当时的原话（ VST 我的复述 ）：「VST 用文本记录流式输入的前序所有片段+前序少数视频帧信息汇总合成回答，而 VideoChat 通过压缩视频帧的token数记更多上下文。两者可以同时进行。」组合后的真实问题是 VideoChat3 的状态 token 与 VST 的「查询即答」在响应时机上要统一调度，双轨记忆冲突时要决定信谁。"
       },
       {
         "h": "全文问答 · Q：VST 与 Video-o3 组合后除了证据冲突还会引入什么结构性问题？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测通过）",

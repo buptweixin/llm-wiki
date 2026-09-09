@@ -7,6 +7,8 @@
  *   S4-c：来源笔记依据段落文字改动 → 依据指纹失配，拒绝并给出新指纹。
  *   S4-d：导读页删掉一个主线成员的 #paper-* 锚点 → 拒绝。
  *   S4-e：专题 front-matter 列入一篇不属于该专题的论文为主线成员 → 拒绝。
+ *   S4-f：只改 Markdown 真源段落、派生 HTML 不变 → 依据指纹失配，拒绝。
+ *   S4-g：改关系记录证据状态但派生 HTML 没跟随 → 投影不一致，拒绝。
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -122,6 +124,17 @@ try {
     md => md.replace("members: [2026-u-opsd, 2026-s2vopd, 2026-open-mopd]", "members: [2026-u-opsd, 2026-s2vopd, 2026-open-mopd, 2017-ppo]"),
     ["distillation", "2017-ppo", "reinforcement-learning"]);
 
+  // S4-f 只改 Markdown 真源段落、HTML 不变 → 指纹失配
+  breakAndRestore("S4-f", "wiki/papers/2026-s2vopd.md",
+    md => md.replace("待 DistiLLM 系列入库时验证", "待 DistiLLM 系列入库时再验证"),
+    ["distillation", "rel-distill-recoverability", "依据指纹失配"]);
+
+  // S4-g 改关系记录状态但导向页投影不跟随 → 投影不一致
+  breakAndRestore("S4-g", "wiki/syntheses/distillation.md",
+    md => md.replace("rel-distill-self-asymmetry-in-multi | 2026-s2vopd | possible-combination | 2026-open-mopd | 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） | hypothesis |",
+                     "rel-distill-self-asymmetry-in-multi | 2026-s2vopd | possible-combination | 2026-open-mopd | 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） | synthesis |"),
+    ["distillation", "rel-distill-self-asymmetry-in-multi", "证据状态投影与真源不一致"]);
+
   const restoredSummary = summary();
   assert(restoredSummary.pages === initial.pages && restoredSummary.entries === initial.entries && restoredSummary.datasetS2 === 1,
     `复原后索引不完整：${JSON.stringify(restoredSummary)}`);
@@ -131,7 +144,7 @@ try {
   assert(restoredFirst === indexText(), "复原后的连续两次重建不一致");
   assert(restoredFirst === baseline, "复原后索引与基线不一致");
 
-  console.log(`PASS S4-a~e: 五种破坏均拒绝且索引不变；复原后 ${initial.pages} 页 / ${initial.entries} 条、Dataset-S2 恢复、连续两次一致`);
+  console.log(`PASS S4-a~g: 七种破坏均拒绝且索引不变；复原后 ${initial.pages} 页 / ${initial.entries} 条、Dataset-S2 恢复、连续两次一致`);
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 }

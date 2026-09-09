@@ -26,14 +26,14 @@
         <p class="cover-eyebrow">TOPIC · 专题导读</p>
         <h1>蒸馏与训练预算</h1>
         <p class="cover-full">教师凭什么能教，多个教师又该怎样分配训练预算？</p>
-        <p class="cover-essence">on-policy 蒸馏的学习信号只能从「教师知道、学生不知道」的信息差里长出来。这组论文分别回答两件事：单个教师的信息差从哪里来（给教师加信息，还是从学生减信息），以及多个教师同时教时训练预算怎样才不会分错。</p>
+        <p class="cover-essence">前两篇在自蒸馏里构造师生信息差（U-OPSD 给教师加一条自投票轨迹，S²VOPD 从学生减清晰像素），第三篇回答多个教师同时教时训练预算怎么分（Open-MOPD 证伪教师冲突、定位三层预算错配）。</p>
         <dl class="cover-meta">
           <dt>主线</dt><dd>3 篇：<a href="../papers/2026-u-opsd.html">U-OPSD</a> · <a href="../papers/2026-s2vopd.html">S²VOPD</a> · <a href="../papers/2026-open-mopd.html">Open-MOPD</a></dd>
           <dt>跨专题</dt><dd>1 篇：<a href="../papers/2017-ppo.html">PPO</a>（理解 Open-MOPD 机制三的前置，主归属仍是强化学习与对齐）</dd>
           <dt>更新</dt><dd>2026-09-09</dd>
           <dt>状态</dt><dd>由三篇已复测通过的论文页整理；专题级组织（阅读顺序、地图分叉）待首测</dd>
         </dl>
-        <p class="takeaway">信号只从信息差里长出来：U-OPSD 给教师加一条自投票出的完整轨迹，S²VOPD 从学生减掉清晰像素，Open-MOPD 则证明多教师掉分先怪预算错配、不怪教师冲突。</p>
+        <p class="takeaway">信号只在自蒸馏里需要靠信息差制造：U-OPSD 给教师加一条自投票出的完整轨迹，S²VOPD 从学生减掉清晰像素，Open-MOPD 则是不同域专家教师之间的预算分账问题，不靠额外输入制造差异。</p>
         <div class="tagrow"><span class="tag">on-policy 蒸馏</span><span class="tag">自蒸馏</span><span class="tag">多教师蒸馏</span><span class="tag">训练预算</span><span class="tag">减少外部监督</span><span class="tag">提高训练预算利用率</span></div>
       </div>
     </section>
@@ -41,7 +41,7 @@
     <section class="slide" id="slide-2" data-section="map">
       <div class="slide-inner">
         <div class="slide-head"><h2>问题与方法地图</h2><span class="slide-no">02</span></div>
-        <p>专题分成两个子问题。左侧「信息差从哪来」由同一作者线的两篇在文本域与视觉域各给一个答案，右侧「预算怎么分」由 Open-MOPD 单独回答。PPO 以虚线连到 Open-MOPD，只表示理解前置，不表示论文继承。</p>
+        <p>专题分成两个子问题。左侧「信息差从哪来」只针对自蒸馏设置（师生共享参数时必须靠额外信息差制造学习信号，否则分布相同、KL 为零）；Open-MOPD 的教师是不同域专家，不靠额外输入制造差异，属右侧的预算分账。PPO 以虚线连到 Open-MOPD，只表示理解前置，不表示论文继承。</p>
         <figure class="hub-fig">
           <!-- hub-diagram:distillation-map -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" class="hub-svg" role="group" aria-labelledby="hub-map-title hub-map-desc">
@@ -303,9 +303,10 @@
             <div class="link-item hub-record" id="rel-distill-asymmetry-source"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-u-opsd.html">U-OPSD</a> ↔ <a href="../papers/2026-s2vopd.html">S²VOPD</a>：同一作者线在两个域给出单教师信息差的两种构造，给教师加信息（伪解轨迹拼进教师上下文）vs 从学生减信息（输入图退化）。<a class="compare-ref" href="../notes/papers/2026-u-opsd.html#relations">依据</a></span></div>
             <div class="link-item hub-record" id="rel-distill-divergence-fact"><span class="link-rel">tension · <span class="evidence is-reported">原文报告</span></span><span><a href="../papers/2026-u-opsd.html">U-OPSD</a> ↔ <a href="../papers/2026-s2vopd.html">S²VOPD</a>：散度消融排序颠倒是两篇各自报告的实验事实，两组实验条件不同，不能说一篇推翻另一篇。<a class="compare-ref" href="../notes/papers/2026-u-opsd.html#qa-fwd-kl">依据 1</a> <a class="compare-ref" href="../notes/papers/2026-s2vopd.html#qa-divergence">依据 2</a></span></div>
             <div class="link-item hub-record" id="rel-distill-recoverability"><span class="link-rel">compare · <span class="evidence is-hypothesis">待验证假说</span></span><span><a href="../papers/2026-u-opsd.html">U-OPSD</a> ↔ <a href="../papers/2026-s2vopd.html">S²VOPD</a>：「教师多出的信息学生能否恢复」统一解释两篇散度分歧；库内假说，不是任一原文结论。<a class="compare-ref" href="../notes/papers/2026-s2vopd.html#open">假说声明</a></span></div>
-            <div class="link-item hub-record" id="rel-distill-orthogonal-slices"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-u-opsd.html">U-OPSD</a> ↔ <a href="../papers/2026-open-mopd.html">Open-MOPD</a>：单教师信号从哪来与多教师预算怎么分账是正交切片；组合方案在两页关联节中均成立，但库内未做实验。<a class="compare-ref" href="../notes/papers/2026-open-mopd.html#relations">依据</a></span></div>
+            <div class="link-item hub-record" id="rel-distill-orthogonal-slices"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-u-opsd.html">U-OPSD</a> ↔ <a href="../papers/2026-open-mopd.html">Open-MOPD</a>：单教师信号从哪来与多教师预算怎么分账是正交切片，机制互不依赖。<a class="compare-ref" href="../notes/papers/2026-open-mopd.html#relations">依据</a></span></div>
+            <div class="link-item hub-record" id="rel-distill-combine-self-teachers"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><span><a href="../papers/2026-u-opsd.html">U-OPSD</a> ↔ <a href="../papers/2026-open-mopd.html">Open-MOPD</a>：组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页都说成立但只论证机制正交，未验证门控改变 token 份额。<a class="compare-ref" href="../notes/papers/2026-u-opsd.html#relations">依据</a></span></div>
             <div class="link-item hub-record" id="rel-distill-divergence-slot"><span class="link-rel">compare · <span class="evidence is-reported">原文报告</span></span><span><a href="../papers/2026-u-opsd.html">U-OPSD</a> ↔ <a href="../papers/2026-open-mopd.html">Open-MOPD</a>：散度的角色不同，一个直接当损失，一个只是 PPO 的奖励信号；同方向不同框架，不矛盾。<a class="compare-ref" href="../notes/papers/2026-u-opsd.html#relations">依据</a></span></div>
-            <div class="link-item hub-record" id="rel-distill-self-asymmetry-in-multi"><span class="link-rel">possible-combination · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-s2vopd.html">S²VOPD</a> ↔ <a href="../papers/2026-open-mopd.html">Open-MOPD</a>：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权）；组合设想，库内无实验。<a class="compare-ref" href="../notes/papers/2026-s2vopd.html#relations">依据</a></span></div>
+            <div class="link-item hub-record" id="rel-distill-self-asymmetry-in-multi"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><span><a href="../papers/2026-s2vopd.html">S²VOPD</a> ↔ <a href="../papers/2026-open-mopd.html">Open-MOPD</a>：组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权）。<a class="compare-ref" href="../notes/papers/2026-s2vopd.html#relations">依据</a></span></div>
             <div class="link-item hub-record" id="rel-distill-ppo-prerequisite"><span class="link-rel">prerequisite · <span class="evidence is-reported">原文报告</span></span><span><a href="../papers/2017-ppo.html">PPO</a> → <a href="../papers/2026-open-mopd.html">Open-MOPD</a>：机制三 reward refresh 的底层载体是 PPO 的重要性比率与 clip；K 次复用同一批 rollout 时若沿用旧 reward，75.8% 的 token 预算被 clip 冻结。<a class="compare-ref" href="../notes/papers/2026-open-mopd.html#qa-reward-refresh">依据</a></span></div>
           </div>
           <div class="link-group">
