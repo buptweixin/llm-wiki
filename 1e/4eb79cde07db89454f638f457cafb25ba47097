@@ -1,0 +1,19 @@
+docs/specs/site-topic-hubs.md
+  s_6ee912a2239e44::t_20f7456ea0ec7f 1-247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1e4eb79cde07db89454f638f457cafb25ba47097",
+  "prompts": {},
+  "sessions": {
+    "s_6ee912a2239e44": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08512-afb2-7171-a188-f5070ec43fd4",
+        "model": "unknown"
+      },
+      "human_author": "buptweixin <weixin.bupt.ml@gmail.com>"
+    }
+  }
+}
