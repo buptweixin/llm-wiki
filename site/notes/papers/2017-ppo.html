@@ -244,10 +244,21 @@
         </div></div>
 
       <div class="qa" id="qa-on-policy-reuse">
-        <p class="qa-q">Q：既然可以在同一批数据上跑多个 Epoch，为什么说 PPO 依然是严格的 on-policy 算法？</p>
+        <p class="qa-q">Q：既然可以在同一批数据上跑多个 Epoch，为什么说 PPO 依然是严格的 on-policy 算法？为什么不能丢进 Replay Buffer 长期复用？</p>
         <div class="qa-a">
           <p>PPO 能够多轮复用同一批数据，靠的是<strong>重要性采样比率 $r_t(\theta)$ 对小幅度策略偏移的纠偏</strong>，以及 <strong>Clip 对过冲梯度的硬性截断</strong>。但这套机制只在当前策略的近端邻域内有效。</p>
-          <p>一旦策略更新了几个 Epoch，新策略与采集该数据的策略分布差距过大，重要性采样的方差就会呈指数级爆炸，且绝大多数样本的比率都会超出 $[1-\epsilon, 1+\epsilon]$，导致有效梯度清零。因此，这批数据在跑完设定的几个 Epoch 后必须彻底丢弃并重新与环境交互采矿，它绝不能像 DQN/SAC 那样放入 Replay Buffer 循环复用数百个时刻前的陈旧数据。</p>
+          <p>如果将陈旧历史数据塞入类似 DQN 的 Replay Buffer 长期复用，会导致两大致命后果：</p>
+          <ol>
+            <li><strong>重要性采样方差指数爆炸</strong>：新旧策略分布严重脱节，概率比 $r_t(\theta)$ 极端分化（趋近 0 或膨胀到数万），理论无偏估计彻底失效；</li>
+            <li><strong>有效梯度几乎全灭（算力彻底空转）</strong>：
+              <ul>
+                <li><strong>旧好动作（$\hat{A}_t > 0$）</strong>：新策略变聪明了，该动作发生概率自然被拉高（$r_t > 1+\epsilon$），触发 Clip 上限截断，常数项导数归零；</li>
+                <li><strong>旧坏动作（$\hat{A}_t < 0$）</strong>：新策略学会了规避，该动作发生概率自然被大幅压低（$r_t < 1-\epsilon$）。此时带入公式取 $\min$，选中的依然是固定常数裁剪项 $(1-\epsilon)\hat{A}_t$，导数同样直接归零！</li>
+              </ul>
+              也就是说，只有在新策略发生逆向倒退（把好动作概率弄丢、或把坏动作概率拉高）的极少数违背常态的样本上才有纠偏梯度。绝大多数旧样本的梯度全部锁死在常数边界变成了 0，网络空转却学不到任何东西。
+            </li>
+          </ol>
+          <p>因此，这批数据在跑完设定的几个 Epoch（吃口热乎的）后必须彻底丢弃并重新与环境交互采矿，绝不能循环复用陈旧历史。</p>
         </div></div>
 
       <div class="qa" id="qa-bipedal-metrics">

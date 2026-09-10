@@ -187,8 +187,8 @@
             <div class="qa-a"><p>若只有裁剪项，当动作很差（A &lt; 0）且新策略错误地把概率激增（如 r = 2.0）时，比率被截断在 1+ε = 1.2。这会导致惩罚从真实的 -2.0|A| 缩小为 -1.2|A|，且比率落在常数边界导致导数直接归零，优化器彻底丧失纠偏负梯度！外层 min 锁死未裁剪的更低值，输出巨大纠偏负梯度拉回策略。</p></div>
           </div>
           <div class="qa" id="qa-on-policy-reuse">
-            <p class="qa-q">既然同一批数据能跑多个 Epoch，为什么 PPO 依然是严格的 on-policy 算法？</p>
-            <div class="qa-a"><p>PPO 复用数据依赖重要性采样比率与 Clip 截断，但这套机制只在当前策略的近端邻域有效。一旦策略经过几个 Epoch 的微小漂移，新旧策略分布脱节，重要性采样方差爆炸且绝大部分样本被 clip 清零梯度。数据跑完几个 Epoch 必须全盘丢弃重新交互，绝不能像 SAC 那样放入 Replay Buffer 循环复用陈旧历史。</p></div>
+            <p class="qa-q">既然同一批数据能跑多个 Epoch，为什么 PPO 依然是严格的 on-policy 算法？不能加 Replay Buffer？</p>
+            <div class="qa-a"><p>PPO 仅在近端邻域有效。若将陈旧数据放入 Replay Buffer 长期复用，新旧分布脱节导致方差爆炸，更致命的是有效梯度几乎全灭（算力彻底空转）：新策略学好后，旧好动作概率被拉高（r &gt; 1+ε）触发上限截断、旧坏动作概率被压低（r &lt; 1-ε）带入 min 依然选中固定常数裁剪项，两者的常数导数全部归零！数据跑完几个 Epoch 必须全盘丢弃重新交互，绝不能循环复用陈旧历史。</p></div>
           </div>
           <div class="qa" id="qa-bipedal-metrics">
             <p class="qa-q">在连续控制中，Clip Fraction 飙升到 0.27、KL 散度到 0.065 伴随奖励跳水，该如何调参排查？</p>

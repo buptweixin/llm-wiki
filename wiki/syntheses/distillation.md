@@ -71,7 +71,7 @@ flowchart TB
 | rel-distill-combine-self-teachers | 2026-u-opsd | possible-combination | 2026-open-mopd | 组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节都说成立，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额 | hypothesis | notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations | 2d777e3b |
 | rel-distill-divergence-slot | 2026-u-opsd | compare | 2026-open-mopd | 散度的角色不同：U-OPSD 的 forward KL 直接当损失（reverse 方向直接优化会塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 clip 兜底）；同方向不同框架，不矛盾 | reported | notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations | 2d777e3b |
 | rel-distill-self-asymmetry-in-multi | 2026-s2vopd | possible-combination | 2026-open-mopd | 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） | hypothesis | notes/papers/2026-s2vopd.html#relations | 631ca39c |
-| rel-distill-ppo-prerequisite | 2017-ppo | prerequisite | 2026-open-mopd | Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，75.8% 的 token 预算被冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob | reported | notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse | 98dace7f |
+| rel-distill-ppo-prerequisite | 2017-ppo | prerequisite | 2026-open-mopd | Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，75.8% 的 token 预算被冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob | reported | notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse | 674f0bc7 |
 
 ## 分叉与演进
 

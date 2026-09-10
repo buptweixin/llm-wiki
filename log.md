@@ -376,3 +376,10 @@
 - R3 依据指纹从「只看完整笔记 HTML」改为「Markdown 真源段落 + 完整笔记投影段落」联合指纹；只改派生 HTML 不改真源的漂移更新、只改 Markdown 不改 HTML 的过期投影均会被拦下。R4 生成器增加关系记录投影一致性校验：导向页与完整笔记的证据状态必须与真源逐字段一致，改了真源没改派生 HTML 的漂移更新直接拒绝生成。
 - 回归样例扩到 S4-a~g（新增 S4-f 只改 Markdown / S4-g 关系状态漂移）；静态检查与回归全绿（7 样例 PASS）。
 - 已更新：wiki/syntheses/{distillation,video-understanding}.md（真源）、site/topics/ + site/notes/syntheses/ 对应 HTML（派生层）、scripts/{build-wiki-index,check-site,check-site-regressions}.mjs、wiki-index.js。资源版本不变（20260909-1）。
+
+## [2026-09-10] review | PPO
+
+- 首次复测通过：痛点（单步过激摧毁策略/悬崖效应 vs TRPO 求解昂贵）与「自行车机械限位器」直觉首答精准。
+- 关键机制深化：问题 1 外层 min 悲观下界直击要害，并点出常数边界导数归零的致命细节；问题 2（不能加 Replay Buffer）遗忘后经深入推导彻底理清——在模型能力提升后，历史 buffer 中的好动作（r > 1+ε）与变好后压低的坏动作（r < 1-ε 取 min 仍落入常数项）其梯度均归零，导致算力彻底空转；问题 3 纠偏明确 Approximate KL 是体温计而非目标超参，刹车首选降 lr 或收窄 ε。
+- 派生层与全库同步：wiki/papers/2017-ppo.md 与速览/完整笔记更新卡壳问答；蒸馏专题关系记录 rel-distill-ppo-prerequisite 依据指纹更新为 674f0bc7；重建 wiki-index.js（12 页，291 条）；check-site 与 check-site-regressions 全绿。下次复测排入 +1 周（2026-09-17）。
+
