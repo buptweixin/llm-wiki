@@ -36,6 +36,7 @@
 | `parallel-decoding` | 并行解码 | block decoding、并行框解码 |
 | `grounding` | 视觉定位 | VLM grounding |
 | `tool-use` | 工具调用 | native interleaving |
+| `temporal-sampling` | 时序采样 | temporal sampling、keyframe selection |
 | `policy-gradient` | 策略梯度 | Policy Gradient、策略优化 |
 | `clipped-surrogate` | 裁剪代理目标 | PPO-Clip、clipping objective、近端策略优化 |
 | `continuous-control` | 连续控制 | 连续动作空间、高斯策略、机器人控制 |

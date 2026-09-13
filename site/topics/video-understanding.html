@@ -26,15 +26,15 @@
         <p class="cover-eyebrow">TOPIC · 专题导读</p>
         <h1>视频理解与响应</h1>
         <p class="cover-full">看多少、何时想、怎样找证据？</p>
-        <p class="cover-essence">长视频与流式视频的三个瓶颈被三篇论文分头处理：进入 LLM 的视觉 token 太多（感知成本）、深度推理与实时响应冲突（思考时机）、稀疏关键证据被均匀采样淹没（证据获取）。三条分支不是一个已验证的组合系统，也不代表三篇按顺序升级。</p>
+        <p class="cover-essence">长视频与流式视频的三个瓶颈被四篇论文分头处理：进入 LLM 的视觉 token 太多（感知成本）、深度推理与实时响应冲突（思考时机）、稀疏关键证据被均匀采样淹没（证据获取）。TSPO 和 Video-o3 是证据获取的两条不同路线，整个专题不是一个已验证的组合系统。</p>
         <dl class="cover-meta">
-          <dt>主线</dt><dd>3 篇：<a href="../papers/2026-videochat3.html">VideoChat3</a> · <a href="../papers/2026-vst.html">VST</a> · <a href="../papers/2026-video-o3.html">Video-o3</a></dd>
+          <dt>主线</dt><dd>4 篇：<a href="../papers/2026-videochat3.html">VideoChat3</a> · <a href="../papers/2026-vst.html">VST</a> · <a href="../papers/2026-tspo.html">TSPO</a> · <a href="../papers/2026-video-o3.html">Video-o3</a></dd>
           <dt>跨专题</dt><dd>1 篇：<a href="../papers/2026-genlip.html">GenLIP</a>（回答 VideoChat3 用的 ViT 怎么预训练，主归属仍是视觉编码器）</dd>
-          <dt>更新</dt><dd>2026-09-09</dd>
-          <dt>状态</dt><dd>由三篇已复测通过的论文页整理；专题级组织（问题分解、阅读顺序）待首测</dd>
+          <dt>更新</dt><dd>2026-09-14</dd>
+          <dt>状态</dt><dd>由四篇已通过首轮费曼检验的论文页整理；专题级组织已完成一次复测</dd>
         </dl>
-        <p class="takeaway">三篇各管一笔账：VideoChat3 决定看多少像素，VST 决定何时想，Video-o3 决定去哪里找证据；它们对「何时响应」各有机制，组合时首先要调和的就是响应时机。</p>
-        <div class="tagrow"><span class="tag">视频 MLLM</span><span class="tag">token 压缩</span><span class="tag">流式推理</span><span class="tag">文本记忆</span><span class="tag">CoT 推理</span><span class="tag">工具调用</span><span class="tag">提高推理效率</span><span class="tag">降低响应延迟</span><span class="tag">提高推理深度</span></div>
+        <p class="takeaway">四篇各管一笔账：VideoChat3 决定看多少像素，VST 决定何时想，TSPO 与 Video-o3 分别用一次性选帧和查询后多轮搜索获取证据；组合时首先要调和响应时机、候选预算与控制流。</p>
+        <div class="tagrow"><span class="tag">视频 MLLM</span><span class="tag">token 压缩</span><span class="tag">流式推理</span><span class="tag">文本记忆</span><span class="tag">CoT 推理</span><span class="tag">工具调用</span><span class="tag">时序采样</span><span class="tag">GRPO</span><span class="tag">提高推理效率</span><span class="tag">降低响应延迟</span><span class="tag">提高定位精度</span><span class="tag">减少外部监督</span></div>
       </div>
     </section>
 
@@ -44,64 +44,25 @@
         <p>专题分成三个并列子问题，每篇处理一个。连线「对应方法」表示「这篇处理此问题」，不表示先后或继承。</p>
         <figure class="hub-fig">
           <!-- hub-diagram:video-understanding-map -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" class="hub-svg" role="group" aria-labelledby="hub-map-title hub-map-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" class="hub-svg" role="group" aria-labelledby="hub-map-title hub-map-desc">
   <title id="hub-map-title">视频理解与响应：问题与方法地图</title>
-  <desc id="hub-map-desc">专题分成三个并列子问题：感知成本（VideoChat3 在编码器内压缩并自适应分辨率）、思考时机（VST 查询前边看边想写入 FIFO 文本记忆）、证据获取（Video-o3 在共享上下文内多轮裁剪找线索并作答）。三条分支不是已验证的组合系统，也不表示先后。</desc>
-  <defs>
-    <marker id="hs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M0 0 L10 5 L0 10 z" class="hs-arrow"/>
-    </marker>
-  </defs>
-
-  <path class="hs-edge" d="M420 78 V112 H170 V148" marker-end="url(#hs-arrow)"/>
-  <text class="hs-edge-label" x="295" y="105" text-anchor="middle">问题分解</text>
-  <path class="hs-edge" d="M500 78 V148" marker-end="url(#hs-arrow)"/>
-  <text class="hs-edge-label" x="510" y="118">问题分解</text>
-  <path class="hs-edge" d="M580 78 V112 H830 V148" marker-end="url(#hs-arrow)"/>
-  <text class="hs-edge-label" x="705" y="105" text-anchor="middle">问题分解</text>
-
-  <path class="hs-edge hs-edge-hi" d="M170 206 V298" marker-end="url(#hs-arrow)"/>
-  <text class="hs-edge-label" x="180" y="256">对应方法</text>
-  <path class="hs-edge hs-edge-hi" d="M500 206 V298" marker-end="url(#hs-arrow)"/>
-  <text class="hs-edge-label" x="510" y="256">对应方法</text>
-  <path class="hs-edge hs-edge-hi" d="M830 206 V298" marker-end="url(#hs-arrow)"/>
-  <text class="hs-edge-label" x="840" y="256">对应方法</text>
-
-  <g class="hs-group">
-    <rect class="hs-node hs-node-root" x="340" y="20" width="320" height="58"/>
-    <text class="hs-title" x="500" y="44" text-anchor="middle">视频理解</text>
-    <text class="hs-sub" x="500" y="63" text-anchor="middle">感知、思考与证据获取</text>
-  </g>
-  <g class="hs-group">
-    <rect class="hs-node hs-node-q" x="20" y="148" width="300" height="58"/>
-    <text class="hs-title" x="170" y="172" text-anchor="middle">感知成本</text>
-    <text class="hs-sub" x="170" y="191" text-anchor="middle">减少进入 LLM 的视觉 token</text>
-  </g>
-  <g class="hs-group">
-    <rect class="hs-node hs-node-q" x="350" y="148" width="300" height="58"/>
-    <text class="hs-title" x="500" y="172" text-anchor="middle">思考时机</text>
-    <text class="hs-sub" x="500" y="191" text-anchor="middle">查询前积累文本记忆</text>
-  </g>
-  <g class="hs-group">
-    <rect class="hs-node hs-node-q" x="680" y="148" width="300" height="58"/>
-    <text class="hs-title" x="830" y="172" text-anchor="middle">证据获取</text>
-    <text class="hs-sub" x="830" y="191" text-anchor="middle">围绕问题主动裁剪细看</text>
-  </g>
-  <a href="#paper-2026-videochat3" class="hs-link">
-    <rect class="hs-node hs-node-paper" x="20" y="298" width="300" height="66"/>
-    <text class="hs-title" x="170" y="324" text-anchor="middle">VideoChat3</text>
-    <text class="hs-sub" x="170" y="345" text-anchor="middle">编码器内压缩与自适应分辨率</text>
-  </a>
-  <a href="#paper-2026-vst" class="hs-link">
-    <rect class="hs-node hs-node-paper" x="350" y="298" width="300" height="66"/>
-    <text class="hs-title" x="500" y="324" text-anchor="middle">VST</text>
-    <text class="hs-sub" x="500" y="345" text-anchor="middle">边看边想与 FIFO 文本记忆</text>
-  </a>
-  <a href="#paper-2026-video-o3" class="hs-link">
-    <rect class="hs-node hs-node-paper" x="680" y="298" width="300" height="66"/>
-    <text class="hs-title" x="830" y="324" text-anchor="middle">Video-o3</text>
-    <text class="hs-sub" x="830" y="345" text-anchor="middle">共享上下文内找线索并作答</text>
-  </a>
+  <desc id="hub-map-desc">专题分成三个并列子问题：感知成本（VideoChat3 在编码器内压缩并自适应分辨率）、思考时机（VST 查询前边看边想写入 FIFO 文本记忆）、证据获取（TSPO 训练 temporal agent 选择 query 相关帧，Video-o3 查询后在共享上下文内多轮裁剪找线索并作答）。三条分支不是已验证的组合系统，也不表示先后。</desc>
+  <defs><marker id="hs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hs-arrow"/></marker></defs>
+  <path class="hs-edge" d="M420 78 V112 H170 V148" marker-end="url(#hs-arrow)"/><text class="hs-edge-label" x="295" y="105" text-anchor="middle">问题分解</text>
+  <path class="hs-edge" d="M500 78 V148" marker-end="url(#hs-arrow)"/><text class="hs-edge-label" x="510" y="118">问题分解</text>
+  <path class="hs-edge" d="M580 78 V112 H830 V148" marker-end="url(#hs-arrow)"/><text class="hs-edge-label" x="705" y="105" text-anchor="middle">问题分解</text>
+  <path class="hs-edge hs-edge-hi" d="M170 206 V298" marker-end="url(#hs-arrow)"/><text class="hs-edge-label" x="180" y="256">对应方法</text>
+  <path class="hs-edge hs-edge-hi" d="M500 206 V298" marker-end="url(#hs-arrow)"/><text class="hs-edge-label" x="510" y="256">对应方法</text>
+  <path class="hs-edge hs-edge-hi" d="M830 206 V298" marker-end="url(#hs-arrow)"/><text class="hs-edge-label" x="840" y="256">对应方法</text>
+  <path class="hs-edge hs-edge-hi" d="M830 206 V390" marker-end="url(#hs-arrow)"/><text class="hs-edge-label" x="850" y="350">另一条路线</text>
+  <g class="hs-group"><rect class="hs-node hs-node-root" x="340" y="20" width="320" height="58"/><text class="hs-title" x="500" y="44" text-anchor="middle">视频理解</text><text class="hs-sub" x="500" y="63" text-anchor="middle">感知、思考与证据获取</text></g>
+  <g class="hs-group"><rect class="hs-node hs-node-q" x="20" y="148" width="300" height="58"/><text class="hs-title" x="170" y="172" text-anchor="middle">感知成本</text><text class="hs-sub" x="170" y="191" text-anchor="middle">减少进入 LLM 的视觉 token</text></g>
+  <g class="hs-group"><rect class="hs-node hs-node-q" x="350" y="148" width="300" height="58"/><text class="hs-title" x="500" y="172" text-anchor="middle">思考时机</text><text class="hs-sub" x="500" y="191" text-anchor="middle">查询前积累文本记忆</text></g>
+  <g class="hs-group"><rect class="hs-node hs-node-q" x="680" y="148" width="300" height="58"/><text class="hs-title" x="830" y="172" text-anchor="middle">证据获取</text><text class="hs-sub" x="830" y="191" text-anchor="middle">围绕问题选择或裁剪细看</text></g>
+  <a href="#paper-2026-videochat3" class="hs-link"><rect class="hs-node hs-node-paper" x="20" y="298" width="300" height="66"/><text class="hs-title" x="170" y="324" text-anchor="middle">VideoChat3</text><text class="hs-sub" x="170" y="345" text-anchor="middle">编码器内压缩与自适应分辨率</text></a>
+  <a href="#paper-2026-vst" class="hs-link"><rect class="hs-node hs-node-paper" x="350" y="298" width="300" height="66"/><text class="hs-title" x="500" y="324" text-anchor="middle">VST</text><text class="hs-sub" x="500" y="345" text-anchor="middle">边看边想与 FIFO 文本记忆</text></a>
+  <a href="#paper-2026-video-o3" class="hs-link"><rect class="hs-node hs-node-paper" x="680" y="298" width="300" height="66"/><text class="hs-title" x="830" y="324" text-anchor="middle">Video-o3</text><text class="hs-sub" x="830" y="345" text-anchor="middle">共享上下文内找线索并作答</text></a>
+  <a href="#paper-2026-tspo" class="hs-link"><rect class="hs-node hs-node-paper" x="680" y="390" width="300" height="66"/><text class="hs-title" x="830" y="416" text-anchor="middle">TSPO</text><text class="hs-sub" x="830" y="437" text-anchor="middle">训练 temporal agent 选择关键帧</text></a>
 </svg>
 <!-- /hub-diagram -->
           <figcaption class="fig-note">图注：连线「问题分解」是库内组织方式，「对应方法」来自各论文自述。点击论文节点跳到下方对应阅读块；放大查看 <a href="../assets/diagrams/video-understanding-map.svg">独立图文件</a>。</figcaption>
@@ -115,6 +76,7 @@
             <tr><td>感知成本 → VideoChat3</td><td>I3D-ViT 在编码器里做 16× 时空压缩，状态 token 兼管响应时机与下一窗口像素预算</td><td><span class="evidence is-reported">原文报告</span></td></tr>
             <tr><td>思考时机 → VST</td><td>推理挪到 clip 之间的空档，写入 FIFO 文本记忆，查询时直接读笔记（0.56s）</td><td><span class="evidence is-reported">原文报告</span></td></tr>
             <tr><td>证据获取 → Video-o3</td><td>模型自己生成工具调用，多轮裁剪放大后在同一上下文里作答（上限 8 轮）</td><td><span class="evidence is-reported">原文报告</span></td></tr>
+            <tr><td>证据获取 → TSPO</td><td>temporal agent 根据 query 概率化选关键帧，答案奖励与目标片段比例共同训练选帧策略</td><td><span class="evidence is-reported">原文报告</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -148,62 +110,77 @@
               <dt>仍留下</dt><dd>8 轮与 32k 视觉上下文上限；只有 VideoCrop 一个工具；Fake Thinking 未根治。</dd>
             </dl>
           </article>
+          <article class="hub-evo-item">
+            <h3><a href="../papers/2026-tspo.html">TSPO</a></h3>
+            <dl>
+              <dt>原先瓶颈</dt><dd>均匀采样可能漏掉关键片段；帧级监督缺失，离散选帧不可直接反传。</dd>
+              <dt>本文改变</dt><dd>用事件感知 temporal agent 概率化选帧，把选帧和冻结 MLLM 回答作为联合策略，用 R_A 与 R_T 做组相对优化。</dd>
+              <dt>仍留下</dt><dd>依赖足够强的冻结 MLLM；1 FPS 候选之外的遗漏无法挽回；Video-MME 这类整体理解任务提升较小。</dd>
+            </dl>
+          </article>
         </div>
-        <p>方法继承：未核实三篇之间存在借鉴、替换或扩展关系，图中不画继承箭头；三条分支不是一个已验证的组合系统。</p>
+        <p>方法继承：未核实四篇之间存在借鉴、替换或扩展关系，图中不画继承箭头；三条分支不是一个已验证的组合系统。</p>
         <table class="dtable hub-timeline">
           <thead><tr><th>论文</th><th>首次公开</th><th>出处（arXiv 编号即首次提交年月）</th><th>入库（阅读顺序，不是时间线）</th></tr></thead>
           <tbody>
+            <tr><td>TSPO</td><td class="num">2025-08</td><td class="num">2508.04369</td><td class="num">2026-09-14</td></tr>
             <tr><td>Video-o3</td><td class="num">2026-01</td><td class="num">2601.23224</td><td class="num">2026-08-17</td></tr>
             <tr><td>VST</td><td class="num">2026-03</td><td class="num">2603.12262</td><td class="num">2026-08-17</td></tr>
             <tr><td>GenLIP（跨专题）</td><td class="num">2026-05</td><td class="num">2605.00809</td><td class="num">2026-08-17</td></tr>
             <tr><td>VideoChat3</td><td class="num">2026-07</td><td class="num">2607.14935</td><td class="num">2026-07-27</td></tr>
           </tbody>
         </table>
-        <p class="fig-note">注意：本页建议的学习顺序（VideoChat3 → VST → Video-o3）与公开顺序正好相反，学习顺序按「先重建成本直觉」排，不是时间线。</p>
+        <p class="fig-note">注意：本页建议的学习顺序为 VideoChat3 → VST → TSPO → Video-o3，按先重建成本直觉、再比较思考时机、最后比较证据获取排，不是时间线。</p>
       </div>
     </section>
 
     <section class="slide" id="slide-4" data-section="compare">
       <div class="slide-inner">
         <div class="slide-head"><h2>关键维度比较</h2><span class="slide-no">04</span></div>
-        <p>每格右下的「依据」落到对应论文页的完整笔记段落。VST 的在线因果约束（只能看到当前与过去）与 Video-o3 的裁剪访问条件（拿到问题后可回看任意区间）不同，两者的延迟数字不能直接比大小。</p>
+        <p>每格右下的「依据」落到对应论文页的完整笔记段落。VST 的在线因果约束、TSPO 的 1 FPS 候选限制与 Video-o3 的裁剪访问条件不同，三者的延迟数字不能直接比大小。</p>
         <table class="compare-table hub-compare">
-          <thead><tr><th>维度</th><th>VideoChat3</th><th>VST</th><th>Video-o3</th></tr></thead>
+          <thead><tr><th>维度</th><th>VideoChat3</th><th>VST</th><th>TSPO</th><th>Video-o3</th></tr></thead>
           <tbody>
             <tr>
               <td class="compare-dim">本页重点</td>
               <td data-col="VideoChat3"><p>感知压缩与流式响应控制。</p><a class="compare-ref" href="../notes/papers/2026-videochat3.html#intuition">依据</a></td>
               <td data-col="VST"><p>把思考分摊到播放期。</p><a class="compare-ref" href="../notes/papers/2026-vst.html#intuition">依据</a></td>
+              <td data-col="TSPO"><p>query-aware 关键帧选择。</p><a class="compare-ref" href="../notes/papers/2026-tspo.html#intuition">依据</a></td>
               <td data-col="Video-o3"><p>问题驱动的多轮证据获取。</p><a class="compare-ref" href="../notes/papers/2026-video-o3.html#intuition">依据</a></td>
             </tr>
             <tr>
               <td class="compare-dim">关键保留或使用的信息</td>
               <td data-col="VideoChat3"><p>压缩后的视频 token 与每窗口一个状态 token。</p><a class="compare-ref" href="../notes/papers/2026-videochat3.html#mechanism">依据</a></td>
               <td data-col="VST"><p>最近 L 个视觉 token 的短期缓冲，加固定容量的 FIFO 文本记忆。</p><a class="compare-ref" href="../notes/papers/2026-vst.html#mechanism">依据</a></td>
+              <td data-col="TSPO"><p>1 FPS 候选帧中按 query 选出的关键帧与冻结 MLLM 回答。</p><a class="compare-ref" href="../notes/papers/2026-tspo.html#mechanism">依据</a></td>
               <td data-col="Video-o3"><p>全局低分辨率视野、局部高分辨率裁剪与推理历史共享一个上下文。</p><a class="compare-ref" href="../notes/papers/2026-video-o3.html#mechanism">依据</a></td>
             </tr>
             <tr>
               <td class="compare-dim">推理发生在何时</td>
               <td data-col="VideoChat3"><p>每个时间窗口处理完即决定 Silence / Standby / Response。</p><a class="compare-ref" href="../notes/papers/2026-videochat3.html#mechanism">依据</a></td>
               <td data-col="VST"><p>查询前：每来一个 clip 就在空档里写想法，查询时直接读笔记。</p><a class="compare-ref" href="../notes/papers/2026-vst.html#mechanism">依据</a></td>
+              <td data-col="TSPO"><p>查询到达后先一次性选帧，再交给 MLLM 回答。</p><a class="compare-ref" href="../notes/papers/2026-tspo.html#mechanism">依据</a></td>
               <td data-col="Video-o3"><p>查询后：思考、调工具、拼回结果循环，证据够了再收网。</p><a class="compare-ref" href="../notes/papers/2026-video-o3.html#mechanism">依据</a></td>
             </tr>
             <tr>
               <td class="compare-dim">训练期的掩码在管什么</td>
               <td data-col="VideoChat3"><p>state-transition mask：切换点全保留、保持点均匀采样，防学成永远闭嘴或走捷径。</p><a class="compare-ref" href="../notes/papers/2026-videochat3.html#mechanism">依据</a></td>
               <td data-col="VST"><p>流式注意力掩码：视觉只看最近 L 个、文本全可见，既防泄露又防训练-推理漂移。</p><a class="compare-ref" href="../notes/papers/2026-vst.html#qa-mask">依据</a></td>
+              <td data-col="TSPO"><p>Gumbel 探索与组相对奖励；R_T 偏好目标片段内更集中的帧。</p><a class="compare-ref" href="../notes/papers/2026-tspo.html#mechanism">依据</a></td>
               <td data-col="Video-o3"><p>TDAM：调工具时禁看局部、答题时禁看全局，只对 10% 数据加，防注意力分散与 Fake Thinking。</p><a class="compare-ref" href="../notes/papers/2026-video-o3.html#mechanism">依据</a></td>
             </tr>
             <tr>
               <td class="compare-dim">最应记住的边界</td>
               <td data-col="VideoChat3"><p>感知压缩不等同于文本推理记忆；256 帧反而略慢。</p><a class="compare-ref" href="../notes/papers/2026-videochat3.html#evidence">依据</a></td>
               <td data-col="VST"><p>文本记忆有损；思考速度须适配流式节奏。</p><a class="compare-ref" href="../notes/papers/2026-vst.html#qa-fifo">依据</a></td>
+              <td data-col="TSPO"><p>依赖足够强的冻结 MLLM；Video-MME 只提升 1.1%。</p><a class="compare-ref" href="../notes/papers/2026-tspo.html#evidence">依据</a></td>
               <td data-col="Video-o3"><p>依赖视频裁剪工具；轮数与上下文有限。</p><a class="compare-ref" href="../notes/papers/2026-video-o3.html#evidence">依据</a></td>
             </tr>
             <tr>
               <td class="compare-dim">带着什么问题读</td>
               <td data-col="VideoChat3"><p>为什么压缩要尽早发生？</p><a class="compare-ref" href="../notes/papers/2026-videochat3.html#qa-where-compress">依据</a></td>
               <td data-col="VST"><p>为何低查询延迟不等于没有思考成本？</p><a class="compare-ref" href="../notes/papers/2026-vst.html#intuition">依据</a></td>
+              <td data-col="TSPO"><p>为什么答对不等于每帧都有用？R_T 补了什么？</p><a class="compare-ref" href="../notes/papers/2026-tspo.html#qa-signal">依据</a></td>
               <td data-col="Video-o3"><p>为何找到正确线索仍可能答错？</p><a class="compare-ref" href="../notes/papers/2026-video-o3.html#mechanism">依据</a></td>
             </tr>
           </tbody>
@@ -214,7 +191,7 @@
     <section class="slide" id="slide-5" data-section="path">
       <div class="slide-inner">
         <div class="slide-head"><h2>带着问题读论文</h2><span class="slide-no">05</span></div>
-        <p>建议顺序 VideoChat3 → VST → Video-o3：先重建「视觉 token 进 LLM 有多贵」的成本直觉，再比较「思考放在查询前还是查询后」，最后理解「为什么要主动去找证据」。这是学习路径，与公开顺序相反。</p>
+        <p>建议顺序 VideoChat3 → VST → TSPO → Video-o3：先重建「视觉 token 进 LLM 有多贵」的成本直觉，再比较「思考放在查询前还是查询后」，然后理解训练 selector 如何学会选帧，最后理解为什么还要在 test time 主动找证据。</p>
         <ol class="hub-path">
           <li class="hub-path-step" id="paper-2026-videochat3">
             <span class="hub-path-no">01</span>
@@ -234,8 +211,17 @@
               <p class="hub-path-links"><a href="../papers/2026-vst.html#pitfalls">卡壳点</a> · <a href="../notes/papers/2026-vst.html">完整笔记</a></p>
             </div>
           </li>
-          <li class="hub-path-step" id="paper-2026-video-o3">
+          <li class="hub-path-step" id="paper-2026-tspo">
             <span class="hub-path-no">03</span>
+            <div class="hub-path-body">
+              <h3><a href="../papers/2026-tspo.html">TSPO</a></h3>
+              <p class="hub-path-role">证据获取的训练路线：用答案正确率和目标片段比例训练 query-aware temporal agent 一次性选关键帧。</p>
+              <p class="hub-path-q">带着问题读：为什么答案正确率只是组级弱监督？R_T 如何区分同样答对但冗余不同的采样？</p>
+              <p class="hub-path-links"><a href="../papers/2026-tspo.html#pitfalls">卡壳点</a> · <a href="../notes/papers/2026-tspo.html">完整笔记</a></p>
+            </div>
+          </li>
+          <li class="hub-path-step" id="paper-2026-video-o3">
+            <span class="hub-path-no">04</span>
             <div class="hub-path-body">
               <h3><a href="../papers/2026-video-o3.html">Video-o3</a></h3>
               <p class="hub-path-role">证据获取：拿到问题后在共享上下文里多轮裁剪放大找线索。</p>
@@ -272,6 +258,10 @@
             <p class="qa-q">VST 与 Video-o3 组合后除了证据冲突还会引入什么结构性问题？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测通过）</p>
             <div class="qa-a"><p>「查询即答」和「多轮探索后才答」在响应时机上逻辑冲突，需要新的统一调度决定何时秒答、何时探索；这和 VideoChat3 加 VST 组合时的问题是同一个。证据冲突（文本笔记与局部裁剪片段互相排斥时采信谁）是第二层问题。</p></div>
           </div>
+          <div class="qa" id="qa-video-tspo-signal">
+            <p class="qa-q">TSPO 中答对的一组帧是否意味着每一帧都真正有用？R_T 是 IoU 吗？（TSPO 页 2026-09-14 首测）</p>
+            <div class="qa-a"><p>不意味着。R_A 只说明整组帧足以让冻结 MLLM 答对，不能把功劳精确分给某一帧；R_T 用目标片段内选帧数除以总选帧数，偏好更集中的采样，更接近 precision，而不是完整 IoU。Video-MME 不是完全失效，只是整体理解问题较多，局部 query 定位优势较弱。</p></div>
+          </div>
           <div class="qa" id="qa-video-two-masks">
             <p class="qa-q">待讨论（2026-09-09 本专题新提）：VST 的流式注意力掩码与 Video-o3 的 TDAM 都是训练期掩码，它们解决的是同一类问题吗？</p>
             <div class="qa-a"><p><span class="evidence is-synthesis">库内对照</span> 库内只能对照，不能下结论。两页各自的事实：VST 的掩码让训练可见性照推理来（视觉只看最近 L 个、文本全可见），同时堵住未来信息泄露与训练-推理分布漂移；TDAM 是分工掩码，调工具时禁看局部裁剪、答题时禁看全局视频，只对 10% 数据施加，防注意力分散与 Fake Thinking。可对照的差别是：前者把「能看到什么」钉在推理架构上，后者把「该看什么」钉在任务阶段上。是否能归纳成一条共同原理，等复测时讨论。</p></div>
@@ -286,15 +276,16 @@
         <div class="link-groups">
           <div class="link-group">
             <h3>EVIDENCE</h3>
-            <div class="link-item"><span class="link-rel"><span class="evidence is-reported">原文报告</span></span><span>三篇的机制描述与数字（16× 压缩、2048 帧 20.4s vs 44.4s；StreamingBench 79.5%、QA 延迟 0.56s vs 8.8s；MLVU 72.1%、推理 10.2s、8 轮上限）均来自论文页「结果与代价」，可按比较表的依据链接回查。</span></div>
-            <div class="link-item"><span class="link-rel"><span class="evidence is-synthesis">库内对照</span></span><span>把三篇分成感知成本、思考时机、证据获取三个子问题，以及建议阅读顺序，都是本库的组织方式；三篇之间的「互补」「取舍」判断来自各自关联节，Video-o3 与 VST 组合的时机冲突是两页共同指出的。</span></div>
-            <div class="link-item"><span class="link-rel"><span class="evidence is-hypothesis">待验证 / 待讨论</span></span><span>两种训练期掩码是否同一类问题（本页新提，待讨论）；VideoChat3 状态 token 合并与拆分的利弊（论文未消融，论文页卡壳点已标「论文未讨论」）。</span></div>
+            <div class="link-item"><span class="link-rel"><span class="evidence is-reported">原文报告</span></span><span>四篇的机制描述与数字（16× 压缩、2048 帧 20.4s vs 44.4s；StreamingBench 79.5%、QA 延迟 0.56s vs 8.8s；TSPO 在 MLVU +6.0%、Video-MME +1.1%；Video-o3 MLVU 72.1%、推理 10.2s、8 轮上限）均来自论文页「结果与代价」，可按比较表的依据链接回查。</span></div>
+            <div class="link-item"><span class="link-rel"><span class="evidence is-synthesis">库内对照</span></span><span>把四篇分成感知成本、思考时机、证据获取三个子问题，以及建议阅读顺序，都是本库的组织方式；TSPO 与 Video-o3 的「一次性选帧 vs 查询后多轮搜索」是库内对照，不是论文声称的继承关系。</span></div>
+            <div class="link-item"><span class="link-rel"><span class="evidence is-hypothesis">待验证 / 待讨论</span></span><span>TSPO 与 Video-o3、VideoChat3 组合后的调度与预算是否可行；两种训练期掩码是否同一类问题（本页新提，待讨论）；VideoChat3 状态 token 合并与拆分的利弊（论文未消融，论文页卡壳点已标「论文未讨论」）。</span></div>
           </div>
           <div class="link-group">
             <h3>RELATION RECORDS</h3>
             <div class="link-item hub-record" id="rel-video-perception-vs-timing"><span class="link-rel">complement · <span class="evidence is-reported">原文报告</span></span><span><a href="../papers/2026-videochat3.html">VideoChat3</a> ↔ <a href="../papers/2026-vst.html">VST</a>：一个管感知效率（编码器压 token、状态机自适应分辨率），一个管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交。<a class="compare-ref" href="../notes/papers/2026-videochat3.html#relations">依据</a></span></div>
             <div class="link-item hub-record" id="rel-video-timing-before-vs-after"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-vst.html">VST</a> ↔ <a href="../papers/2026-video-o3.html">Video-o3</a>：推理时机不同，查询前边看边想、查询即答 0.56s vs 查询后多轮裁剪找线索、推理 10.2s；一个解决实时性，一个解决多跳精度。<a class="compare-ref" href="../notes/papers/2026-video-o3.html#qa-timing">依据</a></span></div>
             <div class="link-item hub-record" id="rel-video-how-much-vs-where"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-videochat3.html">VideoChat3</a> ↔ <a href="../papers/2026-video-o3.html">Video-o3</a>：编码器压缩与状态机决定看多少像素（感知效率），推理时工具调用决定看哪里（检索精度）。<a class="compare-ref" href="../notes/papers/2026-video-o3.html#relations">依据</a></span></div>
+            <div class="link-item hub-record" id="rel-video-tspo-vs-video-o3"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-tspo.html">TSPO</a> ↔ <a href="../papers/2026-video-o3.html">Video-o3</a>：两者都针对稀疏证据，但 TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活，延迟与适应性取舍不同。<a class="compare-ref" href="../notes/papers/2026-tspo.html#relations">依据</a></span></div>
             <div class="link-item hub-record" id="rel-video-combine-feasible"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><span><a href="../papers/2026-vst.html">VST</a> ↔ <a href="../papers/2026-video-o3.html">Video-o3</a>：组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度。<a class="combine-ref" href="../notes/papers/2026-video-o3.html#qa-combine">依据</a></span></div>
             <div class="link-item hub-record" id="rel-video-combine-timing-conflict"><span class="link-rel">tension · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-vst.html">VST</a> ↔ <a href="../papers/2026-video-o3.html">Video-o3</a>：组合的结构性障碍（两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题。<a class="compare-ref" href="../notes/papers/2026-video-o3.html#qa-combine">依据</a></span></div>
             <div class="link-item hub-record" id="rel-video-encoder-pretraining"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><span><a href="../papers/2026-genlip.html">GenLIP</a> → <a href="../papers/2026-videochat3.html">VideoChat3</a>：I3D-ViT 把图像 ViT 撑成 3D 处理视频，但没讨论这个 ViT 怎么预训练；GenLIP 回答这一层，训出的 ViT 可被 inflate 成 3D 使用。<a class="compare-ref" href="../notes/papers/2026-videochat3.html#relations">依据</a></span></div>
@@ -303,7 +294,7 @@
             <h3>SOURCE</h3>
             <div class="link-item"><span class="link-rel">完整专题笔记</span><span><a href="../notes/syntheses/video-understanding.html">notes/syntheses/video-understanding.html</a>（含关系记录规范表、依据指纹与 Mermaid 图稿）</span></div>
             <div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/syntheses/video-understanding.md">wiki/syntheses/video-understanding.md</a></span></div>
-            <div class="link-item"><span class="link-rel">成员原文</span><span>VideoChat3 <a href="zotero://select/items/E5RZINH5">Zotero</a>（入库 2026-07-27）· VST <a href="zotero://select/items/6XPHGT5T">Zotero</a>（2026-08-17）· Video-o3 <a href="zotero://select/items/FG746LWN">Zotero</a>（2026-08-17）· GenLIP <a href="zotero://select/items/EAKWJXT8">Zotero</a>（2026-08-17）</span></div>
+            <div class="link-item"><span class="link-rel">成员原文</span><span>VideoChat3 <a href="zotero://select/items/E5RZINH5">Zotero</a>（入库 2026-07-27）· VST <a href="zotero://select/items/6XPHGT5T">Zotero</a>（2026-08-17）· Video-o3 <a href="zotero://select/items/FG746LWN">Zotero</a>（2026-08-17）· TSPO <a href="zotero://select/items/QXMPGWGR">Zotero</a>（2026-09-14）· GenLIP <a href="zotero://select/items/EAKWJXT8">Zotero</a>（2026-08-17）</span></div>
           </div>
         </div>
       </div>

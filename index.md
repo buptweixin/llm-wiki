@@ -15,6 +15,7 @@ _暂无_
 - [GenLIP](wiki/papers/2026-genlip.md) — 让 ViT 直接「说话」：单个 Transformer + 自回归语言建模直接训视觉编码器从图像 token 预测文本 token（Prefix-LM Attention），不用对比学习也不用独立解码器；8B 样本超 SigLIP2（40B），Gated Attention 防 attention sink。
 - [LaSt-ViT](wiki/papers/2026-last-vit.md) — 揭示 ViT「偷懒」根因（懒惰聚合：全局注意力+粗粒度监督下靠背景 patch 当 CLS 载体），用频域稳定性评分逼 CLS 只从前景 patch 聚合；跨标签/文本/自监督三种范式，12 基准一致提升，Register 只治标。
 - [Video-o3](wiki/papers/2026-video-o3.md) — 像侦探破案一样看视频：模型在单一共享上下文里多轮「找线索→裁剪放大→连逻辑→出答案」，工具调用由模型自己生成（原生交错）；TDAM 防 Fake Thinking，VTGR 控上下文效率；MLVU 72.1%、Video-Holmes 46.5%。
+- [TSPO](wiki/papers/2026-tspo.md) — 用答案奖励反过来训练轻量 temporal agent 选择 query 相关关键帧；联合选帧与生成，结合答案正确率和目标片段定位奖励，长视频基准最高提升 6.0%。
 - [U-OPSD](wiki/papers/2026-u-opsd.md) — 首个完全无外部监督的 on-policy 自蒸馏：模型自己做 8 遍题，多数投票伪解当教师特权上下文，只在答错 rollout 上逐 token 前向 KL 蒸馏"看过答案的自己"——去掉 OPSD 最后一层 GT 解依赖，非思考模式反而超过有 GT 的 OPSD（+3.2%/+2.3%）。
 - [Open-MOPD](wiki/papers/2026-open-mopd.md) — 多专家蒸不进一个学生的病根不是教师打架（证伪实验：conflict mask 全降分），而是 token 级优化预算三层错配：长度差 25× 吃掉短响应域的 token 份额（IF 占 20% prompt 只拿 0.99% 梯度）+ 收敛速度差导致预算漂移 + K 次内更新让 reward 陈旧；三个机制分别在三个时间尺度修复，回收率 35.6%→83.4%，refresh 零开销（学生项重算恰好免费，PPO 本来就算）。
 - [S²VOPD](wiki/papers/2026-s2vopd.md) — 零特权视觉 on-policy 自蒸馏：把学生的输入图故意降采样加噪弄坏，EMA 教师看原图，学生每步向"看得清的自己"对齐——不对称不必给教师加信息，可以从学生减信息；4B 涨到 77.44 超 235B 开源模型与 GPT-5.4，冻结教师只掉 0.4（增益来自那张图不是自我改进）。
