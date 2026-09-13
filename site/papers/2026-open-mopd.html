@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Open-MOPD · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260909-1">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260913-1">
 </head>
 <body>
 <div class="page">
@@ -57,6 +57,10 @@
             <p>回收率 35.6% → 83.4%（28.05 → 31.24，距三模型上界 88% 只剩一步）。代价：仅 3B、三域、oracle 路由验证，路由有误的场景未测。</p>
           </div>
         </div>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2026-open-mopd/fig1.png" alt="Naive M-OPD 的整合差距与不对称掉分" loading="lazy">
+          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>(a) IF 领域掉分 6.16 远大于 math 的 1.89；(b) 训练轨迹显示 IF 中期发生性能倒退；(c) 理论回收率对比中 IF 恢复最少（绿线仅约 28%）。</figcaption>
+        </figure>
         <p class="takeaway">OPD 的 loss 按 token 平均聚合，所以每个域的真实优化量不取决于喂了多少 prompt，而取决于 token 数量 × 幅度 × 新鲜度。</p>
       </div>
     </section>
@@ -86,6 +90,10 @@
           <h2>关键机制：三个失衡对应三个正交修复</h2>
           <span class="slide-no">04</span>
         </div>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2026-open-mopd/fig6.png" alt="Open-MOPD 系统架构" loading="lazy">
+          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 6）</span>Open-MOPD 系统架构：Prompt 经由真实标签硬路由分流；Teacher 冻结并缓存 logprob；Student 在 rollout 后顺手重算当前概率刷新 Dense reward，进入 PPO 更新。</figcaption>
+        </figure>
         <table class="dtable">
           <thead><tr><th>机制</th><th>时间尺度</th><th>怎么做</th></tr></thead>
           <tbody>
@@ -217,7 +225,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20260909-1"></script>
-<script src="../assets/wiki-slides.js?v=20260909-1"></script>
+<script src="../assets/wiki-index.js?v=20260913-1"></script>
+<script src="../assets/wiki-slides.js?v=20260913-1"></script>
 </body>
 </html>

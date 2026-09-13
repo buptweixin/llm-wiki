@@ -28,6 +28,9 @@ updated: 2026-09-07
 - 用回收率衡量（SFT 25.67 → RouteRL 32.35 为 100% headroom），naive M-OPD 只拿回 **35.6%**；
 - 掉分极不均匀：IF 域掉 6.16 分（是 math 1.89 的 3.3 倍），训练中期 IF 分数还倒降 11%、最早停滞。
 
+![Naive M-OPD 的整合差距（Integration Gap）与不对称掉分](../../site/assets/figures/2026-open-mopd/fig1.png)
+*图 1 费曼图解（论文 Figure 1）：(a) 柱状图直观展现差距，IF 领域掉分 6.16 远大于 math 的 1.89；(b) 训练轨迹显示 IF 在中期甚至发生性能倒退；(c) 理论回收率对比中，IF 恢复最少（绿线仅约 28%）。*
+
 ## 大白话讲解
 
 **先枪毙一个流行嫌疑人：teacher conflict（教师冲突）。** 三个 teacher 同源（都从同一个混合域 SFT checkpoint 分叉），共享格式词、连接词、推理模板——看起来很容易打架。三重检验全部否定：
@@ -47,6 +50,9 @@ updated: 2026-09-07
 3. **用昨天的财报做今天的决策（rollout 周期内，快动态）**：为省生成开销，一个 rollout batch 被复用 K 次做内更新（K=4）。第一次更新后学生就变了，但 reward 里依赖学生的部分还用 rollout 时刻的旧概率——K=4 时 rollout-to-current KL 已达 0.059、75.8% 的 token 被 PPO clip；K=32 时 0.216 / 86%。
 
 ## 关键机制
+
+![Open-MOPD 系统架构与三个修复机制](../../site/assets/figures/2026-open-mopd/fig6.png)
+*图 2 费曼图解（论文 Figure 6）：Open-MOPD 总体工作流。Prompt 经由真实标签硬路由（Hard router）分流；Teacher 冻结并预先缓存 logprob；Student 在 rollout 后经过 Dense reward 刷新与 PPO 更新；三个正交机制（token 份额平衡、gap 跟随分配、reward 刷新）分别作用于不同环节。*
 
 三个失衡分别在三个时间尺度上，所以三个修复机制正交、可独立验证、可叠加——「正交分解」的设计美感。
 

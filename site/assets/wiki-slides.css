@@ -2476,6 +2476,69 @@ svg.hub-svg:root {
   color: var(--ink-3);
 }
 
+/* ============================================================
+   2026-09-13 论文插图与图解 (.paper-fig / .note-body img)
+   瑞士编辑风直角细线系统、暗色模式自适应、mono 图注
+   ============================================================ */
+.paper-fig {
+  margin: var(--sp-4) 0;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.paper-fig img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  background: #fff;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+
+@media (prefers-color-scheme: dark) {
+  .paper-fig img {
+    filter: brightness(0.92) contrast(1.04);
+    background: #181816;
+  }
+}
+
+.paper-fig figcaption {
+  padding: 10px 14px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  background: var(--surface);
+}
+
+.paper-fig figcaption .fig-title {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent-ink);
+  margin-right: 6px;
+}
+
+/* 完整笔记投影中的直接图片 */
+.note-sec img,
+.note-body img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: var(--sp-3) auto;
+  border: 1px solid var(--hairline);
+  background: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .note-sec img,
+  .note-body img {
+    filter: brightness(0.92) contrast(1.04);
+    background: #181816;
+  }
+}
+
+
 .reader-recall .context-hub {
   display: none;
 }
