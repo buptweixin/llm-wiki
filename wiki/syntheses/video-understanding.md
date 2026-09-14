@@ -66,7 +66,7 @@ flowchart TB
 |---|---|---|---|---|---|---|---|
 | rel-video-perception-vs-timing | 2026-videochat3 | complement | 2026-vst | VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 | reported | notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations | 4e0e4225 |
 | rel-video-timing-before-vs-after | 2026-vst | compare | 2026-video-o3 | 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 | synthesis | notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations | 85af28c3 |
-| rel-video-how-much-vs-where | 2026-videochat3 | complement | 2026-video-o3 | VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） | synthesis | notes/papers/2026-video-o3.html#relations | d0574842 |
+| rel-video-how-much-vs-where | 2026-videochat3 | complement | 2026-video-o3 | VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） | synthesis | notes/papers/2026-video-o3.html#relations | 362d9965 |
 | rel-video-tspo-vs-video-o3 | 2026-tspo | compare | 2026-video-o3 | 两者都针对稀疏证据，但 TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活，延迟与适应性取舍不同 | synthesis | notes/papers/2026-tspo.html#relations | ced4080e |
 | rel-video-combine-feasible | 2026-vst | possible-combination | 2026-video-o3 | 组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度 | hypothesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | aaa025f0 |
 | rel-video-combine-timing-conflict | 2026-vst | tension | 2026-video-o3 | 组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 | synthesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | aaa025f0 |

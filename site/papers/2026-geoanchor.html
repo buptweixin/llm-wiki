@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeoAnchor · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260913-1">
+</head>
+<body>
+<div class="page">
+  <a class="skip-link" href="#deck">跳到正文</a>
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html?topic=spatial-reasoning">← 知识库</a>
+    <span class="topbar-title">GeoAnchor</span>
+    <nav class="topbar-nav"></nav>
+    <span class="topbar-count">连续阅读</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+    <section class="slide" id="slide-1" data-section="essence">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>GeoAnchor</h1>
+        <p class="cover-full">Collaborative Reasoning via Latent Decomposition for 3D Spatial Understanding</p>
+        <p class="cover-essence">与其逼模型把「物体在 (1.2, 0.5, 3.4)」写成文字再自己读回来，不如允许它推理中途「闭嘴想一想」：把 3D 信息存成 position（钉锚）/ direction（箭头）/ geometry（轮廓图）三类连续潜变量，文本与潜变量交错推理，最后再开口给答案。</p>
+        <dl class="cover-meta">
+          <dt>作者</dt><dd>Anonymous（ACM MM'26 双盲投稿，Submission Id: 807）</dd>
+          <dt>入库</dt><dd>2026-09-14</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/GENIEJ93">Zotero</a></dd>
+        </dl>
+        <div class="tagrow"><span class="tag">潜变量推理</span><span class="tag">视觉定位</span><span class="tag">GRPO</span><span class="tag">提高推理深度</span><span class="tag">提高定位精度</span></div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-2" data-section="overview">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>一页看懂</h2><span class="slide-no">02</span></div>
+        <div class="flow">
+          <div class="flow-step"><h3>问题</h3><p>坐标写成文字经「连续到离散」量化压缩，丢精度还稀释空间语义在注意力里的权重；单 latent（如深度 token）一种潜变量包打不了多样空间任务，且只有全局视角缺局部物体证据。</p></div>
+          <div class="flow-step" data-hi><h3>方法</h3><p>推理轨迹改成文本段与潜变量段交错：position / direction 两类局部 token 由 3D 坐标和方向显式监督，geometry 全局 token 用 soft coverage 对齐 VGGT 特征；四阶段训练从局部热身到 GRPO 模式自适应。</p></div>
+          <div class="flow-step"><h3>结果</h3><p>Qwen3-VL-2B 底座：SPAR-Bench 68.4、SPBench 69.7、跨域 ViewSpatial 47.0 全场第一；但前两个基准与训练数据同源，+36.0 的头条数字要打折。</p></div>
+        </div>
+        <p class="takeaway">分解本身比「用不用 latent」贡献更大：text CoT 到单 latent 只 +2.3，单 latent 到三类分解再 +5.1（SPAR）。</p>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-3" data-section="mechanism">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>关键机制: latent token 与三类分解</h2><span class="slide-no">03</span></div>
+        <p>latent token 不从词表查表，是模型自己生成的连续 hidden state：在推理轨迹的规定位置划出潜变量区，position / direction 各 2 步、geometry 8 步。整条轨迹形如 文本段 + 潜变量段 交错，文本负责语义规划，潜变量承载连续几何。</p>
+        <div class="fig">
+          <div class="fig-row"><div class="fig-node"><span class="fig-node-tag">局部</span>position：钉锚 + 方向回归</div><span class="fig-arrow"></span><div class="fig-node" data-hi><span class="fig-node-tag">桥</span>projector 回注输入空间</div><span class="fig-arrow"></span><div class="fig-node"><span class="fig-node-tag">全局</span>geometry：对齐 VGGT</div>
+          <p class="fig-note">生成的 hidden state 在输出空间，下一步要吃的 embedding 在输入空间，两个流形不同；直接塞回去会 latent drift（一步错步步错）。projector = LayerNorm + MLP 残差变换，把输出向量翻译回输入空间再喂回去。</p>
+        </div>
+        <table class="dtable"><thead><tr><th>潜变量</th><th>分工</th><th>监督</th></tr></thead><tbody><tr><td>position（局部）</td><td>物体 3D 坐标，像钉锚</td><td>线性头解码，Smooth L1（抗离群，GT 本身来自深度估计有噪声）</td></tr><tr><td>direction（局部）</td><td>物体间方向向量，像箭头</td><td>线性头解码，cosine loss（只管朝向不管长度）</td></tr><tr data-hi><td>geometry（全局）</td><td>场景整体结构，像轮廓图</td><td>soft coverage 对齐 VGGT 末层特征（见下节）</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4" data-section="mechanism-2">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>关键机制: soft coverage 与四阶段训练</h2><span class="slide-no">04</span></div>
+        <p>VGGT 特征是高分辨率网格（一大堆向量），geometry token 只有 8 个。严格一一配对等于强迫 8 个值班员各包干固定一片工单，紧凑表示被撕碎。soft coverage 只要求每个 VGGT 特征至少被某个 token 认领（覆盖项），且 8 个 token 工作量均衡（平衡项，防表示坍缩）。Table 5：soft coverage 三基准平均 61.7，dense 的 mean pooling 57.4、adaptive pooling 59.3。</p>
+        <table class="dtable"><thead><tr><th>阶段</th><th>Loss</th><th>在干嘛</th></tr></thead><tbody><tr><td>S1 局部热身</td><td>NTP + L<sub>pos</sub> + L<sub>dir</sub></td><td>550k grounding 只练局部 token，给 latent 打接地底子（Fig. 5：无 S1 答案对 latent 注意力约 6%，有 S1 涨到约 15%）</td></tr><tr><td>S2 空间潜推理</td><td>+ L<sub>geo</sub></td><td>105k 多样推理数据，联合局部与全局</td></tr><tr data-hi><td>S3 latent 松弛</td><td>只留 NTP</td><td>撤全部几何监督，让 latent 弹回语言流形与几何流形的兼容位置</td></tr><tr><td>S4 模式 RL</td><td>GRPO + pattern reward</td><td>学「够用的局部就别拉全局」：两种模式各记 EMA 历史准确率，选高者的额外 +0.5，奖励用对模式而非答对</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5" data-section="evidence">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>证据与边界</h2><span class="slide-no">05</span></div>
+        <div class="metrics"><div class="metric" data-hi><div class="metric-value">68.4<small>%</small></div><div class="metric-label">SPAR-Bench（2B）</div><div class="metric-why">基座 32.4，+36.0；但训练采 SPAR 同源，in-domain 要打折</div></div><div class="metric"><div class="metric-value">47.0<small>%</small></div><div class="metric-label">ViewSpatial（分布外）</div><div class="metric-why">基座 36.3，+10.7；跨域泛化的干净证据，两项子任务全场第一</div></div><div class="metric"><div class="metric-value">58.7<small>%</small></div><div class="metric-label">SPBench Abs. 绝对距离</div><div class="metric-why">远低于 SpatialLadder 的 81.6：连续量进 latent 不等于绝对数值估计解决</div></div></div>
+        <table class="dtable"><thead><tr><th>打折点</th><th>说明</th></tr></thead><tbody><tr><td>局部监督是伪标签</td><td>position/direction 的 GT 来自 Depth Anything v3 单目估计加反投影；ScanNet 自带传感器深度却未用，论文未解释</td></tr><tr><td>原文数字瑕疵</td><td>Table 5 Linear Interpolation 行三列均值应为 50.4，表中 avg 写 37.8，疑笔误；Intro「超 GPT-4o 18.0%」口径对不上，引用以表格数为准</td></tr><tr><td>复现信息缺口</td><td>VGGT 是否冻结、backbone 是否全参、优化器、硬件、代码开源与否均未报告</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-6" data-section="pitfalls">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>卡壳点</h2><span class="slide-no">06</span></div>
+        <div class="qa-list">
+          <div class="qa" id="qa-verbalization"><p class="qa-q">坐标写成文字除了丢精度、稀释注意力权重，还损失了什么？</p><div class="qa-a"><p>语言先验主导：推理全程在文本里走，模型用语言直觉代替几何证据答题。表格证据是 text CoT SFT 不稳定优于 vanilla SFT（三基准平均 51.7 vs 51.8 略降）。</p></div></div>
+          <div class="qa" id="qa-collapse"><p class="qa-q">去掉 soft coverage 平衡项的极端形态是什么？</p><div class="qa-a"><p>不是「有的多有的少」的一般不均衡，而是表示坍缩：所有 VGGT 特征挤着认领同一个 geometry token，其余 7 个闲置，8 个 token 的容量退化成 1 个。平衡项本质是分配均匀度的正则。</p></div></div>
+          <div class="qa" id="qa-stage3"><p class="qa-q">Stage 3 撤掉全部几何监督，为什么不会把几何忘光？</p><div class="qa-a"><p>几何已在权重里；文本 loss 只淘汰对答题无用的 latent 内容（留着不降 loss、梯度不保留），有用的部分因贡献文本 loss 被梯度留下。证据：Fig. 4 显示 S3 收益远超「把 S2 多训一轮」的对照；Fig. 7 的 t-SNE 上 global token 恰落在 VGGT 与 text 之间，两头都沾。</p></div></div>
+          <div class="qa" id="qa-tools-vs-latent"><p class="qa-q">和 Video-o3 的工具式推理相比，更深一层的分叉是什么？</p><div class="qa-a"><p>工具演化成本：Video-o3 的工具可插拔（换更好的裁剪或生成工具不用重训模型），GeoAnchor 的「工具」（VGGT、Depth Anything）是训练时烧进权重的，换几何教师等于重训。GeoAnchor 自己列的适用边界（静态图像、室内场景）也支持动态场景选工具路线。</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-7" data-section="relations">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>关联与来源</h2><span class="slide-no">07</span></div>
+        <div class="link-groups">
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">对立路线</span><span><a href="2026-video-o3.html">Video-o3</a>：同打破纯文本 CoT，o3 把中间推理外化成工具调用（可见可审计、工具可插拔），本文内化成连续潜变量（保几何保真度、教师烧进权重）。动态场景选工具路线，静态图连续几何精度选 latent 路线。</span></div><div class="link-item"><span class="link-rel">家族下游</span><span><a href="2017-ppo.html">PPO</a>：Stage 4 的 GRPO 是 PPO 的组相对变体（组内均值当 baseline、去 value 网络），pattern reward 奖励「用对模式」而非「答对」。</span></div><div class="link-item"><span class="link-rel">同一问题另一面</span><span><a href="2026-locateanything.html">LocateAnything</a>：坐标该不该言语化。它仍把框写成离散 token 块（整块并行换效率），本文让几何量干脆不经过词表（换保真度）。</span></div></div>
+          <div class="link-group"><h3>SOURCE</h3><div class="link-item"><span class="link-rel">完整笔记</span><span><a href="../notes/papers/2026-geoanchor.html">notes/papers/2026-geoanchor.html</a>（markdown 的完整静态投影）</span></div><div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/papers/2026-geoanchor.md">wiki/papers/2026-geoanchor.md</a></span></div><div class="link-item"><span class="link-rel">原文</span><span><a href="zotero://select/items/GENIEJ93">Zotero</a>（itemKey GENIEJ93；双盲投稿无 DOI，citekey 无效如实登记）</span></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="../assets/wiki-index.js?v=20260913-1"></script>
+<script src="../assets/wiki-slides.js?v=20260913-1"></script>
+</body>
+</html>

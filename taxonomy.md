@@ -13,6 +13,7 @@
 | `distillation` | 蒸馏与训练预算 | on-policy 蒸馏、自蒸馏、教师信号与优化预算 |
 | `structured-output` | 结构化输出与定位 | 坐标、框、结构化解码与视觉 grounding |
 | `reinforcement-learning` | 强化学习与对齐 | 策略梯度、信任域、价值估计、连续控制与对齐算法 |
+| `spatial-reasoning` | 3D 空间推理 | 单图 3D 空间关系、深度/位姿估计、潜变量几何推理 |
 
 ## 机制 `mechanism`
 
@@ -35,6 +36,7 @@
 | `data-augmentation` | 数据增强 | augmentation |
 | `parallel-decoding` | 并行解码 | block decoding、并行框解码 |
 | `grounding` | 视觉定位 | VLM grounding |
+| `latent-reasoning` | 潜变量推理 | latent reasoning、text-latent interleaved、潜变量交错推理 |
 | `tool-use` | 工具调用 | native interleaving |
 | `temporal-sampling` | 时序采样 | temporal sampling、keyframe selection |
 | `policy-gradient` | 策略梯度 | Policy Gradient、策略优化 |

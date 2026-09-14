@@ -136,6 +136,7 @@ A：VST 的"查询即答"和 Video-o3 的"多轮探索后才答"在**响应时�
 ## 关联
 
 - [VST](2026-vst.md) — **同属长视频推理但路线不同**。VST 是"推理前置"（播放期边看边想，FIFO 文本记忆），Video-o3 是"推理时主动检索"（动态裁剪视频，工具调用）。VST 解决实时性（0.56s），Video-o3 解决多跳精度（46.5% VideoHolmes）。两者可互补：VST 的文本记忆 + Video-o3 的工具裁剪组合；但"查询即答"vs"多轮探索"在响应时机上逻辑冲突，需统一调度。
+- [GeoAnchor](2026-geoanchor.md) — **同打破"纯文本 CoT"的两条对立路线**：Video-o3 把中间推理外化成工具调用（可见可审计、工具可插拔），GeoAnchor 内化成连续潜变量（保几何保真度、教师烧进权重）。本文 Related Works 2.2 自己把"think with images"工具流与 latent reasoning 对立。适用分界：动态场景/需人工审计选工具路线，静态图/连续几何精度选 latent 路线。
 - [VideoChat3](2026-videochat3.md) — **视觉策略互补**。VideoChat3 靠编码器压缩+状态机决定看多少像素，Video-o3 靠推理时工具调用决定看哪里。一个管感知效率，一个管检索精度。
 - 同领域可对比：Video-R1（文本 CoT，视觉固定）、VideoChat-R1.5/Video-RTS（解耦迭代推理）、VideoZoomer、LOVE-R1。
 - 待建概念页：`multi-hop reasoning` / `tool invocation` / `attention masking` / `GRPO` / `KV cache` / `test-time scaling`

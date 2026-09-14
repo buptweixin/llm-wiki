@@ -405,3 +405,12 @@
 - 新增 `wiki/papers/2026-tspo.md`，同步视频理解专题的成员、方法地图、比较、关系记录、索引、复测队列与站点派生层；`R_T` 在页面中明确限定为目标片段内选帧比例，不写成 IoU。
 
 
+
+## [2026-09-14] review | Open-MOPD 复测开场后跳过
+
+- 用户重讲覆盖预算错配大方向与机制二方向语义后选择跳过，未计入复测次数；review.md 补记优先扫描项（teacher conflict 证伪、机制一/三 refresh），下次复测保持到期。
+
+## [2026-09-14] ingest | GeoAnchor
+
+- 从 Zotero 条目 `GENIEJ93`（ACM MM'26 双盲投稿，无 DOI、citekey 无效，如实登记）取全文与 AI Butler 预读（summary `QLX4CM58` + table `U6UXJRXK`）；费曼四题全过（两处点透：表示坍缩极端形态、梯度保留机制；两处补半句：语言先验、工具演化成本分叉）。
+- 新增 `wiki/papers/2026-geoanchor.md`（库内首篇 3D 空间推理，开 `spatial-reasoning` 新专题线），taxonomy 新增 topic `spatial-reasoning` 与 mechanism `latent-reasoning`；互链 Video-o3（外化工具 vs 内化潜变量两条对立路线）、PPO（GRPO 下游锚点）、LocateAnything（坐标言语化之争）；人工补校 AI 预读漏检四处（Table 5 avg 笔误、Intro 口径、ScanNet 原生深度未用、pattern reward 本质）；同步站点派生层与复测队列（2026-09-17）。

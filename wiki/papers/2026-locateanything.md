@@ -161,4 +161,5 @@ _无_——检验题全部补齐，无残留漏洞。「块内双向注意力在
 
 - [VST](2026-vst.md) — 同主题"系统延迟"的两个**正交解法**：VST 把推理切碎塞进视频播放空档（把延迟藏起来，查询即答），LocateAnything 把几何输出块化、一步出一个框（把解码步数本身减掉）。可组合：视频交互系统用 VST 的推理时机 + 本文的快速低层感知。
 - [Video-o3](2026-video-o3.md) / [VST](2026-vst.md) — 本文是**感知侧**（GUI/指代定位给得又快又准，ScreenSpot-Pro 60.3 SOTA 是 GUI/具身 agent 的感知底座），Video-o3/VST 是**拿到框之后的推理/行动侧**。下游不变量：UI grounding 的产出是 agent 下一个动作的坐标参数。
+- [GeoAnchor](2026-geoanchor.md) — 同一问题「坐标该不该言语化」在**空间推理侧**的对照答案：本文仍把框坐标写成离散 token 块（整块并行解码换效率），GeoAnchor 干脆让几何量不经过词表进连续潜空间（换保真度）。两条路线都认为逐 token 蹦坐标不行，分歧在留在词表里还是离开词表。
 - 未来入库钩子：① 本文是库内第一篇 **VLM 检测/grounding** 论文，开「解码表征与推理效率」新线；② 同线 Related Work 提及的结构无关 MTP 家族（SDLM / Block Diffusion / LLaDA / Dream，扩散语言模型是另一条并行解码路线）与 DiffusionVL（VL 域）入库时回链本页对照"结构对齐 vs 结构无关"；③ 结构输出并行可迁移族（分割多边形 / 动作基元 / 表格单元格，AI 笔记延伸非正文）；④ grounding 后训练 RL（Vision-R1 / UniVG-R1 / GW-VLM，论文 Related Work 提及）入库时回链，对照"解码范式 vs 强化对齐"两路线。
