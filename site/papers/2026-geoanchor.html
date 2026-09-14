@@ -42,7 +42,11 @@
           <div class="flow-step" data-hi><h3>方法</h3><p>推理轨迹改成文本段与潜变量段交错：position / direction 两类局部 token 由 3D 坐标和方向显式监督，geometry 全局 token 用 soft coverage 对齐 VGGT 特征；四阶段训练从局部热身到 GRPO 模式自适应。</p></div>
           <div class="flow-step"><h3>结果</h3><p>Qwen3-VL-2B 底座：SPAR-Bench 68.4、SPBench 69.7、跨域 ViewSpatial 47.0 全场第一；但前两个基准与训练数据同源，+36.0 的头条数字要打折。</p></div>
         </div>
-        <p class="takeaway">分解本身比「用不用 latent」贡献更大：text CoT 到单 latent 只 +2.3，单 latent 到三类分解再 +5.1（SPAR）。</p>
+<figure class="paper-fig">
+          <img src="../assets/figures/2026-geoanchor/fig1.png" alt="三种推理范式对比" loading="lazy">
+          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>(a) text-only 推理把连续几何说成文字，模型在「植物…沙发…」间摇摆；(b) 单 latent 只有一个黑盒向量，缺可解释线索；(c) GeoAnchor 分解为局部 position/direction（钉锚与箭头）加全局 geometry（轮廓图），每个因子可单独追溯。</figcaption>
+        </figure>
+               <p class="takeaway">分解本身比「用不用 latent」贡献更大：text CoT 到单 latent 只 +2.3，单 latent 到三类分解再 +5.1（SPAR）。</p>
       </div>
     </section>
 
@@ -58,7 +62,11 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-4" data-section="mechanism-2">
+    <section class="slide" id="slide-4"<figure class="paper-fig">
+          <img src="../assets/figures/2026-geoanchor/fig2.png" alt="GeoAnchor 方法总览" loading="lazy">
+          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 2）</span>GeoAnchor 总览。文本段做语义规划；局部 token 编码物体位置与相互方向；全局 geometry token 经 soft coverage 对齐 VGGT 场景结构（每个全局 token 只认领与自己最相似的特征，8 个 token 合起来覆盖整张特征网格）。</figcaption>
+        </figure>
+        data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head"><h2>关键机制: soft coverage 与四阶段训练</h2><span class="slide-no">04</span></div>
         <p>VGGT 特征是高分辨率网格（一大堆向量），geometry token 只有 8 个。严格一一配对等于强迫 8 个值班员各包干固定一片工单，紧凑表示被撕碎。soft coverage 只要求每个 VGGT 特征至少被某个 token 认领（覆盖项），且 8 个 token 工作量均衡（平衡项，防表示坍缩）。Table 5：soft coverage 三基准平均 61.7，dense 的 mean pooling 57.4、adaptive pooling 59.3。</p>
@@ -66,7 +74,11 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-5" data-section="evidence">
+    <section class="slide" id="slide-5"<figure class="paper-fig">
+          <img src="../assets/figures/2026-geoanchor/fig3.png" alt="四阶段协同训练" loading="lazy">
+          <figcaption><span class="fig-title">图 3 费曼图解（论文 Figure 3）</span>四阶段协同训练。S1 局部 grounding 热身，S2 联合局部加全局推理，S3 撤掉全部显式监督只留文本 loss（latent 弹回语言流形），S4 GRPO 加 pattern reward 按两种模式各自的历史准确率学会「够用的局部就别拉全局」。</figcaption>
+        </figure>
+        data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head"><h2>证据与边界</h2><span class="slide-no">05</span></div>
         <div class="metrics"><div class="metric" data-hi><div class="metric-value">68.4<small>%</small></div><div class="metric-label">SPAR-Bench（2B）</div><div class="metric-why">基座 32.4，+36.0；但训练采 SPAR 同源，in-domain 要打折</div></div><div class="metric"><div class="metric-value">47.0<small>%</small></div><div class="metric-label">ViewSpatial（分布外）</div><div class="metric-why">基座 36.3，+10.7；跨域泛化的干净证据，两项子任务全场第一</div></div><div class="metric"><div class="metric-value">58.7<small>%</small></div><div class="metric-label">SPBench Abs. 绝对距离</div><div class="metric-why">远低于 SpatialLadder 的 81.6：连续量进 latent 不等于绝对数值估计解决</div></div></div>

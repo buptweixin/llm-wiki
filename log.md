@@ -414,3 +414,8 @@
 
 - 从 Zotero 条目 `GENIEJ93`（ACM MM'26 双盲投稿，无 DOI、citekey 无效，如实登记）取全文与 AI Butler 预读（summary `QLX4CM58` + table `U6UXJRXK`）；费曼四题全过（两处点透：表示坍缩极端形态、梯度保留机制；两处补半句：语言先验、工具演化成本分叉）。
 - 新增 `wiki/papers/2026-geoanchor.md`（库内首篇 3D 空间推理，开 `spatial-reasoning` 新专题线），taxonomy 新增 topic `spatial-reasoning` 与 mechanism `latent-reasoning`；互链 Video-o3（外化工具 vs 内化潜变量两条对立路线）、PPO（GRPO 下游锚点）、LocateAnything（坐标言语化之争）；人工补校 AI 预读漏检四处（Table 5 avg 笔误、Intro 口径、ScanNet 原生深度未用、pattern reward 本质）；同步站点派生层与复测队列（2026-09-17）。
+
+## [2026-09-14] lint | 补齐 GeoAnchor 与 TSPO 论文重点图像
+
+- 用户指出今日入库两篇缺论文重点图像（惯例已由 Open-MOPD 建立）。装回 PyMuPDF 后用 `scripts/extract-paper-figure.py` 各提取 3 张（GeoAnchor：Fig 1/2/3；TSPO：Fig 1/2/4，PDF 本地缺失改从 arXiv:2508.04369 下载），ACM 双栏裁剪用 `--bbox` 避开页眉行号，六张图经视觉与坐标双重验证干净完整。
+- markdown 真源、速览页、完整笔记页三层嵌入 `.paper-fig`（费曼图解 caption，非翻译原文图注）；「论文重点图像（必须）」写入 CLAUDE.md（AGENTS.md 软链）的 Ingest Phase 3 与 lint 清单。索引重建、检查全绿。

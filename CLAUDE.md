@@ -79,7 +79,8 @@ llm-wiki/
    - **速览页**：复制 `site/_template.html` 为 `site/papers/<同名>.html`，按真源提炼连续阅读章节（核心直觉 / 一页看懂 / 关键机制 / 证据与边界 / 卡壳点 / 关联与来源；章节数由内容决定，不凑张数），section 用 `data-section` 声明语义 ID，卡壳问答每条加稳定 `id="qa-*"`。
    - **完整笔记页**：按 `site/_note-template.html` 生成 `site/notes/papers/<同名>.html`（markdown 的忠实投影，保留用户原话、来源限定与假说标记）。
    - **静态索引**：在 `site/assets/wiki-index.js` 登记页面元数据（front-matter + `review.md` 结构化日期的投影）与全文搜索条目（条目文本取自真源原文，锚点指向速览页或完整笔记页里真实存在的段落；不许新增真源没有的因果结论）。
-   - 删除页面时同步删速览页、完整笔记页与索引条目。
+   - **论文重点图像（必须，2026-09-14 起）**：用 `scripts/extract-paper-figure.py --paper-id <id> --fig N` 从 Zotero PDF 提取 2~4 张重点图（至少含动机对比图与方法总览图；PDF 本地缺失时先从 arXiv/DOI 下载到临时文件再用 `--pdf`）。图存 `site/assets/figures/<paper-id>/figN.png`；裁剪后必须检查不混入页眉、正文行号、正文段落或图注（ACM 双栏模板需用 `--bbox` 手动避开）。**三层同步嵌入**：markdown 真源（`![alt](../../site/assets/figures/...)` + 斜体「图 N 费曼图解（论文 Figure N）：…」，caption 用费曼视角讲解而非翻译原文图注）、速览页与完整笔记页（`<figure class="paper-fig">` 组件，figcaption 与 markdown 同文案）。惯例参照 Open-MOPD。
+   - 删除页面时同步删速览页、完整笔记页、索引条目与 `site/assets/figures/<paper-id>/`。
 5. **部署上线**：执行 `site/deploy.sh`（GitHub 推送，VPS cron 每 2 分钟 git pull 同步）。VPS 不可达时不阻塞入库流程，如实报告，提醒用户稍后重跑。
 
 ### 2. Query —— 查询
@@ -111,7 +112,7 @@ llm-wiki/
 - 页面间互相矛盾的结论；被新页面推翻但没更新的旧说法
 - 孤儿页（没有任何入链）；高频出现却没有独立页面的概念
 - `index.md` 与实际文件不一致；`questions.md` 里其实已经能回答的旧问题
-- `site/` 与 `wiki/` 一致性：每个 markdown 页有对应速览页/导读页 + 完整笔记页 + `wiki-index.js` 条目（漏更或残留死链）；索引条目的锚点在目标页面真实存在；front-matter 标签 ID 都在 `taxonomy.md` 词表内；`wiki-index.js` 复测投影与 `review.md` 一致；速览/完整笔记内容是否与真源冲突（含假说标注是否保留）；综合页的 `members` 主归属对账、关系记录的类型/证据状态/依据锚点/指纹有效且与论文页关系卡一致；导读页内嵌图稿与独立 SVG 一致；首页 noscript 兜底计数与索引一致
+- `site/` 与 `wiki/` 一致性：每个 markdown 页有对应速览页/导读页 + 完整笔记页 + `wiki-index.js` 条目（漏更或残留死链）；索引条目的锚点在目标页面真实存在；front-matter 标签 ID 都在 `taxonomy.md` 词表内；`wiki-index.js` 复测投影与 `review.md` 一致；速览/完整笔记内容是否与真源冲突（含假说标注是否保留）；综合页的 `members` 主归属对账、关系记录的类型/证据状态/依据锚点/指纹有效且与论文页关系卡一致；导读页内嵌图稿与独立 SVG 一致；首页 noscript 兜底计数与索引一致；论文页是否带重点图像（`site/assets/figures/<paper-id>/` 存在，markdown / 速览页 / 完整笔记页三层图片引用一致且文件不缺失）
 
 ## site/ 阅读库规范（伴生 HTML 阅读层）
 

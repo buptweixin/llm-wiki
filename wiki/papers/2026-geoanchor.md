@@ -24,6 +24,9 @@ MLLM 看单张 2D 图回答「冰箱在 3D 空间哪里」「相框到鹿雕塑�
 
 本文之答：GeoAnchor，text–latent interleaved（文本-潜变量交错）框架，把 3D 信息分解为三类互补 latent + 四阶段协同训练，底座 Qwen3-VL-2B。
 
+![三种推理范式对比](../../site/assets/figures/2026-geoanchor/fig1.png)
+*图 1 费曼图解（论文 Figure 1）：(a) text-only 推理把连续几何说成文字，模型在「植物…沙发…」间摇摆；(b) 单 latent 只有一个黑盒向量，缺可解释线索；(c) GeoAnchor 分解为局部 position/direction（钉锚与箭头）加全局 geometry（轮廓图），每个因子可单独追溯。*
+
 ## 大白话讲解
 
 ### 类比一：不许念出声的心算
@@ -40,6 +43,9 @@ MLLM 看单张 2D 图回答「冰箱在 3D 空间哪里」「相框到鹿雕塑�
 钉锚（局部证据）+ 轮廓图（全局上下文），这就是 latent decomposition 的全部直觉。
 
 ## 关键机制
+
+![GeoAnchor 方法总览](../../site/assets/figures/2026-geoanchor/fig2.png)
+*图 2 费曼图解（论文 Figure 2）：GeoAnchor 总览。文本段做语义规划；局部 token 编码物体位置与相互方向；全局 geometry token 经 soft coverage 对齐 VGGT 场景结构（每个全局 token 只认领与自己最相似的特征，8 个 token 合起来覆盖整张特征网格）。*
 
 ### ① latent token 与 projector：模型自己生成的连续思考
 
@@ -63,6 +69,9 @@ MLLM 看单张 2D 图回答「冰箱在 3D 空间哪里」「相框到鹿雕塑�
 | S2 空间潜推理 | 105k 多样空间推理 | NTP + L_pos + L_dir + **L_geo** | 联合局部+全局，学按问题动态选用 token |
 | S3 latent 松弛 | 同上 | **只留 NTP**（λ_l=λ_g=0） | 见卡点③ |
 | S4 自适应模式 RL | 同上 | GRPO + pattern reward | 学「够用的局部就别拉全局」 |
+
+![四阶段协同训练](../../site/assets/figures/2026-geoanchor/fig3.png)
+*图 3 费曼图解（论文 Figure 3）：四阶段协同训练。S1 局部 grounding 热身 → S2 联合局部+全局推理 → S3 撤掉全部显式监督只留文本 loss（latent 弹回语言流形）→ S4 GRPO + pattern reward，按两种模式各自的历史准确率学会「够用的局部就别拉全局」。*
 
 > 🔧 **最容易卡住的点③：Stage 3 撤掉全部几何监督，为什么性能反而大涨、又不会把几何忘光？** S2 的强监督把 latent 拉向「几何流形」，离「语言流形」太远，后续文本推理受阻；S3 撤监督只留文本 loss，让 latent 弹回两个世界的兼容位置。不会忘光，因为几何信息已写进权重，文本 loss 只淘汰对答题无用的部分——有用的 latent 内容因贡献文本 loss 被梯度保留。双证据：Fig. 4 显示 S3 的收益远超「把 S2 多训一轮」的对照（ViewSpatial 46.3 vs 36.8/40.2），增益来自**撤监督这个动作本身**；Fig. 7 的 t-SNE 显示训后 global token 恰落在 VGGT 特征与 text token 之间——两头都沾。
 

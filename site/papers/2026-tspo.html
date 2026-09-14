@@ -42,7 +42,11 @@
           <div class="flow-step" data-hi><h3>方法</h3><p>Temporal Agent 从 1 FPS 候选中概率化选帧；多组帧分别交给冻结 MLLM，用答案正确率和目标片段定位奖励做组相对策略优化。</p></div>
           <div class="flow-step"><h3>结果</h3><p>LongVideoBench +5.0%、MLVU +6.0%；但偏整体理解的 Video-MME 仅 +1.1%，说明方法更擅长 query-localization。</p></div>
         </div>
-        <p class="takeaway">答案奖励只能说明一组帧够用，不能说明每一帧都必要；TSPO 用目标片段内选帧比例补上这层区分。</p>
+<figure class="paper-fig">
+          <img src="../assets/figures/2026-tspo/fig1.png" alt="不同帧采样方法对比" loading="lazy">
+          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>三类采样方法对比。均匀采样按固定间隔抽帧、与问题无关（关键瞬间可能恰好漏掉）；training-free 检索用现成相似度找帧但不会因答错而改进；TSPO 把「选哪些帧」当策略，用最终答案对错反向训练采样器。</figcaption>
+        </figure>
+               <p class="takeaway">答案奖励只能说明一组帧够用，不能说明每一帧都必要；TSPO 用目标片段内选帧比例补上这层区分。</p>
       </div>
     </section>
 
@@ -58,7 +62,11 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-4" data-section="mechanism-2">
+<figure class="paper-fig">
+          <img src="../assets/figures/2026-tspo/fig2.png" alt="TSPO 框架总览" loading="lazy">
+          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 2）</span>TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。</figcaption>
+        </figure>
+          <section class="slide" id="slide-4" data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head"><h2>关键机制: 双数据与双奖励</h2><span class="slide-no">04</span></div>
         <div class="fig">
@@ -69,7 +77,11 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-5" data-section="evidence">
+<figure class="paper-fig">
+          <img src="../assets/figures/2026-tspo/fig4.png" alt="TSPO 双数据构建流程" loading="lazy">
+          <figcaption><span class="fig-title">图 3 费曼图解（论文 Figure 4）</span>双风格训练数据。Comprehensive Temporal Data 过滤过易过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱并保留伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。</figcaption>
+        </figure>
+          <section class="slide" id="slide-5" data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head"><h2>证据与边界</h2><span class="slide-no">05</span></div>
         <div class="metrics"><div class="metric" data-hi><div class="metric-value">+6.0<small>%</small></div><div class="metric-label">MLVU，LLaVA-Video-7B</div><div class="metric-why">均匀 64 帧基线 70.3，TSPO 为 76.3</div></div><div class="metric"><div class="metric-value">+1.1<small>%</small></div><div class="metric-label">Video-MME</div><div class="metric-why">整体理解任务不完全依赖局部定位</div></div><div class="metric"><div class="metric-value">1.1<small>s</small></div><div class="metric-label">128 候选到 32 选帧</div><div class="metric-why">关键帧提取时间，CoS 为 28.4s</div></div></div>
