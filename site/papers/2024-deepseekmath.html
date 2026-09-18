@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepSeekMath · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260913-1">
+</head>
+<body>
+<div class="page">
+  <a class="skip-link" href="#deck">跳到正文</a>
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 知识库</a>
+    <span class="topbar-title">DeepSeekMath</span>
+    <nav class="topbar-nav">
+    </nav>
+    <span class="topbar-count">连续阅读</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <!-- ① 核心直觉 -->
+    <section class="slide" id="slide-1" data-section="essence">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2024</p>
+        <h1>DeepSeekMath</h1>
+        <p class="cover-full">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models</p>
+        <p class="cover-essence">不要昂贵的「独立裁判（Critic 价值模型）」，让同一个问题的一组采样解题路径（G 个 rollout）在组内进行相对打分与优势归一化，以省去近半显存的极简架构实现超越传统 PPO 的大模型在线数学强化学习。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>DeepSeek-AI、清华大学、北京大学（Zhihong Shao 等）</dd>
+          <dt>入库</dt><dd>2026-09-18</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/XQHXBPT7">Zotero</a> · <a href="http://arxiv.org/abs/2402.03300">arXiv</a></dd>
+        </dl>
+        <div class="tagrow"><span class="tag">GRPO</span><span class="tag">策略梯度</span><span class="tag">裁剪代理目标</span><span class="tag">CoT 推理</span><span class="tag">提高推理深度</span><span class="tag">提高训练预算利用率</span></div>
+      </div>
+    </section>
+
+    <!-- ② 一页看懂 -->
+    <section class="slide" id="slide-2" data-section="overview">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>传统观点迷信 arXiv 论文预训练，忽视网页潜力；传统 PPO 强行用同尺寸 Critic 预测末端稀疏奖励的逐 token 绝对价值，显存翻倍且噪声极高；离线 RFT 只有正向更新且缺乏探索。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>从 Common Crawl 迭代清洗 120B token 高质量数学语料（DeepSeekMath Corpus）；提出 GRPO，同一问题采样 G 个输出，用组内相对均值与方差归一化计算优势，砍掉 Critic 并将 KL 惩罚独立外置。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>7B 纯模型推理在竞赛级 MATH 达 51.7%（Top-1），Maj@64 达 60.9%，逼近 GPT-4；证明代码基座对数学强迁移，且揭示 RL 核心是重塑分布把稀有正确解推向前列（Pass@K 不变但 Maj@K 跃升）。</p>
+          </div>
+        </div>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2024-deepseekmath/fig1.png" alt="开源模型在竞赛级 MATH 基准上的 Top-1 准确率" loading="lazy">
+          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>无需外部工具与复杂投票，DeepSeekMath 7B 仅凭模型自身推理在竞赛级 MATH 上达到 51.7%，一举逼近闭源的 Gemini-Ultra 和 GPT-4，大幅拉开与以往开源模型的差距。</figcaption>
+        </figure>
+        <p class="takeaway">开除昂贵且打分不稳的独立裁判，让同一道题的一群考生自己比排名。</p>
+      </div>
+    </section>
+
+    <!-- ③ 关键机制：从 PPO 到 GRPO -->
+    <section class="slide" id="slide-3" data-section="mechanism">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：开除 Critic 价值模型</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>传统 PPO 必须同时在显存常驻 Actor、Critic、Ref、Reward 四个模型，其中 Critic 往往与 Actor 同等体量。GRPO 彻底丢弃 Critic：</p>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2024-deepseekmath/fig4.png" alt="PPO 与 GRPO 架构对比" loading="lazy">
+          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 4）</span>PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 G 个候选回答，利用组内平均与标准差归一化直接得到相对优势，显存节省近半。</figcaption>
+        </figure>
+        <table class="dtable">
+          <thead><tr><th>对比维度</th><th>传统 PPO</th><th data-hi>GRPO（本方法）</th><th>机制差异收益</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>驻留模型</td>
+              <td>Actor + Critic + Ref + Reward</td>
+              <td data-hi>Actor + Ref + Reward</td>
+              <td>彻底移除 Critic 网络，节省约 50% 显存</td>
+            </tr>
+            <tr>
+              <td>优势基准 Baseline</td>
+              <td>参数化价值函数 V_ψ(s_t)</td>
+              <td data-hi>同题 G 组输出得分均值 mean(r)</td>
+              <td>无参数开销，完全消除绝对分数值的校准偏差</td>
+            </tr>
+            <tr>
+              <td>KL 散度处理</td>
+              <td>塞进每步奖励 r_t - β log(...)</td>
+              <td data-hi>独立移出到外层 Loss 作为正则项</td>
+              <td>避免 KL 惩罚污染任务相对优势估计</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ④ 关键机制：统一梯度范式与数据流水线 -->
+    <section class="slide" id="slide-4" data-section="mechanism-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>机制深入：统一梯度系数与网页挖掘</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p>论文将各类微调算法统一在统一梯度范式下：∇_θ J(θ) = E [ 1/|o| ∑_t GC(q, o, t) · ∇_θ log π_θ ]。不同算法的核心分水岭在于数据源是离线还是在线，以及梯度系数 GC 是否提供动态正负惩罚：</p>
+        <table class="dtable">
+          <thead><tr><th>微调方法</th><th>数据采样源</th><th>奖励形式</th><th>梯度系数 GC 特性</th></tr></thead>
+          <tbody>
+            <tr><td>SFT</td><td>离线人类演示</td><td>无</td><td class="num">GC ≡ 1（恒定正向，无探索）</td></tr>
+            <tr><td>RFT</td><td>离线旧策略 π_sft</td><td>规则（对/错）</td><td class="num">对=1，错=0（只奖不罚，无在线探索）</td></tr>
+            <tr><td>Online RFT</td><td>在线实时策略 π_θ</td><td>规则（对/错）</td><td class="num">对=1，错=0（有在线探索，但缺乏负向惩罚）</td></tr>
+            <tr data-hi><td>GRPO</td><td>在线实时策略 π_θ</td><td>模型 / 规则</td><td class="num">组内标准化相对优势 A_hat（动态奖优惩劣）</td></tr>
+          </tbody>
+        </table>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2024-deepseekmath/fig2.png" alt="Common Crawl 数学网页挖掘流水线" loading="lazy">
+          <figcaption><span class="fig-title">图 3 费曼图解（论文 Figure 2）</span>DeepSeekMath 数据挖掘引擎：以 OpenWebMath 为种子训练 FastText 分类器，从 40B 去重网页中召回数学候选页，再通过域名与 URL 路径分析迭代扩充高质量域名，最终沉淀出 120B token 的 DeepSeekMath Corpus。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ⑤ 证据与边界 -->
+    <section class="slide" id="slide-5" data-section="evidence">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>证据与边界：Pass@K 揭示的真相</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <p>在竞赛级 MATH 测试中，7B 模型 Top-1 达到 51.7%，超越 Minerva 540B 与开源 70B 系列。但论文最深刻的洞察来自 SFT 与 RL 模型的采样消融实验：</p>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2024-deepseekmath/fig7.png" alt="Maj@K 与 Pass@K 对比" loading="lazy">
+          <figcaption><span class="fig-title">图 4 费曼图解（论文 Figure 7）</span>核心洞察：经过 GRPO 强化学习后，Maj@K（多数投票准确率）随着 K 显著上移；但 Pass@K（覆盖上限）曲线几乎与 SFT 模型完全重叠。这证实了强化学习的本质在于重塑采样分布、搬运概率质量，而非拓展知识边界。</figcaption>
+        </figure>
+        <p><strong>边界与代价</strong>：</p>
+        <ul>
+          <li><strong>零方差失效边界</strong>：若某道难题全错（全 0）或某道水题全对（全 1），组内标准差趋近 0，相对优势归零，梯度消失。GRPO 极度依赖有难度梯度的题目集；</li>
+          <li><strong>几何推理短板</strong>：纯文本预训练与网页数据在空间拓扑与图形几何上存在偏差，三角形/椭圆类题目显著弱于闭源通用大模型；</li>
+          <li><strong>Few-shot 扩展受限</strong>：受限于 7B 体量，少样本提示对性能的拉升幅度弱于 GPT-4。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ⑥ 卡壳点与解答 -->
+    <section class="slide" id="slide-6" data-section="pitfalls">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点与解答</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa" id="qa-grpo-advantage">
+          <p class="qa-q">Q：为什么丢弃 Critic 改用组内相对打分，不仅省显存，而且天然契合奖励模型？</p>
+          <div class="qa-a">
+            <p>1. <strong>显存减半</strong>：Critic 需要与策略模型相同的体量才能准确表征价值，移除后直接释放约 50% 显存；</p>
+            <p>2. <strong>降低估计方差</strong>：在末端稀疏奖励下，强行让 Critic 去预测中间每个 token 的绝对价值不仅噪声极大而且难以拟合；</p>
+            <p>3. <strong>契合 RM 排序本质</strong>：奖励模型（Reward Model）是由成对比较（Pairwise Preference）数据训练出来的，它天生最擅长在同一个问题下比较不同回答谁好谁差（相对排序），而不擅长输出绝对校准分。组内均值中心化与方差标准化顺应了这一本质特性。</p>
+          </div>
+        </div>
+        <div class="qa" id="qa-zero-variance">
+          <p class="qa-q">Q：在结果监督（Outcome）下全对或全错时，GRPO 与传统 PPO 行为有何不同？</p>
+          <div class="qa-a">
+            <p><strong>GRPO</strong>：全为 0 或全为 1 时，分子 (r_i - mean) 恒为 0，优势值直接归零，策略 surrogate 损失梯度完全消失（只剩微弱的 KL 正则）。这意味着完全超纲的难题与闭眼都会的送分题在 GRPO 中不产生有效探索信号；</p>
+            <p><strong>传统 PPO</strong>：由于存在独立价值网络 V(s_t)，即使最终全错，只要中间状态估计不为零就会产生 TD 误差并强行反向传播。但由于这种梯度建立在高度噪声的价值估计上，往往会带来有害的虚假更新破坏已有策略。</p>
+          </div>
+        </div>
+        <div class="qa" id="qa-passk-essence">
+          <p class="qa-q">Q：如何看待「Pass@K 曲线几乎没变，而 Maj@K 大幅跃升」这一现象？</p>
+          <div class="qa-a">
+            <p>这揭示了当前大模型强化学习的本质机理：</p>
+            <p>1. <strong>RL 并不能拓展未知知识边界</strong>：如果基座模型在 SFT 阶段尝试 64 次完全无法覆盖正解，RL 阶段也无法凭空发明新定理；</p>
+            <p>2. <strong>RL 是在已有解空间内进行「概率质量搬运」</strong>：基座模型早已具备做对的微弱潜力（可能仅占长尾的 1%），GRPO 充当了概率提纯器，把散落在长尾的正确解法推至分布主峰，使单次贪婪搜索或少数投票能稳健击中正解。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 关联与来源 -->
+    <section class="slide" id="slide-7" data-section="relations">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="rel-cards">
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">前置继承</span><h3>PPO</h3></div>
+            <p>GRPO 的直接理论基石：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略单步漂移过激；GRPO 的改动在于彻底裁掉 Critic 价值模型与 GAE，改用组内相对归一化估计优势，并将 KL 惩罚独立外置。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">下游应用</span><h3>GeoAnchor</h3></div>
+            <p>空间几何推理的强化对齐应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化多模态模型对不同空间潜变量模式的选择策略。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">自对齐对照</span><h3>U-OPSD / S²VOPD</h3></div>
+            <p>对齐信号来源的范式分叉：U-OPSD / S²VOPD 走的是模型自身自构造不对称信息差（自投票轨迹 / 图像退化降噪）进行逐 token 稠密教师分布蒸馏；GRPO 则是在策略采样组内计算标量相对奖励以策略梯度优化。</p>
+          </div>
+        </div>
+        <dl class="cover-meta" style="margin-top:1.5rem">
+          <dt>完整笔记</dt><dd><a href="../notes/papers/2024-deepseekmath.html">notes/papers/2024-deepseekmath.html</a></dd>
+          <dt>源文件</dt><dd><code>wiki/papers/2024-deepseekmath.md</code></dd>
+          <dt>Zotero 深链接</dt><dd><a href="zotero://select/items/XQHXBPT7">zotero://select/items/XQHXBPT7</a>（citekey: <code>shaoDeepSeekMathPushingLimits2024</code>）</dd>
+        </dl>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js"></script>
+</body>
+</html>

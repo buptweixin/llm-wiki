@@ -145,6 +145,6 @@ _无_——四道检验题全部通过（两处点透、两处补半句即收敛
 ## 关联
 
 - [Video-o3](2026-video-o3.md) — **同打破「纯文本 CoT」但方向相反**：Video-o3 把中间推理**外化**成工具调用（裁剪放大，可见可读可人工审计，代价是跨模型边界 + 依赖工具质量 + 工具可插拔），GeoAnchor 把中间推理**内化**成潜变量（保连续性、零外部依赖，代价是中间过程不可读、几何教师烧进权重换教师等于重训）。本文 Related Works 2.2 自己把这两条路线对立。一条换可解释性、一条换保真度；适用分界：动态场景/需人工审计选 o3 路线，静态图/连续几何精度选 latent 路线。
-- [PPO](2017-ppo.md) — Stage 4 的 GRPO 是 PPO 家族的组相对变体（组内均值当 baseline、去 value 网络），本文是 PPO 页「下游应用」的又一锚点（另一处见 Video-o3 的 VTGR）。
+- [DeepSeekMath](2024-deepseekmath.md) / [PPO](2017-ppo.md) — Stage 4 的 GRPO 是 DeepSeekMath 提出的 PPO 家族组相对变体（组内均值当 baseline、彻底丢弃 value 价值网络），本文是 GRPO 与 PPO 在空间潜变量模式选择上的下游应用锚点（Stage 4 用 GRPO + pattern reward 学自适应推理模式选择）。
 - [LocateAnything](2026-locateanything.md) — 同一问题「坐标该不该言语化」在输出侧的另一面：LocateAnything 仍把框坐标写成离散 token 块（整块并行解码换效率），GeoAnchor 干脆让几何量不经过词表进连续潜空间（换保真度）。两条路线都认为逐 token 蹦坐标不行，分歧在留在词表里还是离开词表。
 - 未来入库钩子：① 本文是库内第一篇 **3D 空间推理**论文，开新专题线；② 单 latent 先驱 Aurora（CVPR'25）/ SSR 入库时回链本页对照「分解 vs 单潜变量」；③ Spatial-MLLM（NeurIPS'25，frozen VGGT 当输入侧编码器）入库时对照「VGGT 当输入 vs 当监督教师」；④ SpatialLadder（ICLR'26，课程式 SFT，Abs. 距离 81.6 远超本文）入库时补「绝对距离为何 text 路线反强」这问。

@@ -22,6 +22,7 @@ _暂无_
 - [S²VOPD](wiki/papers/2026-s2vopd.md) — 零特权视觉 on-policy 自蒸馏：把学生的输入图故意降采样加噪弄坏，EMA 教师看原图，学生每步向"看得清的自己"对齐——不对称不必给教师加信息，可以从学生减信息；4B 涨到 77.44 超 235B 开源模型与 GPT-5.4，冻结教师只掉 0.4（增益来自那张图不是自我改进）。
 - [LocateAnything](wiki/papers/2026-locateanything.md) — VLM 检测别再把框拆成 token 流逐个蹦：把整个框当一个固定长块（`<box> x1 y1 x2 y2 </box>`）并行解码，训练用"接龙卷+填空卷"双格式、块内坐标联合监督；Hybrid 12.7 框/秒（Qwen3-VL 的 10×+）且贴边精度大涨（LVIS F1@0.95 31.1 vs 别家 ~20），另一半功劳靠 12M 图/138M 查询/785M 框数据引擎。
 - [PPO](wiki/papers/2017-ppo.md) — 用「剪刀（Clip 悲观下界）」代替「紧箍咒（TRPO 二阶约束）」的 Actor-Critic 算法：通过重要性采样比率的截断目标限制策略偏离幅度，在同一批样本上安全跑多轮 Minibatch 更新，以极简的一阶优化兼顾样本效率与防策略崩溃的鲁棒性。
+- [DeepSeekMath](wiki/papers/2024-deepseekmath.md) — 丢弃 Critic 价值模型的极简大模型强化学习（GRPO）：通过组内多采样输出的相对归一化打分估计优势值，显存省半且在竞赛级 MATH 达 51.7%（Top-1）；揭示代码预训练对数学的强迁移与 RL 重塑采样分布而非扩充知识边界的本质。
 
 ## 代码 Code
 
