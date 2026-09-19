@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DAPO · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260913-1">
+</head>
+<body>
+<div class="page">
+  <a class="skip-link" href="#deck">跳到正文</a>
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 知识库</a>
+    <span class="topbar-title">DAPO</span>
+    <nav class="topbar-nav">
+    </nav>
+    <span class="topbar-count">连续阅读</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <!-- ① 核心直觉 -->
+    <section class="slide" id="slide-1" data-section="essence">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2025</p>
+        <h1>DAPO</h1>
+        <p class="cover-full">DAPO: An Open-Source LLM Reinforcement Learning System at Scale</p>
+        <p class="cover-essence">针对大规模长思维链（Long-CoT）强化学习中朴素 GRPO 遭遇的熵坍缩、有效样本萎缩、长推导被稀释与截断噪声四大暗礁，提出「非对称放宽裁剪上界（Clip-Higher）+ 动态剔除零梯度题（Dynamic Sampling）+ 统一逐 Token 损失归约 + 线性软超长缓冲」四大机制，仅用一半步数实现 AIME 2024 突破 50 分的开源大规模 RL 系统。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>字节跳动 Seed、清华大学 AIR、香港大学（Qiying Yu 等）</dd>
+          <dt>入库</dt><dd>2026-09-19</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/QUHVNNHR">Zotero</a> · <a href="http://arxiv.org/abs/2503.14476">arXiv</a></dd>
+        </dl>
+        <div class="tagrow"><span class="tag">GRPO</span><span class="tag">策略梯度</span><span class="tag">裁剪代理目标</span><span class="tag">CoT 推理</span><span class="tag">提高推理深度</span><span class="tag">提高训练稳定性</span><span class="tag">提高训练预算利用率</span></div>
+      </div>
+    </section>
+
+    <!-- ② 一页看懂 -->
+    <section class="slide" id="slide-2" data-section="overview">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>复现 R1 时朴素 GRPO 仅得 30 分：对称裁剪使低概率长尾创新 token 无法增长引发熵坍缩；做对题增多导致全对题目零梯度吞噬 Batch；样本平均使长推导被稀释、复读不受罚；截断硬打负分误杀未完成的高质量思考。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>Clip-Higher 解耦裁剪（上界放宽至 1.28，下界守住 0.8）；动态采样过滤全对/全错零梯度题并补满 Batch；Token-level Loss 统筹字字平权；软超长线性过渡带缓冲；DAPO-Math-17K 整数标准化。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>Qwen2.5-32B 基座在 AIME 2024 从 30 分暴涨到 50 分，训练步数仅需 DeepSeek-R1-Zero 的 50%；不依赖 SFT 演示，纯规则 RL 下模型自发涌现出中途自我反思（Wait a moment...）与重算纠偏行为。</p>
+          </div>
+        </div>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2025-dapo/fig1.png" alt="DAPO 在 AIME 2024 上相比 DeepSeek-R1-Zero 的性能与收敛曲线" loading="lazy">
+          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>在 Qwen2.5-32B 基座上，DAPO 仅用 50% 的梯度更新步数就从 0 分跃升至 50 分（avg@32），不仅大幅超越朴素 GRPO 基线的 30 分，亦超越了闭源报告的 DeepSeek-R1-Zero-Qwen-32B（47 分）。</figcaption>
+        </figure>
+        <p class="takeaway">给极长长跑选手装上非对称剪刀与动态黄金题库：放宽油门上限、剔除无效白卷。</p>
+      </div>
+    </section>
+
+    <!-- ③ 关键机制：Clip-Higher 与动态采样 -->
+    <section class="slide" id="slide-3" data-section="mechanism">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：Clip-Higher 与动态采样</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>打破沿用数年的对称裁剪传统，将上界放宽到 1.28：</p>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2025-dapo/fig2.png" alt="Clip-Higher 对 AIME 准确率与策略熵的改善" loading="lazy">
+          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 2）</span>(a) AIME 准确率随训练显著提升；(b) 策略模型生成熵对比：无 Clip-Higher 时熵在 1000 步内急剧暴跌（熵坍缩），而引入 Clip-Higher 后策略熵平稳保持在健康区间，模型探索活力得以持续维系。</figcaption>
+        </figure>
+        <table class="dtable">
+          <thead><tr><th>关键机制</th><th>朴素 GRPO 做法</th><th data-hi>DAPO 创新重构</th><th>核心收益</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>裁剪区间</td>
+              <td>对称 [0.8, 1.2]</td>
+              <td data-hi>非对称 [0.8, 1.28]</td>
+              <td>下界守住采样防塌缩，上界给低概率创新 token 留下成倍成长空间</td>
+            </tr>
+            <tr>
+              <td>批次采样</td>
+              <td>固定 Batch 静态采样</td>
+              <td data-hi>动态剔除 Acc=0 与 Acc=1 的题目</td>
+              <td>彻底消灭零优势僵尸题目，确保反向传播每一步都是 100% 有效梯度</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ④ 关键机制：Token-level 损失与软超长奖励 -->
+    <section class="slide" id="slide-4" data-section="mechanism-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>机制深入：Token-level 损失与软惩罚</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <p>长推理下样本级平均（先除以长度 |o_i|）导致精妙长逻辑被稀释、长篇废话得不到严厉惩罚。DAPO 将分母提取到最外层：</p>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2025-dapo/fig4.png" alt="Token-level 损失对生成熵与平均响应长度的控制" loading="lazy">
+          <figcaption><span class="fig-title">图 3 费曼图解（论文 Figure 4）</span>无 Token-level 损失时，样本级归一化对长篇复读废话惩罚不足，导致生成熵畸高（异常混乱）且输出长度恶性膨胀；Token-level 损失通过字字均等计责，使策略熵维持在正常收敛轨迹，响应长度以健康节奏平稳增长。</figcaption>
+        </figure>
+        <figure class="paper-fig">
+          <img src="../assets/figures/2025-dapo/fig5.png" alt="超长样本过滤对 AIME 性能与熵的稳定作用" loading="lazy">
+          <figcaption><span class="fig-title">图 4 费曼图解（论文 Figure 5）</span>对比超长直接打 -1 带来的训练剧烈震荡，过滤/软化截断样本使 AIME 2024 得分稳步拉升至 35%+，彻底消除了假负例噪声引发的认知混乱。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ⑤ 证据与消融数据 -->
+    <section class="slide" id="slide-5" data-section="evidence">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>证据与消融：四大技术的阶梯贡献</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <p>在 Qwen2.5-32B 基座上逐项叠加技术，AIME 2024（avg@32）从 30 分一步步推至 50 分：</p>
+        <table class="dtable">
+          <thead><tr><th>技术组合步骤</th><th class="num">AIME 2024 得分</th><th class="num">步进收益</th><th>核心机制定位</th></tr></thead>
+          <tbody>
+            <tr><td>朴素 GRPO 基准</td><td class="num">30.0</td><td class="num">-</td><td>基线遭遇严重熵坍缩与有效批次萎缩</td></tr>
+            <tr><td>+ 超长样本过滤（Overlong Filtering）</td><td class="num">36.0</td><td class="num">+6.0</td><td>消除未完成高质量推导的假负例噪声</td></tr>
+            <tr><td>+ 非对称裁剪（Clip-Higher）</td><td class="num">38.0</td><td class="num">+2.0</td><td>阻断策略熵断崖下跌，维持探索活力</td></tr>
+            <tr><td>+ 软超长惩罚（Soft Overlong Punishment）</td><td class="num">41.0</td><td class="num">+3.0</td><td>线性渐进惩罚，平滑长度过渡</td></tr>
+            <tr><td>+ Token-level 损失归约</td><td class="num">42.0</td><td class="num">+1.0</td><td>按字计费，抑制低质复读膨胀</td></tr>
+            <tr data-hi><td>+ 动态重采样（Dynamic Sampling 全套）</td><td class="num"><strong>50.0</strong></td><td class="num"><strong>+8.0</strong></td><td>每步均为高信噪比更新，直接斩获最大飞跃</td></tr>
+          </tbody>
+        </table>
+        <p><strong>代价与适用边界</strong>：</p>
+        <ul>
+          <li><strong>动态采样推理吞吐压力</strong>：后期剔除率高，需要推理引擎支持极高并发与吞吐；</li>
+          <li><strong>强依赖精确规则判定</strong>：通过 DAPO-Math-17K 强制转换成整数答案，在难以自动化判卷的开放生成任务上较难直接推广。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ⑥ 卡壳点与解答 -->
+    <section class="slide" id="slide-6" data-section="pitfalls">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点与解答</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa" id="qa-clip-higher">
+          <p class="qa-q">Q：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？</p>
+          <div class="qa-a">
+            <p>1. <strong>对称 Clip 的非对称压制</strong>：低概率创新 token 想要脱颖而出，相对增长往往需要数倍（例如从 0.01 到 0.05 是 5 倍）；但 1.2 的上限直接扼杀了这种指数跃迁；而下限 0.8 却能持续有效压低坏动作。两者失衡导致策略熵断崖暴跌；</p>
+            <p>2. <strong>Clip-Higher 权衡</strong>：仅将上界放宽至 1.28，给低概率优秀 token 留出成长空间；下界严格守在 0.8 防止概率过度压制归零破坏动作空间。</p>
+          </div>
+        </div>
+        <div class="qa" id="qa-token-loss">
+          <p class="qa-q">Q：样本级平均与 Token 级平均在长思考链下的根本分歧是什么？</p>
+          <div class="qa-a">
+            <p>1. <strong>样本级平均病态</strong>：单样本除以长度 |o_i|，导致 16K 长推导中每个 token 的梯度贡献被严重稀释；而一旦模型死循环复读，单 token 负惩罚同样被巨额分母稀释，纵容了废话膨胀；</p>
+            <p>2. <strong>Token 级平均拨乱反正</strong>：把分母移到最外层除以总有效 token 数。每个 token 权重完全均等，好字给足正奖励，复读注水字字受罚，从数学上根治了无惩罚刷长度。</p>
+          </div>
+        </div>
+        <div class="qa" id="qa-dynamic-sampling-speed">
+          <p class="qa-q">Q：动态采样额外生成了数据，为什么整体训练时间反而更少？</p>
+          <div class="qa-a">
+            <p>1. <strong>消灭无效空转</strong>：全对题目在 GRPO 下优势恒为零，硬塞进 Batch 只是占着显存放空炮，导致实际有效 Batch 萎缩 60%+；剔除后反向传播步数直接减少 50%；</p>
+            <p>2. <strong>木桶效应掩盖耗时</strong>：分布式并行 Rollout 时间由最长长尾样本决定，等待长尾生成的空档异步多跑几次短题目并不会显著增加墙钟耗时。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 关联与来源 -->
+    <section class="slide" id="slide-7" data-section="relations">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="rel-cards">
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">前置演进</span><h3>DeepSeekMath</h3></div>
+            <p>算法源头与痛点修复：DeepSeekMath 提出了首个免 Critic 的 GRPO 算法，但在上万 token 长思维链下暴露了四大暗礁；DAPO 是针对 Long-CoT 的直接升级系统。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">裁剪理论</span><h3>PPO</h3></div>
+            <p>裁剪边界的非对称改造：PPO 确立了经典对称裁剪目标（1±ε），DAPO 首次针对长生成探索证明了非对称 Clip-Higher 在防范策略熵坍缩上的核心价值。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">长度预算对照</span><h3>Open-MOPD</h3></div>
+            <p>长度与预算失衡的同源对照：Open-MOPD 揭示长短回答 25× 差距会导致 token 梯度严重倾斜；DAPO 的 Token-level 损失同样是在处理长短序列梯度权重均等的本质问题。</p>
+          </div>
+        </div>
+        <dl class="cover-meta" style="margin-top:1.5rem">
+          <dt>完整笔记</dt><dd><a href="../notes/papers/2025-dapo.html">notes/papers/2025-dapo.html</a></dd>
+          <dt>源文件</dt><dd><code>wiki/papers/2025-dapo.md</code></dd>
+          <dt>Zotero 深链接</dt><dd><a href="zotero://select/items/QUHVNNHR">zotero://select/items/QUHVNNHR</a>（citekey: <code>yuDAPOOpenSourceLLM2025</code>）</dd>
+        </dl>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js"></script>
+</body>
+</html>

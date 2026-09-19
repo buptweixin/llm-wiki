@@ -425,3 +425,9 @@
 - 从 Zotero 条目 `XQHXBPT7`（citekey `shaoDeepSeekMathPushingLimits2024`，DOI `10.48550/arXiv.2402.03300`）取全文、元数据与 AI Butler 预读（总结 `8CYDI7ER` + 表格 `RK4Y6U8L`）；完成 Phase 0 定位、费曼讲解与三题检验。用户理解了组采样标准化优势计算、全对/全错零方差梯度消失机制，以及 Pass@K 不变而 Maj@K 跃升所揭示的 RL 概率重塑本质。
 - 用 `scripts/extract-paper-figure.py` 提取四张重点图像（Fig 1/2/4/7），涵盖 MATH 表现、Common Crawl 数据流水线、PPO vs GRPO 架构对比及 Pass@K 消融曲线，嵌入三层结构。
 - 新增 `wiki/papers/2024-deepseekmath.md`，互链 `[PPO](wiki/papers/2017-ppo.md)` 与 `[GeoAnchor](wiki/papers/2026-geoanchor.md)`；人工补齐 AI 预读漏检的两处关键盲点（Pass@K 本质与统一梯度范式）；同步 `index.md`、`review.md`（排入复测 2026-09-21）。
+
+## [2026-09-19] ingest | DAPO
+
+- 从 Zotero 条目 `QUHVNNHR`（citekey `yuDAPOOpenSourceLLM2025`，DOI `10.48550/arXiv.2503.14476`）取全文、元数据与 AI Butler 预读（笔记 `NXVAD9J7`）；完成 Phase 0 定位、费曼讲解与三题检验。用户深刻理解了非对称 Clip-Higher 抑制熵坍缩、Token-level 损失防长篇复读稀释，以及动态采样剔除零梯度题加速收敛的核心机制。
+- 用 `scripts/extract-paper-figure.py` 提取四张重点图像（Fig 1/2/4/5），涵盖 AIME 表现收敛曲线、Clip-Higher 熵改善、Token-level 损失长度控制及超长截断过滤平稳作用，嵌入三层结构。
+- 新增 `wiki/papers/2025-dapo.md`，互链 `[DeepSeekMath](wiki/papers/2024-deepseekmath.md)`、`[PPO](wiki/papers/2017-ppo.md)`、`[Open-MOPD](wiki/papers/2026-open-mopd.md)`；同步 `index.md`、`review.md`（排入复测 2026-09-22）。
