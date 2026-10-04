@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VST · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
 </head>
 <body>
 <div class="page">
@@ -47,12 +47,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：一个片段间隔为 16 秒，思考用 7 秒，可以在下一段到达前完成。若改成 20 秒思考，就可能落后，只能利用最近已完成的记忆。这里说明调度，不预测新硬件上的延迟。</p>
   <p class="guide-boundary"><strong>边界</strong>：低查询延迟不等于没有后台计算。固定记忆也不保证保留全部历史证据。训练可见范围必须与部署对齐，过去已到达与未来尚未到达是两类条件。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>把视觉部署改为保留所有已到达 token，训练仍只看最近 L 个，会造成哪种不一致？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>训练与部署的历史视觉范围不同。训练应同步改为已到达前缀；未来依然不可见。下面的可见性演示可以继续改变 t 与 L 检查反例。</p></details>
-    <p class="guide-transfer">关掉提示后解释：视觉窗口、FIFO 文本记忆和因果掩码分别保留或限制哪一种信息？</p>
+    <p class="guide-explanation">训练与部署的历史视觉范围不同。训练应同步改为已到达前缀；未来依然不可见。下面的静态图与规则表列出窗口和前缀两种情况。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：视觉窗口、FIFO 文本记忆和因果掩码分别保留或限制哪一种信息？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 </div></section>
@@ -124,9 +124,9 @@
           </div>
           <p class="fig-note">掩码既堵未来（防信息泄露），又堵漂移（训练可见性 = 推理可见性，否则训练看全片、推理看一段，分布不一致导致掉点）。</p>
         </div>
-<h3>图解：训练与部署能看哪些视觉 token</h3><p>未来画面尚未到达，所以训练和部署都不能看它们。窗口部署只保留最近 L 个视觉 token，训练也要采用同样的可见范围。若部署改成保留所有已到达的视觉 token，训练规则也应同步改变；遮住未来的规则仍然保留。</p><figure class="paper-fig"><a href="../assets/diagrams/vst-visibility.png"><img src="../assets/diagrams/vst-visibility.png" alt="VST 可见性示意：t=6、L=3 时，训练和窗口部署都能看视觉 token 4、5、6，1、2、3 已出窗口，7、8 尚未到达" loading="lazy" width="700" height="260"></a><figcaption>机制图解：示例有 8 个视觉 token，当前已到达 token 6，窗口容量 L=3。训练与窗口部署都只看 token 4、5、6；早期画面已出窗口，未来画面尚未到达。每格是一个视觉 token，不是一帧或一秒；文本记忆另有规则，本图不画文本记忆。</figcaption></figure><div class="mechanism-demo" id="demo-vst-mask" data-demo="visibility" data-total="8" data-time="6" data-window="3">
-  <h3>改变条件：先预测，再查看可见范围</h3>
-  <p class="demo-intro">t 是最新已到达的视觉 token 索引，L 是视觉窗口容量，均可在 1 到 8 之间改变。窗口规则可见 max(1, t-L+1) 到 t；前缀规则可见 1 到 t。所有场景都遮住 t 之后的未来。每格一个视觉 token，本演示不处理文本记忆，也不预测性能。</p>
+<h3>图解：训练与部署能看哪些视觉 token</h3><p>未来画面尚未到达，所以训练和部署都不能看它们。窗口部署只保留最近 L 个视觉 token，训练也要采用同样的可见范围。若部署改成保留所有已到达的视觉 token，训练规则也应同步改变；遮住未来的规则仍然保留。</p><figure class="paper-fig"><a href="../assets/diagrams/vst-visibility.png"><img src="../assets/diagrams/vst-visibility.png" alt="VST 可见性示意：t=6、L=3 时，训练和窗口部署都能看视觉 token 4、5、6，1、2、3 已出窗口，7、8 尚未到达" loading="lazy" width="700" height="260"></a><figcaption>机制图解：示例有 8 个视觉 token，当前已到达 token 6，窗口容量 L=3。训练与窗口部署都只看 token 4、5、6；早期画面已出窗口，未来画面尚未到达。每格是一个视觉 token，不是一帧或一秒；文本记忆另有规则，本图不画文本记忆。</figcaption></figure><div class="mechanism-reference" id="demo-vst-mask" data-demo="visibility" data-total="8" data-time="6" data-window="3">
+  <h3>窗口与前缀：四种规则对照</h3>
+  <p class="demo-intro">图中示例有 8 个视觉 token，t=6 表示最新已到达的索引，L=3 表示视觉窗口容量。窗口规则可见 max(1, t-L+1) 到 t；前缀规则可见 1 到 t。所有场景都遮住 t 之后的未来。每格一个视觉 token。本图表只说明视觉可见性，文本记忆另有规则；它不预测性能。</p>
   <table class="dtable demo-scenarios">
     <thead><tr><th>场景</th><th>训练规则</th><th>部署规则</th><th>解释与边界</th></tr></thead>
     <tbody>
@@ -137,7 +137,7 @@
     </tbody>
   </table>
   <p class="demo-transfer">关闭图解后再解释：如果部署保留全部已到达画面，训练应该改哪条规则？为什么未来仍不可见？本演示只作练习，不记录掌握状态或复测通过。</p>
-</div><p>2026-10-04：新增静态图和条件变换练习，待试用；本次没有进行理解检验。2026-08-28 换框架后的反例复验记录保留。</p>
+</div><p class="guide-status">2026-10-04：新增静态图和条件变换练习，待试用；本次没有进行理解检验。2026-08-28 换框架后的反例复验记录保留。</p>
         <p><strong>VST-SFT</strong>：合成因果 CoT 数据做监督微调，学会「边看边写」协议；配合时序分段绕过上下文长度限制（段间靠记忆递归传递）。<strong>VST-RL</strong>：GRPO 每问采 8 条轨迹，奖励只看最终答案对不对，但组相对优势赋给轨迹内<strong>全部生成 token（含中间 thoughts）</strong>：答案对了思考就有功，信用间接传回推理步骤，逼模型写出真有用的思考而非废话。</p>
       </div>
     </section>
@@ -236,7 +236,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-3"></script>
-<script src="../assets/wiki-slides.js?v=20261004-3"></script>
+<script src="../assets/wiki-index.js?v=20261004-4"></script>
+<script src="../assets/wiki-slides.js?v=20261004-4"></script>
 </body>
 </html>

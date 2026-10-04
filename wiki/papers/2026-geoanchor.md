@@ -26,12 +26,12 @@ updated: 2026-10-04
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：问“相框相对雕塑朝哪边”，需要两个位置锚和一条方向箭头。问更依赖房间布局的问题时，整体 geometry 提供另一类条件。这个例子说明分工，不保证模型每次都选对模式。</p>
   <p class="guide-boundary"><strong>边界</strong>：latent 仍是有限精度向量，不是无损的真实 3D 场景。撤掉几何监督后的性能提升是消融观察；t-SNE 和注意力图不能单独证明所有几何信息都被完整保留。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>让 8 个 geometry token 对齐大量 VGGT 网格特征，为什么不必一格配一个 token？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>soft coverage 要求网格特征得到覆盖，而不要求固定一一对应。平衡项抑制所有网格挤向少数 token，避免浪费其余容量。</p></details>
-    <p class="guide-transfer">关掉提示后解释：projector 在连接哪两个向量空间？它为什么与三类潜变量的分工是不同问题？</p>
+    <p class="guide-explanation">soft coverage 要求网格特征得到覆盖，而不要求固定一一对应。平衡项抑制所有网格挤向少数 token，避免浪费其余容量。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：projector 在连接哪两个向量空间？它为什么与三类潜变量的分工是不同问题？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

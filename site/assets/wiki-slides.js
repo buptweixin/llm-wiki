@@ -574,150 +574,7 @@
 
   /* ---------- 回忆模式: 只见标题 -> 显示问题 -> 逐题展开解答 ---------- */
 
-  /* ---------- 机制练习：从真源规则表生成控件，练习状态只留在当前 DOM ---------- */
-
-  function prepareVisibilityDemos(deck) {
-    return qsa('.mechanism-demo[data-demo="visibility"]', deck).map(function (demo) {
-      var total = Number(demo.dataset.total);
-      var initialTime = Number(demo.dataset.time);
-      var initialWindow = Number(demo.dataset.window);
-      var table = qs(".demo-scenarios", demo);
-      var scenes = table ? qsa("tbody tr", table) : [];
-      if (!Number.isInteger(total) || total < 1 || total > 32 || !scenes.length ||
-          !Number.isInteger(initialTime) || initialTime < 1 || initialTime > total ||
-          !Number.isInteger(initialWindow) || initialWindow < 1 || initialWindow > total ||
-          scenes.some(function (row) {
-            return [row.dataset.train, row.dataset.infer].some(function (rule) { return rule !== "window" && rule !== "prefix"; }) || row.cells.length !== 4;
-          })) return null;
-
-      var controls = node("div", "demo-controls");
-      var sceneLabel = node("label", "demo-control demo-scene-label", "场景");
-      var select = document.createElement("select");
-      scenes.forEach(function (row, index) {
-        var option = node("option", "", row.cells[0].textContent.trim());
-        option.value = String(index);
-        select.appendChild(option);
-      });
-      sceneLabel.appendChild(select);
-      controls.appendChild(sceneLabel);
-
-      function slider(label, initial) {
-        var field = node("label", "demo-control");
-        var title = node("span", "", label + " ");
-        var output = node("output", "demo-number", String(initial));
-        var input = document.createElement("input");
-        input.type = "range";
-        input.min = "1";
-        input.max = String(total);
-        input.step = "1";
-        input.value = String(initial);
-        input.id = demo.id + "-" + (label.indexOf("t") >= 0 ? "time" : "window");
-        input.setAttribute("aria-label", label);
-        output.setAttribute("for", input.id);
-        title.appendChild(output);
-        field.appendChild(title);
-        field.appendChild(input);
-        controls.appendChild(field);
-        return { input: input, output: output };
-      }
-      var time = slider("最新已到达索引 t", initialTime);
-      var windowSize = slider("视觉窗口容量 L", initialWindow);
-      var prediction = document.createElement("fieldset");
-      prediction.className = "demo-prediction";
-      prediction.appendChild(node("legend", "", "先预测：当前训练与部署的视觉可见范围有什么关系？"));
-      var choices = node("div", "demo-choices");
-      [["same", "范围相同"], ["train-more", "训练多看了早期画面"], ["train-less", "训练少看了早期画面"]].forEach(function (choice) {
-        var label = node("label", "demo-choice");
-        var input = document.createElement("input");
-        input.type = "radio";
-        input.name = demo.id + "-prediction";
-        input.value = choice[0];
-        label.appendChild(input);
-        label.appendChild(node("span", "", choice[1]));
-        choices.appendChild(label);
-        input.addEventListener("change", function () {
-          reveal.disabled = false;
-          answer.hidden = true;
-          reveal.setAttribute("aria-expanded", "false");
-        });
-      });
-      prediction.appendChild(choices);
-      var actions = node("div", "demo-actions");
-      var reveal = node("button", "demo-reveal", "查看可见范围");
-      reveal.type = "button";
-      reveal.disabled = true;
-      var resetButton = node("button", "demo-reset", "收起结果，重新预测");
-      resetButton.type = "button";
-      actions.appendChild(reveal);
-      actions.appendChild(resetButton);
-      var answer = node("div", "demo-answer");
-      answer.id = demo.id + "-answer";
-      answer.hidden = true;
-      answer.setAttribute("aria-live", "polite");
-      answer.setAttribute("aria-atomic", "true");
-      reveal.setAttribute("aria-controls", answer.id);
-      reveal.setAttribute("aria-expanded", "false");
-
-      function reset() {
-        time.output.textContent = time.input.value;
-        windowSize.output.textContent = windowSize.input.value;
-        var scene = scenes[Number(select.value)];
-        windowSize.input.disabled = scene.dataset.train === "prefix" && scene.dataset.infer === "prefix";
-        qsa('input[type="radio"]', prediction).forEach(function (input) { input.checked = false; });
-        answer.hidden = true;
-        while (answer.firstChild) answer.removeChild(answer.firstChild);
-        reveal.disabled = true;
-        reveal.setAttribute("aria-expanded", "false");
-      }
-      [select, time.input, windowSize.input].forEach(function (input) {
-        input.addEventListener(input.type === "range" ? "input" : "change", reset);
-      });
-      resetButton.addEventListener("click", reset);
-      reveal.addEventListener("click", function () {
-        var picked = qs('input[type="radio"]:checked', prediction);
-        if (!picked) return;
-        var scene = scenes[Number(select.value)];
-        var t = Number(time.input.value);
-        var capacity = Number(windowSize.input.value);
-        var trainStart = scene.dataset.train === "window" ? Math.max(1, t - capacity + 1) : 1;
-        var inferStart = scene.dataset.infer === "window" ? Math.max(1, t - capacity + 1) : 1;
-        var actual = trainStart === inferStart ? "same" : trainStart < inferStart ? "train-more" : "train-less";
-        while (answer.firstChild) answer.removeChild(answer.firstChild);
-        var relationship = actual === "same" ? "当前范围相同。" : actual === "train-more" ? "训练多看了 token " + trainStart + " 到 " + (inferStart - 1) + "。" : "训练少看了 token " + inferStart + " 到 " + (trainStart - 1) + "。";
-        answer.appendChild(node("p", "demo-feedback", (picked.value === actual ? "本例预测相符。" : "本例预测需要调整。") + relationship));
-        [["训练", trainStart], ["部署", inferStart]].forEach(function (row) {
-          var group = node("div", "demo-visibility");
-          group.appendChild(node("p", "demo-row-label", row[0] + "：可见 token " + row[1] + " 到 " + t));
-          var tokens = node("ol", "demo-tokens");
-          for (var i = 1; i <= total; i += 1) {
-            var visible = i >= row[1] && i <= t;
-            var token = node("li", "demo-token" + (visible ? " is-visible" : "") + (i === t ? " is-current" : ""));
-            token.dataset.token = String(i);
-            token.dataset.visible = String(visible);
-            token.appendChild(node("span", "demo-number", String(i)));
-            token.appendChild(node("span", "demo-token-state", visible ? "可见" : i > t ? "未来" : "已遮"));
-            tokens.appendChild(token);
-          }
-          group.appendChild(tokens);
-          answer.appendChild(group);
-        });
-        answer.appendChild(node("p", "demo-scenario-explanation", scene.cells[3].textContent.trim()));
-        answer.hidden = false;
-        reveal.setAttribute("aria-expanded", "true");
-      });
-      var interactive = node("div", "demo-interactive");
-      interactive.appendChild(controls);
-      interactive.appendChild(prediction);
-      interactive.appendChild(actions);
-      interactive.appendChild(answer);
-      demo.insertBefore(interactive, table);
-      demo.classList.add("is-enhanced");
-      reset();
-      return { reset: reset };
-    }).filter(Boolean);
-  }
-
-  function prepareRecall(deck, pageRoot, resetDemos) {
+  function prepareRecall(deck, pageRoot) {
     var pitfalls = qs("#pitfalls", deck);
     if (!pitfalls) return null;
     var list = qs(".qa-list", pitfalls);
@@ -727,8 +584,6 @@
 
     pageRoot.dataset.enhanced = "true";
     var bar = node("div", "reader-recall-bar");
-    var hint = node("span", "reader-recall-hint", "先凭记忆回答，再逐题打开解答。页面不会记录掌握状态。");
-    bar.appendChild(hint);
     list.parentNode.insertBefore(bar, list);
 
     function setQaOpen(qa, open) {
@@ -745,24 +600,19 @@
       if (!answer) return;
       var toggle = node("button", "qa-toggle", "查看解答");
       toggle.type = "button";
+      toggle.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
       qa.insertBefore(toggle, answer);
       toggle.addEventListener("click", function () {
         setQaOpen(qa, !qa.classList.contains("is-open"));
       });
     });
-    setQaOpen(qas[0], true);
+    qas.forEach(function (qa) { setQaOpen(qa, true); });
 
     function renderBar(state) {
       while (bar.firstChild) bar.removeChild(bar.firstChild);
-      if (state === "off") {
-        bar.appendChild(node("span", "reader-recall-hint", "先凭记忆回答，再逐题打开解答。页面不会记录掌握状态。"));
-        var enter = node("button", "", "进入回忆模式");
-        enter.type = "button";
-        enter.addEventListener("click", function () { enterRecall(); });
-        bar.appendChild(enter);
-        return;
-      }
+      bar.hidden = state === "off";
+      if (state === "off") return;
       if (state === "titles") {
         bar.appendChild(node("span", "reader-recall-hint", "回忆模式：先凭记忆复述本篇的核心机制、边界和易错点，只看标题作答。"));
         var show = node("button", "", "显示检验问题");
@@ -784,19 +634,25 @@
     }
 
     function enterRecall() {
-      if (resetDemos) resetDemos();
       pageRoot.classList.add("reader-recall");
       pageRoot.classList.remove("show-questions");
-      qas.forEach(function (qa) { setQaOpen(qa, false); });
+      qas.forEach(function (qa) {
+        setQaOpen(qa, false);
+        var toggle = qs(".qa-toggle", qa);
+        if (toggle) toggle.hidden = false;
+      });
       renderBar("titles");
       syncRecallLinks(true);
       window.scrollTo({ top: 0, behavior: scrollBehavior() });
     }
 
     function exitRecall() {
-      if (resetDemos) resetDemos();
       pageRoot.classList.remove("reader-recall", "show-questions");
-      qas.forEach(function (qa, index) { setQaOpen(qa, index === 0); });
+      qas.forEach(function (qa) {
+        setQaOpen(qa, true);
+        var toggle = qs(".qa-toggle", qa);
+        if (toggle) toggle.hidden = true;
+      });
       renderBar("off");
       syncRecallLinks(false);
     }
@@ -975,8 +831,7 @@
     layout.appendChild(deck);
     layout.appendChild(context);
 
-    var demos = prepareVisibilityDemos(deck);
-    var recall = prepareRecall(deck, pageRoot, function () { demos.forEach(function (demo) { demo.reset(); }); });
+    var recall = prepareRecall(deck, pageRoot);
     var recallLink = qs('[data-action="recall"]');
     if (recall && recallLink) {
       recallLink.addEventListener("click", function (event) {
@@ -996,7 +851,7 @@
         if (!target) return null;
         var qa = target.closest ? target.closest(".qa") : null;
         if (qa) openQa(qa);
-        var focusEl = (qa && qs(".qa-toggle", qa)) || target;
+        var focusEl = (qa && recall && recall.isActive() && qs(".qa-toggle", qa)) || target;
         if (focusEl === target) target.setAttribute("tabindex", "-1");
         if (window.location.hash === "#" + id) openHashTarget();
         else window.location.hash = id;

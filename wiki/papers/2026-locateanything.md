@@ -27,12 +27,12 @@ updated: 2026-10-04
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：一个坐标 top-1 概率为 0.6，top-5 跨度为 40。它不满足空间歧义的双条件；若跨度改为 100，才同时满足低于 0.7 与大于 80。格式错误另有独立触发条件。</p>
   <p class="guide-boundary"><strong>边界</strong>：同块互见的是当前输入与 mask 位置，不是尚未生成的真实坐标。联合 token 交叉熵能学习几何规律，但不等于硬性保证每个框合法。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>置信度为 0.9、跨度为 100，且格式合法时，是否因空间歧义回退？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>不回退。空间歧义要求两个条件同时满足，只有跨度大还不够。这个结论只描述触发规则，不保证该框一定正确。</p></details>
-    <p class="guide-transfer">关掉提示后解释：为什么 Hybrid 只重写坏块，而不需要把整段输出从头重做？</p>
+    <p class="guide-explanation">不回退。空间歧义要求两个条件同时满足，只有跨度大还不够。这个结论只描述触发规则，不保证该框一定正确。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：为什么 Hybrid 只重写坏块，而不需要把整段输出从头重做？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

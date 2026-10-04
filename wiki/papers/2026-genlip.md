@@ -27,12 +27,12 @@ updated: 2026-10-04
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：输入两块图像 token 和描述“猫 在 睡觉”。预测“睡觉”时可看全部图像与“猫 在”；图像 token 看不到训练描述。否则下游只输入图像时，视觉特征会缺少训练时偷看的信息。</p>
   <p class="guide-boundary"><strong>边界</strong>：独立解码器路线同样能把梯度传回 ViT。GenLIP 的区别是共享单个 Transformer。池化不保证各 token 梯度均匀，门控也不是自动识别坏 token 的硬开关。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>训练结束后删掉 LM head，图像 token 还能互相看吗？为什么不需要生成描述才能得到视觉特征？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>还能。只剩图像前缀时，图像之间本来就是双向注意力。语言损失已在训练时更新了共享权重，推理时可直接读视觉表示。</p></details>
-    <p class="guide-transfer">关掉提示后画四格可见性表：图像到图像、图像到文本、文本到图像、文本到文本。</p>
+    <p class="guide-explanation">还能。只剩图像前缀时，图像之间本来就是双向注意力。语言损失已在训练时更新了共享权重，推理时可直接读视觉表示。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后画四格可见性表：图像到图像、图像到文本、文本到图像、文本到文本。</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

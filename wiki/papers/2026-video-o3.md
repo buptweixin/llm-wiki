@@ -27,12 +27,12 @@ updated: 2026-10-04
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：问“谁先拿起钥匙”。概览只看到两人走动，模型可请求查看桌边那几秒，再结合新证据回答。若裁剪仍没显示关键动作，可以继续调用，但受轮数与上下文预算限制。</p>
   <p class="guide-boundary"><strong>边界</strong>：TDAM 是训练期分工：工具规划阶段遮局部裁剪，回答阶段遮全局。它只用于部分数据，不是要求推理时永远禁看全局。找到线索也不保证推理正确。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>删除轮数衰减，是否只会得到更好的答案？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>论文消融中工具调用更多，准确率反而下降。更多探索会增加成本，也可能使上下文碎片化。这个观察不表示每个问题都应只调用一次。</p></details>
-    <p class="guide-transfer">关掉提示后解释：共享上下文为什么既能帮助联合证据，也会产生注意力分散和 Fake Thinking？</p>
+    <p class="guide-explanation">论文消融中工具调用更多，准确率反而下降。更多探索会增加成本，也可能使上下文碎片化。这个观察不表示每个问题都应只调用一次。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：共享上下文为什么既能帮助联合证据，也会产生注意力分散和 Fake Thinking？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

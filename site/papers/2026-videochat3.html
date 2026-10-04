@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VideoChat3 · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
 </head>
 <body>
 <div class="page">
@@ -47,12 +47,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：4 帧，每帧 16 个 patch，共 64 个。时间聚合成 16 个位置，再把 2×2 空间位置组合成 4 个 token。64→4 解释的是 token 计数，不是整条模型计算量必定缩小 16 倍。</p>
   <p class="guide-boundary"><strong>边界</strong>：压缩会丢信息，低分辨率也可能漏掉小目标。当前状态决定下一窗口预算，不能让已经以低分辨率看过的当前证据自动变清楚。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>若只训练状态切换点、不训练保持点，模型是否学会了完整的“何时继续保持状态”决策？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>没有。论文同时采样保持点，让模型比较当前视觉证据与先前状态。只看切换点会缺少维持状态的监督。</p></details>
-    <p class="guide-transfer">关掉提示后解释：减少视觉 token、提高分辨率、决定回复时机，分别在解决什么问题？</p>
+    <p class="guide-explanation">没有。论文同时采样保持点，让模型比较当前视觉证据与先前状态。只看切换点会缺少维持状态的监督。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：减少视觉 token、提高分辨率、决定回复时机，分别在解决什么问题？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 </div></section>
@@ -236,7 +236,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-3"></script>
-<script src="../assets/wiki-slides.js?v=20261004-3"></script>
+<script src="../assets/wiki-index.js?v=20261004-4"></script>
+<script src="../assets/wiki-slides.js?v=20261004-4"></script>
 </body>
 </html>

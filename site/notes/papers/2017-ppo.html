@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PPO · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-3">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
 </head>
 <body>
 <div class="page">
@@ -51,12 +51,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：旧策略对一个好动作的概率为 0.20，新策略为 0.30，r=1.5。设 A=1、epsilon=0.2，该样本目标取 min(1.5,1.2)=1.2。目标变平，概率本身仍可以超过 0.24。</p>
   <p class="guide-boundary"><strong>边界</strong>：这是单个样本的 surrogate 目标。共享参数、价值损失和熵项仍会影响策略。clip 不能保证整个网络每次都在安全范围内。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>保持 r=1.5，把 A 改为 -1。目标还会变平吗？先给出 min 两项的数值。</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>两项为 -1.5 和 -1.2，min 取 -1.5。坏动作概率被错误提高时，未裁剪项保留纠偏信号。超出区间并不总意味着该样本梯度为零。</p></details>
-    <p class="guide-transfer">关掉提示后解释：为什么 PPO 可以短期复用一批样本，却不能把任意旧轨迹长期当作当前策略的数据？</p>
+    <p class="guide-explanation">两项为 -1.5 和 -1.2，min 取 -1.5。坏动作概率被错误提高时，未裁剪项保留纠偏信号。超出区间并不总意味着该样本梯度为零。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：为什么 PPO 可以短期复用一批样本，却不能把任意旧轨迹长期当作当前策略的数据？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div></section>
 <section class="note-sec" id="figures"><h2>论文图解</h2><figure class="paper-fig"><img src="../../assets/figures/2017-ppo/fig1.png" alt="优势正负决定裁剪平台的位置" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：左图的好动作概率提高过多后，目标变平；右图的坏动作概率降低到阈值以下后，目标变平。反方向仍可保留未裁剪项。横轴是概率比，不是被强制限制的概率。</figcaption></figure>
@@ -298,6 +298,6 @@
     </footer>
   </main>
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-3"></script>
+<script src="../../assets/wiki-slides.js?v=20261004-4"></script>
 </body>
 </html>

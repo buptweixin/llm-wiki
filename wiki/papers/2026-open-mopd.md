@@ -26,12 +26,12 @@ updated: 2026-10-04
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：两个域各一条回答，长度为 2 与 8。未经加权，token 份额是 20% 与 80%；若目标各半，份额权重为 0.5/0.2=2.5 和 0.5/0.8=0.625。这里只隔离第一层预算。</p>
   <p class="guide-boundary"><strong>边界</strong>：教师冲突在该论文的同源教师、3B 学生、oracle 路由设置里不是主要瓶颈。结论不覆盖任意教师组合。clip fraction 也不等于全部网络梯度被冻结的比例。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>同一批 rollout 只更新一次，即 K=1，reward refresh 还在修复多轮更新后的奖励陈旧吗？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>没有这种多轮陈旧需要修复。K&gt;1 时刷新奖励项才有作用；即使刷新，也没有把旧轨迹变成当前策略的新采样。</p></details>
-    <p class="guide-transfer">关掉提示后解释：三种修复分别发生在 batch 内、训练全程、rollout 复用周期的哪一个尺度？</p>
+    <p class="guide-explanation">没有这种多轮陈旧需要修复。K&gt;1 时刷新奖励项才有作用；即使刷新，也没有把旧轨迹变成当前策略的新采样。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：三种修复分别发生在 batch 内、训练全程、rollout 复用周期的哪一个尺度？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

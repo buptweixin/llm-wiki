@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DAPO · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
 </head>
 <body>
 <div class="page">
@@ -49,12 +49,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：短回答 2 个 token，长回答 6 个 token。逐回答平均会让每个短 token 的聚合权重为 1/4、每个长 token 为 1/12；全批 token 平均时，每个 token 都是 1/8。此处只比较归一化权重。</p>
   <p class="guide-boundary"><strong>边界</strong>：序列奖励不证明长回答的每个 token 都正确。动态采样需要额外 rollout；减少更新步数，也不自动保证所有机器上的墙钟时间减半。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>把上侧 epsilon 从 0.2 改为 0.28，是把所有 r 强制锁在 [0.8,1.28] 吗？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>不是。对正优势样本，目标沿提高概率的方向更晚变平。负优势样本概率错误增大时，min 仍可选择未裁剪项。实际概率也会受其他样本和损失影响。</p></details>
-    <p class="guide-transfer">关掉提示后解释：动态采样与 token 平均分别解决哪种浪费？为什么不能用其中一个代替另一个？</p>
+    <p class="guide-explanation">不是。对正优势样本，目标沿提高概率的方向更晚变平。负优势样本概率错误增大时，min 仍可选择未裁剪项。实际概率也会受其他样本和损失影响。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：动态采样与 token 平均分别解决哪种浪费？为什么不能用其中一个代替另一个？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 </div></section>
@@ -216,6 +216,6 @@
 
   </main>
 </div>
-<script src="../assets/wiki-slides.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-4"></script>
 </body>
 </html>

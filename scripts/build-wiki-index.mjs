@@ -212,7 +212,7 @@ function visibleText(value) {
 function markdownText(value) {
   return decodeHtml(value
     .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<\/?(?:div|p|strong|em|ol|ul|li|h[1-6]|details|summary|span|a|button|label|input|select|option|output|table|thead|tbody|tr|td|th|img|figure|figcaption|br|svg|g|rect|path|line|text)\b[^>]*>/gi, " ")
+    .replace(/<\/?(?:div|aside|p|strong|em|ol|ul|li|h[1-6]|details|summary|span|a|button|label|input|select|option|output|table|thead|tbody|tr|td|th|img|figure|figcaption|br|svg|g|rect|path|line|text)\b[^>]*>/gi, " ")
     .replace(/^```[^\n]*\n/gm, "")
     .replace(/^```\s*$/gm, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -612,7 +612,12 @@ for (const { id, kind } of manifest) {
     entries.push(entry);
   }
   const guide = markdown.match(/<div class="learning-guide"[^>]*>[\s\S]*?<p class="guide-status">[^<]*<\/p>\s*<\/div>/)?.[0];
-  if (guide) entries.push({ h: "速览 · 五分钟重建", a: `${href}#${kind === "paper" ? "rebuild" : "map"}`, t: markdownText(guide) });
+  if (guide) {
+    const visibleGuide = guide
+      .replace(/<aside class="guide-selftest">[\s\S]*?<\/aside>/g, "")
+      .replace(/<p class="guide-status">[^<]*<\/p>/g, "");
+    entries.push({ h: "速览 · 五分钟重建", a: `${href}#${kind === "paper" ? "rebuild" : "map"}`, t: markdownText(visibleGuide) });
+  }
   const noteHtml = siteHtml(noteHref);
   if (noteHtml !== null) {
     entries.push(...projectedEntries(id, noteHref, markdown, noteHtml, spec.sectionId));
@@ -646,7 +651,7 @@ for (const dir of ["papers", "notes/papers", "topics", "notes/syntheses"]) {
 const output = [
   "/* 静态索引。真源：wiki/papers/*.md 与 wiki/syntheses/*.md（front-matter 与正文）、taxonomy.md、review.md。",
   " * 速览条目与全文投影条目均保留完整导航路径；搜索片段来自真实可见的速览、导读或完整笔记正文。",
-  " * title/relations/既有速览条目是编辑判断字段，重建时从本文件保留；essence、机制练习与其余字段由真源生成。",
+  " * title/relations/既有速览条目是编辑判断字段，重建时从本文件保留；essence、机制讲解与其余字段由真源生成。",
   " * 消费者读取 href / noteHref / sourceHref，不按 id 拼接目录；type 为 paper 或 synthesis。",
   " * 使用：node scripts/build-wiki-index.mjs（校验失败会拒绝生成；CHECK_DRY_RUN=1 输出到 stdout）。",
   " */",

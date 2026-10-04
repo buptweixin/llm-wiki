@@ -2673,91 +2673,16 @@ svg.hub-svg:root {
   }
 }
 
-/* 机制练习：规则来自 Markdown，回忆模式不显示解释或练习结果。 */
-.mechanism-demo {
+/* 静态机制参考：图和文字规则直接可读。 */
+.mechanism-reference {
   margin-block: var(--sp-5);
   padding: var(--sp-4);
   border: 1px solid var(--hairline);
   background: var(--surface);
 }
-.mechanism-demo h3 { margin-bottom: var(--sp-3); }
+.mechanism-reference h3 { margin-bottom: var(--sp-3); }
 .demo-intro, .demo-transfer { color: var(--ink-2); }
-.demo-controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-4);
-  margin-block: var(--sp-4);
-}
-.demo-scene-label { grid-column: 1 / -1; }
-.demo-control { display: grid; gap: var(--sp-2); min-width: 0; }
-.demo-control select {
-  width: 100%;
-  min-height: 44px;
-  padding: var(--sp-2);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  color: var(--ink);
-  background: var(--surface-2);
-  font: inherit;
-}
-.demo-control input[type="range"] { width: 100%; min-height: 44px; accent-color: var(--accent); }
-.demo-control input:disabled { opacity: 0.45; }
-.demo-number { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.demo-prediction { border: 0; min-width: 0; }
-.demo-prediction legend { margin-bottom: var(--sp-3); }
-.demo-choices { display: grid; gap: var(--sp-2); }
-.demo-choice {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-height: 44px;
-  padding: var(--sp-2);
-  border: 1px solid var(--hairline);
-  cursor: pointer;
-}
-.demo-choice input { accent-color: var(--accent); flex: none; }
-.demo-choice:has(input:checked) { border-color: var(--accent-line); background: var(--accent-soft); }
-.demo-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-block: var(--sp-4); }
-.demo-actions button {
-  min-height: 44px;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  color: var(--ink);
-  font: inherit;
-  cursor: pointer;
-}
-.demo-actions button:disabled { opacity: 0.5; cursor: default; }
-.demo-actions button:not(:disabled):hover { border-color: var(--accent-line); }
-.demo-answer { border-top: 1px solid var(--hairline); padding-top: var(--sp-4); }
-.demo-answer[hidden] { display: none; }
-.demo-feedback { color: var(--accent-ink); }
-.demo-row-label { margin-top: var(--sp-3); }
-.demo-tokens {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: var(--sp-1);
-  padding: 0;
-  margin-block: var(--sp-2) var(--sp-4);
-  list-style: none;
-}
-.demo-token {
-  display: grid;
-  place-items: center;
-  gap: var(--sp-1);
-  padding-block: var(--sp-2);
-  border: 1px dashed var(--hairline);
-  background: var(--surface-2);
-  color: var(--ink-2);
-}
-.demo-token.is-visible { border-style: solid; border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
-.demo-token.is-current { border-bottom-width: 3px; }
-.demo-token-state { font-size: 12px; }
-.demo-scenario-explanation { color: var(--ink-2); }
-.mechanism-demo.is-enhanced .demo-scenarios { display: none; }
-.reader-recall .mechanism-demo { display: none; }
+.reader-recall .mechanism-reference { display: none; }
 .demo-svg-background { fill: var(--bg); }
 .demo-svg-title { font: 20px var(--font-sans); fill: var(--ink); }
 .demo-svg-label { font: 16px var(--font-sans); fill: var(--ink-2); }
@@ -2794,23 +2719,17 @@ svg.hub-svg:root {
 .guide-path p { margin-bottom: 0; }
 .guide-example, .guide-boundary { margin-block: var(--sp-4); }
 .guide-boundary { color: var(--ink-2); }
-.guide-check {
+.guide-case {
   margin-top: var(--sp-5);
-  padding: var(--sp-4);
-  border: 1px solid var(--hairline);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--hairline);
 }
-.guide-check h3 { margin-top: 0; }
-.guide-answer { margin-block: var(--sp-3); }
-.guide-answer summary {
-  width: fit-content;
-  min-height: 44px;
-  padding: var(--sp-2) var(--sp-3);
-  cursor: pointer;
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-.guide-answer summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.guide-answer[open] > p { margin-top: var(--sp-3); }
+.guide-case h3 { margin-top: 0; }
+.guide-explanation { color: var(--ink-2); }
+.guide-selftest { margin-block: var(--sp-4); }
+/* Writing/retest metadata and self-test prompts stay in the complete note. */
+.deck .guide-selftest, .deck .guide-status, .deck .demo-transfer { display: none; }
+.qa-toggle[hidden], .reader-recall-bar[hidden] { display: none; }
 .guide-transfer { margin-top: var(--sp-4); }
 .guide-status { font-size: 0.85em; color: var(--ink-3); }
 .reader-recall .learning-guide { display: none; }
@@ -2819,8 +2738,5 @@ svg.hub-svg:root {
   .guide-path > li { padding: var(--sp-3); }
 }
 @media (max-width: 520px) {
-  .mechanism-demo { padding: var(--sp-3); }
-  .demo-controls { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
-  .demo-tokens { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .demo-actions button { flex: 1 1 auto; }
+  .mechanism-reference { padding: var(--sp-3); }
 }

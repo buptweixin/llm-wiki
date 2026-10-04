@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>蒸馏与训练预算 · 完整专题笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-3">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
 </head>
 <body>
 <div class="page">
@@ -45,12 +45,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子</strong>：阅读对照：先把前两篇的师生输入写出来，再比较各自散度消融。读第三篇时，把问题换成“每个域得到多少优化量”。这是一条阅读路径，不是论文继承链。</p>
   <p class="guide-boundary"><strong>边界</strong>：散度排序是各自实验事实；信息可恢复性的统一解释仍待验证。多种自蒸馏教师与 Open-MOPD 的组合也没有库内实验。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>U-OPSD 的 forward KL 最好，是否意味着 S²VOPD 应改用 forward KL？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>不能这样推出。两篇输入条件、任务和训练设置不同。先保留各自消融结果，再把跨篇解释标为假说。</p></details>
-    <p class="guide-transfer">关掉提示后把三篇放回“信息差来源”与“预算分配”两个分支，并指出哪条跨篇解释仍待验证。</p>
+    <p class="guide-explanation">不能这样推出。两篇输入条件、任务和训练设置不同。先保留各自消融结果，再把跨篇解释标为假说。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后把三篇放回“信息差来源”与“预算分配”两个分支，并指出哪条跨篇解释仍待验证。</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 
@@ -296,6 +296,6 @@
   </main>
 
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-3"></script>
+<script src="../../assets/wiki-slides.js?v=20261004-4"></script>
 </body>
 </html>

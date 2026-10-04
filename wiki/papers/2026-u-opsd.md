@@ -27,12 +27,12 @@ updated: 2026-10-04
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：8 条中，5 条答案为 42、1 条为 17、2 条无效。共识置信度是 5/8，不是 5/6。教师多看的，是一条答案为 42 的完整推理；训练目标不是把一个“42”复制给学生。</p>
   <p class="guide-boundary"><strong>边界</strong>：高共识可能一致答错。论文所测伪标签错误率为 13.3%，这是监督噪声风险，不是最终准确率的数学硬上界。散度消融只说明该设置里 forward KL 更稳。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>如果 8 条有效回答全是同一个答案，这道题是否还提供反对轨迹供本方法训练？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>不提供。没有与共识不同的 y⁻，会跳过。共识只描述模型之间的一致性，不证明答案是真值。</p></details>
-    <p class="guide-transfer">关掉提示后写出师生输入各包含什么，并解释为什么给学生也加入 y+ 会改变学习信号。</p>
+    <p class="guide-explanation">不提供。没有与共识不同的 y⁻，会跳过。共识只描述模型之间的一致性，不证明答案是真值。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后写出师生输入各包含什么，并解释为什么给学生也加入 y+ 会改变学习信号。</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>视频理解与响应 · 专题笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-3">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
 </head>
 <body>
 <div class="page">
@@ -31,12 +31,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子</strong>：阅读对照：一个短事件若没进入 TSPO 候选，选帧器无从选择；VST 还要遵守未来不可见与固定记忆限制；Video-o3 的裁剪访问条件另有前提。比较前先写清可见范围。</p>
   <p class="guide-boundary"><strong>边界</strong>：压缩倍率不是整条系统的加速倍率。VST 的查询延迟不包含全部播放期思考成本。这组方法的组合尚无库内验证。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>能否用 VST 的 0.56 秒与 Video-o3 的 10.2 秒，直接判断哪一个系统对同一任务更高效？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>不能。前者把思考分摊到查询前，后者查询后搜索；任务、访问范围与统计口径也不同。需要同一条件下计入总成本再比较。</p></details>
-    <p class="guide-transfer">关掉提示后给四篇各写一个主要瓶颈，再指出组合时要重新设计的响应时机或证据预算。</p>
+    <p class="guide-explanation">不能。前者把思考分摊到查询前，后者查询后搜索；任务、访问范围与统计口径也不同。需要同一条件下计入总成本再比较。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后给四篇各写一个主要瓶颈，再指出组合时要重新设计的响应时机或证据预算。</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 
@@ -284,6 +284,6 @@
 <footer class="note-foot"><a href="../../topics/video-understanding.html">← 返回导读页</a><a href="../../../wiki/syntheses/video-understanding.md">markdown 源文件（唯一真源）</a><span>本页是完整专题笔记的静态投影，保留关系记录规范表、证据状态与假说标记。</span></footer>
   </main>
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-3"></script>
+<script src="../../assets/wiki-slides.js?v=20261004-4"></script>
 </body>
 </html>

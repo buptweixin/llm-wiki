@@ -57,7 +57,7 @@ const fmList = raw => ((raw || "").match(/^\[([^\]]*)\]$/) || [, ""])[1].split("
 function markdownText(value) {
   return decodeHtml(value
     .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<\/?(?:div|p|strong|em|ol|ul|li|h[1-6]|details|summary|span|a|button|label|input|select|option|output|table|thead|tbody|tr|td|th|img|figure|figcaption|br|svg|g|rect|path|line|text)\b[^>]*>/gi, " ")
+    .replace(/<\/?(?:div|aside|p|strong|em|ol|ul|li|h[1-6]|details|summary|span|a|button|label|input|select|option|output|table|thead|tbody|tr|td|th|img|figure|figcaption|br|svg|g|rect|path|line|text)\b[^>]*>/gi, " ")
     .replace(/^```[^\n]*\n/gm, "")
     .replace(/^```\s*$/gm, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -469,10 +469,10 @@ for (const hub of hubs) {
   }
 }
 
-/* ---------- C14 机制交互真源与静态投影 ---------- */
+/* ---------- C14 静态机制参考与真源规则 ---------- */
 
-section("C14 机制交互规则与静态出口");
-const demoBlocks = text => Array.from(text.matchAll(/<div class="mechanism-demo"[^>]*>[\s\S]*?<\/div>/g), match => match[0]);
+section("C14 静态机制参考与规则表");
+const demoBlocks = text => Array.from(text.matchAll(/<div class="mechanism-reference"[^>]*>[\s\S]*?<\/div>/g), match => match[0]);
 const demoAttribute = (block, name) => (block.match(new RegExp(`\\b${name}="([^"]+)"`)) || [])[1];
 const normalizeDemo = block => block.replace(/\s+/g, " ").trim();
 for (const page of papers) {
@@ -481,16 +481,16 @@ for (const page of papers) {
   const speedDemos = demoBlocks(read(speedPath(page)));
   const noteDemos = demoBlocks(read(notePath(page)));
   check(sourceDemos.length === speedDemos.length && sourceDemos.length === noteDemos.length,
-    `${page.id} 机制交互数量与真源一致（${sourceDemos.length}/${speedDemos.length}/${noteDemos.length}）`);
+    `${page.id} 静态机制参考数量与真源一致（${sourceDemos.length}/${speedDemos.length}/${noteDemos.length}）`);
   for (const source of sourceDemos) {
     const id = demoAttribute(source, "id");
-    check(/^demo-[a-z0-9-]+$/.test(id || ""), `${page.id} 机制交互 ID 合法（${id}）`);
+    check(/^demo-[a-z0-9-]+$/.test(id || ""), `${page.id} 静态机制参考 ID 合法（${id}）`);
     for (const [label, blocks] of [["速览", speedDemos], ["完整笔记", noteDemos]]) {
       const projections = blocks.filter(block => demoAttribute(block, "id") === id);
       check(projections.length === 1 && normalizeDemo(projections[0]) === normalizeDemo(source),
-        `${page.id} ${label}交互 ${id} 的参数、场景规则和文字逐字投影`);
+        `${page.id} ${label}静态参考 ${id} 的参数、场景规则和文字逐字投影`);
     }
-    check(demoAttribute(source, "data-demo") === "visibility", `${id} 使用已支持的交互类型`);
+    check(demoAttribute(source, "data-demo") === "visibility", `${id} 使用已支持的可见性规则类型`);
     const total = Number(demoAttribute(source, "data-total"));
     const time = Number(demoAttribute(source, "data-time"));
     const capacity = Number(demoAttribute(source, "data-window"));
@@ -501,6 +501,7 @@ for (const page of papers) {
       `${id} 场景规则有效，未来不在任何可见规则内`);
     check(source.includes('class="dtable demo-scenarios"') && source.includes('class="demo-transfer"'),
       `${id} 保留无脚本规则表与关闭提示后的迁移问题`);
+    check(!/<(?:input|select|button|details)\b/.test(source), `${id} 直接呈现规则，没有操作控件`);
   }
   for (const match of markdown.matchAll(/!\[[^\]]*\]\((\.\.\/\.\.\/site\/assets\/diagrams\/[^)]+)\)/g)) {
     const file = path.resolve(root, path.dirname(sourcePath(page)), match[1]);
@@ -537,13 +538,17 @@ for (const page of pages) {
     `${page.id} 有唯一的真源学习入口与两种静态出口`);
   check(source.length === 1 && [speed[0], note[0]].every(block => block && normalizeDemo(block) === normalizeDemo(source[0])),
     `${page.id} 学习入口逐字投影，不增加派生层结论`);
-  check(source[0]?.includes('<details class="guide-answer">') && source[0]?.includes('class="guide-transfer"') && source[0]?.includes('未进行理解检验'),
-    `${page.id} 保留无脚本预测练习、迁移问题与待试用状态`);
-  check(!/<details\b[^>]*\bopen(?:\s|=|>)/.test(source[0] || ''),
-    `${page.id} 预测练习默认收起答案`);
+  check(source[0]?.includes('class="guide-case"') && source[0]?.includes('class="guide-explanation"') && source[0]?.includes('class="guide-selftest"') && source[0]?.includes('未进行理解检验'),
+    `${page.id} 直接呈现条件变化与解释，保留可选自测与状态`);
+  check([source[0], speed[0], note[0]].every(block => block && !/<(?:details|input|select|button)\b/.test(block)),
+    `${page.id} 复习入口零操作即可读完`);
   const guideEntries = page.entries.filter(entry => /五分钟重建/.test(entry.h));
-  check(guideEntries.length > 0 && guideEntries.every(entry => !/class="guide-|<\/?(?:div|p|li|ol|details|summary)\b/.test(entry.t)),
+  check(guideEntries.length > 0 && guideEntries.every(entry => !/class="guide-|<\/?(?:div|aside|p|li|ol|details|summary)\b/.test(entry.t)),
     `${page.id} 学习入口搜索摘要不泄漏 HTML 标签`);
+  const speedGuideEntry = guideEntries.find(entry => entry.h === "速览 · 五分钟重建");
+  const visibleGuide = source[0]?.replace(/<aside class="guide-selftest">[\s\S]*?<\/aside>/g, "").replace(/<p class="guide-status">[^<]*<\/p>/g, "");
+  check(speedGuideEntry && speedGuideEntry.t === markdownText(visibleGuide || ""),
+    `${page.id} 速览搜索只索引直接可见的讲解，自测文字由完整笔记承接`);
 }
 for (const page of papers) {
   const source = read(sourcePath(page));

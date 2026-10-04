@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeepSeekMath · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-3">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
 </head>
 <body>
 <div class="page">
@@ -51,12 +51,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：同题四个回答的奖励是 [1,1,0,0]。均值为 0.5，标准差为 0.5。忽略稳定除数后，优势是 [+1,+1,-1,-1]。这里比较的是奖励差，不只是名次。</p>
   <p class="guide-boundary"><strong>边界</strong>：省掉 Critic 不等于总显存必定减半。论文中 Pass@K 的观察也只支持其特定实验下的概率重分配解释，不能证明所有 RL 都无法扩展解题能力。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>四条回答全得 1 分时，组相对优势是什么？是不是整个训练目标都没有梯度？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>组相对优势全为零，策略 surrogate 部分没有这组回答的区分信号。KL 正则仍可能产生梯度，所以不能把两者混为一谈。</p></details>
-    <p class="guide-transfer">关掉提示后解释：GRPO 去掉了哪个模型？如果奖励模型还在，为什么这不矛盾？</p>
+    <p class="guide-explanation">组相对优势全为零，策略 surrogate 部分没有这组回答的区分信号。KL 正则仍可能产生梯度，所以不能把两者混为一谈。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：GRPO 去掉了哪个模型？如果奖励模型还在，为什么这不矛盾？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div></section>
 <section class="note-sec" id="figures"><h2>论文图解</h2><figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig1.png" alt="开源模型在竞赛级 MATH 基准上的 Top-1 准确率" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：无需外部工具与复杂投票，DeepSeekMath 7B 仅凭模型自身推理在竞赛级 MATH 上达到 51.7%，一举逼近闭源的 Gemini-Ultra 和 GPT-4，大幅拉开与以往开源模型的差距。</figcaption></figure>
@@ -240,6 +240,6 @@
 <footer class="note-foot"><a href="../../papers/2024-deepseekmath.html">← 返回阅读页</a><a href="../../../wiki/papers/2024-deepseekmath.md">markdown 源文件（唯一真源）</a><span>本页是完整笔记的静态投影，保留原话、限定与假说标记。</span></footer>
 </main>
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-3"></script>
+<script src="../../assets/wiki-slides.js?v=20261004-4"></script>
 </body>
 </html>

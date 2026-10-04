@@ -27,12 +27,12 @@ updated: 2026-10-04
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：四个 patch 有两个通道。通道一选 patch 1、3，通道二选 patch 2、3。最终 CLS 的两个分量分别来自两组均值，而不是选一个完整 patch 充当 CLS。</p>
   <p class="guide-boundary"><strong>边界</strong>：Top-K 的离散索引本身不可微；选中的特征值可收到梯度。频域稳定不保证就是前景，K 过小也会丢信息。Register 在该实验中未修好定位问题，不等于所有场景都无用。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>若 K 等于全部 patch 数，选择性聚合还保留筛选作用吗？</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>不保留。每个通道都平均全部 patch，退化为全局平均池化。FFT 和评分虽可计算，但已不能改变参与聚合的 patch 集合。</p></details>
-    <p class="guide-transfer">关掉提示后解释：为什么“图像看起来平滑”不能直接代替这里的“通道频域稳定”？</p>
+    <p class="guide-explanation">不保留。每个通道都平均全部 patch，退化为全局平均池化。FFT 和评分虽可计算，但已不能改变参与聚合的 patch 集合。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：为什么“图像看起来平滑”不能直接代替这里的“通道频域稳定”？</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

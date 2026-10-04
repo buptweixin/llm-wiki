@@ -18,7 +18,8 @@ updated: YYYY-MM-DD
 <!-- 综合页不是新论文：所有实质主张必须能回到已通过费曼检验的论文页段落；
      跨篇新解释在检验前只能标「待验证」或「待讨论」，不能写成结论。
      讲解依 CLAUDE.md「讲解输出与补漏洞」：短句、术语一致、具体例子、保留条件。
-     图中关系类型与证据状态不可省略；交互规则写回真源，练习不记复测通过。 -->
+     图中关系类型与证据状态不可省略；网页默认直接显示机制、条件解释与卡壳解答。
+     可选自测与状态保存在完整笔记，「先回忆」主动隐藏提示，练习不记复测通过。 -->
 
 ## 专题本质
 
@@ -35,12 +36,12 @@ updated: YYYY-MM-DD
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：给出一个小例子，区分示意数字与实验结果。</p>
   <p class="guide-boundary"><strong>边界</strong>：说明成立条件、失效情形与尚未验证的解释。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>改变一个条件，问机制会如何变化。</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>用已理解的机制逐步回答，不新增未经检验的结论。</p></details>
-    <p class="guide-transfer">关掉提示后，用一个不同例子重建机制。</p>
+    <p class="guide-explanation">用已理解的机制逐步回答，不新增未经检验的结论。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后，用一个不同例子重建机制。</p></aside>
   <p class="guide-status">YYYY-MM-DD：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 

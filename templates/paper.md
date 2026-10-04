@@ -9,7 +9,8 @@
 
 <!-- 完成既有费曼检验后填充；复制同一个 learning-guide 到速览页 rebuild 章节。
      字段写入 Markdown 真源，完整笔记由 sync-note-pages.mjs 投影。
-     练习不写回复测状态。PAGE-ID 换为 front-matter id。 -->
+     速览默认显示条件变化与解释，历史卡壳解答全部可见。可选自测与状态在完整笔记保留。
+     「先回忆」主动隐藏提示；练习不写回复测状态。PAGE-ID 换为 front-matter id。 -->
 
 <div class="learning-guide" id="guide-PAGE-ID">
   <p class="guide-problem">填入一个具体问题，说明旧方法卡在哪里。</p>
@@ -20,12 +21,12 @@
   </ol>
   <p class="guide-example"><strong>具体例子（教学假设）</strong>：给出一个小例子，区分示意数字与实验结果。</p>
   <p class="guide-boundary"><strong>边界</strong>：说明成立条件、失效情形与尚未验证的解释。</p>
-  <div class="guide-check">
-    <h3>先预测，再展开答案</h3>
+  <div class="guide-case">
+    <h3>换个条件看机制</h3>
     <p>改变一个条件，问机制会如何变化。</p>
-    <details class="guide-answer"><summary>查看机制解释</summary><p>用已理解的机制逐步回答，不新增未经检验的结论。</p></details>
-    <p class="guide-transfer">关掉提示后，用一个不同例子重建机制。</p>
+    <p class="guide-explanation">用已理解的机制逐步回答，不新增未经检验的结论。</p>
   </div>
+  <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后，用一个不同例子重建机制。</p></aside>
   <p class="guide-status">YYYY-MM-DD：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
 </div>
 
@@ -42,8 +43,9 @@
 
 <!-- 遵守 CLAUDE.md「讲解输出与补漏洞」：一句一个主要判断、术语一致、具体例子、
      因果逐步展开，保留条件与不确定性。类比对应回真实机制，并说明失效边界。
-     图/交互按难点选用，不凑形式；图必须有可读的文字解释。
-     交互的参数、场景规则、默认示例与解释记录在本真源，参照 VST 的 mechanism-demo。
+     网页用于快速复习，优先静态图、具体例子与条件变化的完整解释；图配文字。
+     静态参考的参数、场景规则、默认示例与解释记录在本真源，参照 VST 的 mechanism-reference。
+     首次讲解按实际漏洞选择临时交互，网页主阅读流无需操作才可理解。
      未理解的讲解草稿不进入本页；用户原话不润色。 -->
 
 ## 关键机制
