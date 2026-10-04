@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LaSt-ViT · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -27,7 +27,7 @@
         <p class="cover-eyebrow">PAPER · CVPR 2026</p>
         <h1>LaSt-ViT</h1>
         <p class="cover-full">Vision Transformers Need More Than Registers</p>
-        <p class="cover-essence">ViT 偷懒：有全局注意力又只有图像级标签时，它发现用大量背景 patch 当「全局语义载体」就能把分类做对，根本不关心前景在哪，结果分类准但密集预测废。解法是用频域稳定性评分逼 CLS token 只从前景 patch 聚合信息。</p>
+        <p class="cover-essence">LaSt-ViT 按特征通道的频域稳定性选择 patch 来构成 CLS，减轻背景聚合造成的定位偏差。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>港大 + 中山大学（Shi, Yu, Yang）</dd>
           <dt>入库</dt><dd>2026-08-17</dd>
@@ -37,7 +37,33 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-last-vit">
+  <p class="guide-problem">图像级分类做对，不保证 patch 特征能定位前景。论文提出 lazy aggregation 假说：全局注意力会把语义传播到背景，CLS 因而可能靠背景聚合完成分类。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>沿通道做滤波</h3><p>对每个 patch 的特征向量做 FFT、低通滤波和 IFFT。这里的频率沿特征通道，不沿图片的横纵坐标。</p></li>
+    <li><h3>计算稳定性</h3><p>比较滤波前后的特征，用论文的稳定性评分选择候选 patch。它是前景的经验线索，不是前景真值。</p></li>
+    <li><h3>逐通道选 Top-K</h3><p>每个通道独立选分数最高的 K 个 patch，取原特征均值，组成 CLS。不同通道可以选不同区域。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：四个 patch 有两个通道。通道一选 patch 1、3，通道二选 patch 2、3。最终 CLS 的两个分量分别来自两组均值，而不是选一个完整 patch 充当 CLS。</p>
+  <p class="guide-boundary"><strong>边界</strong>：Top-K 的离散索引本身不可微；选中的特征值可收到梯度。频域稳定不保证就是前景，K 过小也会丢信息。Register 在该实验中未修好定位问题，不等于所有场景都无用。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>若 K 等于全部 patch 数，选择性聚合还保留筛选作用吗？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>不保留。每个通道都平均全部 patch，退化为全局平均池化。FFT 和评分虽可计算，但已不能改变参与聚合的 patch 集合。</p></details>
+    <p class="guide-transfer">关掉提示后解释：为什么“图像看起来平滑”不能直接代替这里的“通道频域稳定”？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="read-figures" data-section="figures"><div class="slide-inner"><div class="slide-head"><h2>论文图解</h2></div>
+<figure class="paper-fig"><img src="../assets/figures/2026-last-vit/fig1.png" alt="普通 ViT 与 LazyStrike 的位置和特征对照" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：同一图像下比较 patch score 与特征可视化。普通 ViT 的高分区域可能落在背景，加入 LazyStrike 后更贴近物体。颜色反映表示或分数，不等于像素级真值。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-last-vit/fig2.png" alt="高分位置与分类必需信息的遮挡对照" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：左图比较前景与背景的 score 分布；右图依次遮掉不同分数的 patch。遮掉高分 patch 对分类影响较小，提醒我们 CLS 相似度高不等于该输入位置是分类证据。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-last-vit/fig5.png" alt="逐通道 Top-K 聚合所选位置" loading="lazy"><figcaption>图 5 费曼图解（论文 Figure 5）：红框来自各 patch 在不同通道被选中的次数，三列使用不同票数阈值。它让我们看到选择性聚合更常选物体区域；方法本身的 FFT 与评分步骤见上方机制路径。</figcaption></figure>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -50,14 +76,14 @@
           </div>
           <div class="flow-step" data-hi>
             <h3>方法</h3>
-            <p>先诊断再开药：根因是「懒惰聚合」= 粗粒度监督 + 全局注意力，两者缺一不可。用频域稳定性评分识别前景 patch，通道级 Top-K 选择性聚合，逼 CLS 只从前景取信息。</p>
+            <p>粗粒度监督与全局注意力是论文 lazy aggregation 假说中的两个驱动。消融支持它们共同影响该现象，不能读成所有 artifact 的必要且充分条件。</p>
           </div>
           <div class="flow-step">
             <h3>结果</h3>
             <p>PiB 42.7→55.1；CLIP 零样本分割 VOC 17.1→72.4；12 个基准一致提升且分类精度不掉。零额外参数、零额外损失。</p>
           </div>
         </div>
-        <p class="takeaway">高范数 token 只是懒惰聚合的晚期症状，病因是 CLS 往背景跑：Register 把症状挪走，病还在，所以 PiB 反而从 42.7 掉到 41.5。</p>
+        <p class="takeaway">LaSt-ViT 按特征通道的频域稳定性选择 patch 来构成 CLS，减轻背景聚合造成的定位偏差。</p>
       </div>
     </section>
 
@@ -76,7 +102,7 @@
             <span class="fig-arrow"></span>
             <div class="fig-node"><span class="fig-node-tag">产物</span>懒惰聚合：CLS 拿背景当语义载体（PiB 仅 42.7%，ConvNet 68.4%）</div>
           </div>
-          <p class="fig-note">两者缺一不可：光背景多没全局注意力扩散不了，光全局注意力没背景多也走不了捷径。三条证据：训练初期 PiB 就低（不是后期才崩）；遮掉最高分 50% patch 分类精度几乎不掉（高分 patch 是捷径）；换窗口注意力 PiB 升到 59.8 但分类掉 8%（全局注意力是帮凶，但砍掉得不偿失）。</p>
+          <p>粗粒度监督与全局注意力是论文 lazy aggregation 假说中的两个驱动。消融支持它们共同影响该现象，不能读成所有 artifact 的必要且充分条件。</p>
         </div>
       </div>
     </section>
@@ -97,7 +123,7 @@
             <span class="fig-arrow"></span>
             <div class="fig-node" data-hi><span class="fig-node-tag">STEP 4</span>每个通道独立选 Top-K 个 patch 取均值，作为该通道的 CLS 值</div>
           </div>
-          <p class="fig-note">通道级独立选择意味着不同语义维度（颜色/纹理/形状）可以选不同前景区域。FFT 和 Top-K 都是确定性操作：零可学习参数、不改损失函数、Top-K 天然可微。</p>
+          <p class="fig-note">通道级独立选择意味着不同语义维度（颜色/纹理/形状）可以选不同前景区域。FFT 和 Top-K 都是确定性操作：零可学习参数、不改损失函数、Top-K 的离散索引不可微，已选特征值可传梯度。</p>
         </div>
         <p>为什么「频域稳定」能分前景背景：<mark>通道维</mark>频域特性，不是空间连续性。前景物体在深层特征的通道维上语义一致（低频主导，低通后变化小）；背景混杂多结构（频谱丰富，低通后能量损失大）。直觉图像：通道维低频的图 ≈ 语义分割的输出图，同一类别同一颜色。</p>
       </div>
@@ -150,22 +176,17 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-drivers">
-            <p class="qa-q">懒惰聚合的两个驱动因素是什么？（复述时漏了第二个）</p>
-            <div class="qa-a"><p>驱动 1 = 粗粒度监督（只有图像级标签，没有 patch 级空间指导）；驱动 2 = 全局注意力（前景语义扩散到背景的通道）。缺一不可：窗口注意力实验（PiB 升但分类掉 8%）证明全局注意力是帮凶但砍掉得不偿失。</p></div>
-          </div>
-          <div class="qa" id="qa-register">
-            <p class="qa-q">Register tokens 为什么没用？</p>
-            <div class="qa-a"><p>实测加 Register 后 PiB 从 42.7 反降到 41.5。高范数只是晚期症状，Register 把症状挪走，病因（CLS 往背景跑）还在。「ViT needs more than registers」标题说的就是这个。</p></div>
-          </div>
-          <div class="qa" id="qa-frequency">
-            <p class="qa-q">频域稳定性区分前景背景的真正机制？</p>
-            <div class="qa-a"><p>是<strong>通道维</strong>频域特性，不是空间连续性。反向论证：空间维的低频是墙壁等平滑区域，恰恰是背景，不能当前景判据。通道维低频的直观图像 ≈ 语义分割输出图：同类语义在通道维上变化小。</p></div>
-          </div>
-          <div class="qa" id="qa-scope">
-            <p class="qa-q">LaSt-ViT 只适用于对比学习吗？和 GenLIP 的解法能组合吗？</p>
-            <div class="qa-a"><p>不止：跨<strong>三种</strong>判别式预训练通用（标签监督、CLIP 文本监督、DINO 自监督），对比学习只是其一，准确叫法是「判别式预训练」（对应 GenLIP 的「生成式」）。能组合：Gated Attention 管信息<strong>分布</strong>（防少数 token 吸走），LaSt-ViT 管 CLS <strong>聚合</strong>（逼从前景取），作用在不同环节，正交可叠加。</p></div>
-          </div>
+          <div class="qa" id="qa-drivers"><p class="qa-q">Q：懒惰聚合的两个驱动因素是什么？（Q1 漏掉的半问）</p><div class="qa-a"><p>驱动1 = <strong>粗粒度监督</strong>（只有图像级标签，没有 patch 级空间指导）；驱动2 = <strong>全局注意力</strong>（给前景语义扩散到背景的通道）。它们是论文假说中的两个驱动，不能当作所有模型的必要且充分条件。验证：窗口注意力限制全局依赖后 PiB 升但分类掉 8%，证明全局注意力是帮凶。</p>
+</div></div>
+          <div class="qa" id="qa-register"><p class="qa-q">Q：Register tokens 为什么没用？靠什么实验证据推翻？（Q1 漏掉的半问）</p><div class="qa-a"><p>Tab.1 实测：加 Register 后 PiB 从 42.7 <strong>掉到</strong> 41.5（更差，不是&quot;没提升&quot;而是&quot;反降&quot;）。高范数只是 lazy aggregation 的<strong>晚期症状</strong>，Register 把症状挪走但病因（CLS 往背景跑）还在。</p>
+</div></div>
+          <div class="qa" id="qa-frequency"><p class="qa-q">Q：频域稳定性区分前景背景的真正机制是什么？（Q2 精化）</p><div class="qa-a"><p>不是&quot;空间连续性&quot;，而是<strong>通道维频域特性</strong>：前景物体在深层特征的通道维度上语义一致（低频主导），低通滤波后变化小；背景混杂多种结构（频谱丰富、高频多），低通后能量损失大。是深层特征的统计规律。</p>
+<blockquote class="note-quote">
+<p>（2026-08-24 复测补充，复述时自生成的类比，比原文表述更直观）反向论证：空间维的低频=墙壁等平滑区域，恰恰是背景，不能当前景判据；通道维低频的直观图像 ≈ <strong>语义分割的输出图</strong>：同一类别同一颜色，同类语义在通道维上变化小。</p>
+</blockquote>
+</div></div>
+          <div class="qa" id="qa-scope"><p class="qa-q">Q：LaSt-ViT 适用于什么预训练范式？（Q3 纠偏）</p><div class="qa-a"><p>用户答&quot;对比学习&quot;范围窄了。LaSt-ViT <strong>跨三种</strong>判别式预训练范式通用：标签监督（分类）、文本监督（CLIP 对比）、自监督（DINO 自蒸馏）。对比学习只是其中一种。准确叫法是&quot;判别式预训练&quot;（对应 GenLIP 的&quot;生成式&quot;）。</p>
+</div></div>
         </div>
       </div>
     </section>
@@ -177,21 +198,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group">
-            <h3>RELATED</h3>
-            <div class="link-item">
-              <span class="link-rel">直接对接</span>
-              <span><a href="2026-genlip.html">GenLIP</a>：同为 ViT attention artifact。GenLIP 在生成式预训练发现 attention sink（少数 token 吸信息）用 Gated Attention 压制；LaSt-ViT 在判别式预训练发现 lazy aggregation（背景抢 CLS）用频域选择性聚合纠正</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">间接相关</span>
-              <span><a href="2026-videochat3.html">VideoChat3</a>：I3D-ViT 基座也可用 LaSt-ViT 的聚合方式改进密集特征</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">baseline</span>
-              <span>Register tokens（Darcet et al.）/ MaskCLIP / CLIPSelf / SCLIP（事后修正）/ 窗口注意力 / LOST</span>
-            </div>
-          </div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-genlip.html">GenLIP：频域聚合与 Gated Attention 处理不同的 ViT 现象；联合使用的适配与效果待验证。</a></div><div class="link-item"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-videochat3.html">VideoChat3：可研究将频域聚合接入 I3D-ViT，具体接法及视频任务收益尚无实验。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -213,7 +220,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

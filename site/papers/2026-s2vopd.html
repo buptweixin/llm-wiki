@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>S²VOPD · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -27,7 +27,7 @@
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>S²VOPD</h1>
         <p class="cover-full">Self-Supervised Visual On-Policy Distillation</p>
-        <p class="cover-essence">不给老师任何特权，而是把学生的输入图故意弄糊弄小：同一个模型里「看得清的自己」（EMA teacher 看原图）在学生每一步回答上教「看不清的自己」（student 看增强退化图），全部学习信号免费来自这张被弄坏的图。</p>
+        <p class="cover-essence">S²VOPD 让教师看清晰图、学生看退化图，在学生自己生成的前缀上对齐分布，以视觉信息差提供自蒸馏信号。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>UC San Diego / UMD / Georgia Tech / JHU / Oxford（Yijiang Li 一作，U-OPSD 同组续作）</dd>
           <dt>入库</dt><dd>2026-09-02</dd>
@@ -37,7 +37,32 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-s2vopd">
+  <p class="guide-problem">教师与学生共享模型时，需要构造有用的分布差。S²VOPD 让教师看清晰图、学生看退化图，以输入信息差提供视觉自蒸馏信号。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>学生在退化图上作答</h3><p>保持问题不变，降低图像信息量。学生自己生成轨迹，蒸馏沿这条轨迹进行。</p></li>
+    <li><h3>教师看同一前缀</h3><p>EMA 教师看原图与同样的生成前缀，计算下一 token 分布。EMA 是随学生缓慢更新的教师。</p></li>
+    <li><h3>对齐分布</h3><p>截取教师 top-k 支持并重新归一化，用广义 JSD 训练学生。实验中它优于所比较的两种 KL 方向。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：问题是“猫在左边还是右边”。轻度降采样仍保留位置关系，可以构造信息差；裁剪若直接删掉猫，就可能让问题失去所需证据。差距更大不代表监督更好。</p>
+  <p class="guide-boundary"><strong>边界</strong>：降采样也可能抹掉关键小字。增强是否保留答题信息，取决于任务。用“信息可恢复性”解释它与 U-OPSD 的散度差异，仍是待验证假说。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>若教师与学生使用完全相同的权重、图像、问题和前缀，分布对齐还提供什么信息差？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>在相同计算条件下，两者分布相同，散度为零。实际 EMA 权重可有差异，但此教学反例固定了权重，用来隔离输入不对称的作用。</p></details>
+    <p class="guide-transfer">关掉提示后解释：为什么教师不必是外部更大的模型？为什么清晰图也不等于真实答案标签？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="read-figures" data-section="figures"><div class="slide-inner"><div class="slide-head"><h2>论文图解</h2></div>
+<figure class="paper-fig"><img src="../assets/figures/2026-s2vopd/fig1.png" alt="清晰教师与退化学生的视觉信息差" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：上半部的教师看原图，学生看增强后的图，两者共享问题和生成前缀。下半部列出可选增强。不是所有增强都好：若删掉关键证据或改变几何关系，教师分布可能变得不可模仿。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-s2vopd/fig2.png" alt="增强类型与师生差距的消融" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：左图比较增强族，右图比较差距与准确率。更大差距未必更高准确率；应同时看是否保留任务信息。该消融支持清晰输入的主要作用，不能推出一条跨任务通用散度定律。</figcaption></figure>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -57,7 +82,7 @@
             <p>4B 从 70.68 涨到 77.44：超 235B 开源模型与 GPT-5.4，追平 397B；感知 +5.7、数学 +3.7 双赢。代价：增益依赖增强调参，OCR 类任务预期失效（本人推演）。</p>
           </div>
         </div>
-        <p class="takeaway">不对称性不在乎是「教师多看」还是「学生少看」实现的：从学生身上减信息，监督信号免费。</p>
+        <p class="takeaway">S²VOPD 让教师看清晰图、学生看退化图，在学生自己生成的前缀上对齐分布，以视觉信息差提供自蒸馏信号。</p>
       </div>
     </section>
 
@@ -80,7 +105,7 @@
             <span class="fig-arrow"></span>
             <div class="fig-node"><span class="fig-node-tag">损失</span>top-k 广义 JSD（α=0.5）</div>
           </div>
-          <p class="fig-note">图注：最容易被看漏的是「教师根本不比学生聪明」。把教师永远冻结在基座（不做 EMA）只掉 0.40 分，93% 增益来自那张图，不来自自我改进。</p>
+          <p class="fig-note">图注：冻结教师后仍保留约 93% 增益，主要支持清晰输入的信息差。该消融不证明 EMA 在所有任务中无效。</p>
         </div>
         <p>训练看糊图、考试看好图不是 mismatch：学的是「从退化证据恢复完整判断」的能力，六个感知基准全用原图测照样 +6.76。也别用「练难考易」解释：更强的 crop 更难却单调掉分，难度的关键在向信息完整版自己对齐。</p>
       </div>
@@ -113,7 +138,7 @@
             </tr>
           </tbody>
         </table>
-        <p class="takeaway">大 gap ≠ 好 gap：决定好坏的不是 gap 大小，是 gap 的语义内容（被删的信息可否恢复）。</p>
+        <p class="fig-note">大 gap 不保证有益。论文的增强搜索支持：输入差异还须与任务一致；用信息可恢复性统一解释散度排序是待验证假说。</p>
       </div>
     </section>
 
@@ -137,7 +162,7 @@
           <div class="metric">
             <div class="metric-value">-0.40</div>
             <div class="metric-label">冻结教师（w/o EMA）代价</div>
-            <div class="metric-why">教师的强完全来自清晰输入，EMA 只是稳定性选择</div>
+            <div class="metric-why">该消融主要支持清晰输入的作用；EMA 是缓慢更新的教师</div>
           </div>
           <div class="metric">
             <div class="metric-value">65.21<small>%</small></div>
@@ -164,18 +189,12 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-blur-strong">
-            <p class="qa-q">训练看糊图、考试看好图，为什么反而变强？（初答走偏到「练难考易 + 探索能力」）</p>
-            <div class="qa-a"><p>「难度论」被论文自己的消融证伪：若难度是关键，更强的 crop 应涨更多，实际单调下跌；w/o EMA（教师冻结在基座）仍拿 93% 增益，教师一点不比学生聪明。真机制：学生的<strong>每一步被拉向「信息完整版的自己」在同样位置的判断</strong>，学的是从退化证据恢复完整判断，这是蒸馏目标不是探索训练。</p></div>
-          </div>
-          <div class="qa" id="qa-divergence">
-            <p class="qa-q">散度结论为什么和 U-OPSD 完全反过来？（U-OPSD 必须 forward KL，本文 forward KL 最差）</p>
-            <div class="qa-a"><p>一条原理：<strong>教师多出来的信息，学生能不能恢复</strong>。U-OPSD 教师多的是解题思路，学生原则上能自己推出来（可恢复），全面模仿（forward KL 的 mode-covering）方向正确；S²VOPD 教师多的是清晰像素，糊图里丢掉的细节永远拿不回来（不可恢复），forward KL 逼学生模仿不可及的细节反而有害，JSD 居中。量级佐证：U-OPSD 选错散度是灾难（13+ 点，「知道答案的教师」分布锐利），本文选错只是小亏（1.3 点，「看得清的教师」分布温和）。注：两篇排序颠倒是论文实验；「可恢复性」的统一解释是库内综合假说，非任一原文结论，待 DistiLLM 系列验证。</p></div>
-          </div>
-          <div class="qa" id="qa-y-plus">
-            <p class="qa-q">y+ 为什么又口误成「伪标签」？（09-02 首验两连犯；09-07 复测已收敛）</p>
-            <div class="qa-a"><p>y+ 不是标签，是拼进 U-OPSD 教师输入的<strong>完整解题轨迹（上下文）</strong>；共识答案 ã(x) 只用来投票和分组。消融 label-only（只给 boxed 答案值）掉 10.3~15.8：光知道答案没法引导中间步骤。</p></div>
-          </div>
+          <div class="qa" id="qa-blur-strong"><p class="qa-q">Q：训练看糊图、考试看好图，为什么反而变强？</p><div class="qa-a"><p>训练目标把学生在退化图上的下一 token 分布，拉向教师在清晰图上的分布。rollout 前缀相同，输入信息不同。该实验的 crop 越强成绩越低，所以不能简单解释为“训练越难越好”。冻结教师后仍保留约 93% 增益，主要支持清晰输入信息差的作用；它不证明 EMA 在所有任务中无效。方法学的是跨视图分布对齐，收益取决于增强是否保留答题所需的证据。</p>
+</div></div>
+          <div class="qa" id="qa-divergence"><p class="qa-q">Q：S²VOPD 和 U-OPSD 的散度消融结论为什么完全相反？</p><div class="qa-a"><p>先分清观察和解释。U-OPSD 的实验里 forward KL 更稳，reverse KL 出现复读崩溃；S²VOPD 的 Table 6 则是 JSD 76.05 &gt; reverse KL 75.49 &gt; forward KL 74.74。两套模型、数据与信息差设置不同，不能由此推出普适的散度选择规则。<strong>解释假说（待验证）</strong>：教师多出的解题上下文与清晰像素，其可恢复性不同，可能影响散度偏好。forward KL 的覆盖倾向与 reverse KL 的寻峰倾向可作直觉，但不能单凭它们证明分数差或崩溃原因。</p>
+</div></div>
+          <div class="qa" id="qa-y-plus"><p class="qa-q">Q（复发，2026-09-02 首验）：y+ 又说成&quot;伪标签&quot;了。</p><div class="qa-a"><p>U-OPSD 入库时的老卡壳点本次口误复发。y+ 不是标签，是拼进教师输入的<strong>完整解题轨迹（上下文）</strong>；共识答案 ã(x) 只用来投票和分组。消融 label-only（只给 boxed 答案值）掉 10.3~15.8。（历史状态：09-02 两连犯；2026-09-07 复测已收敛，首答即明确「y+ 是完整轨迹先验上下文，不是伪标签」，当前不再是弱项。）</p>
+</div></div>
         </div>
       </div>
     </section>
@@ -187,21 +206,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group">
-            <h3>RELATED</h3>
-            <div class="link-item">
-              <span class="link-rel">同组域互补 · 兑现钩子</span>
-              <span><a href="2026-u-opsd.html">U-OPSD</a>：同作者线的文本域对应（教师多看伪解 y+ vs 本文教师多看清晰像素）；两页散度冲突用「信息可恢复性」统一解释，合看才知散度选择是信息类型的函数</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">家族三页谱系</span>
-              <span><a href="2026-open-mopd.html">Open-MOPD</a>：U-OPSD 管「单教师信号从哪来（文本）」，本文管「单教师信号从哪来（视觉：减学生而非加教师）」，Open-MOPD 管「多教师怎么分账」；本文是散度注记第三数据点</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">未来钩子</span>
-              <span>NoisyRollout / VPPO / PRPO（增强调 RL 的先例，区分点：本文增强差异本身是训练信号）、BYOL / DINO / FixMatch（弱视图教强视图的自监督源头）、DistiLLM 系列（散度统一沉淀）入库时回链本页</span>
-            </div>
-          </div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">compare · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-u-opsd.html">U-OPSD：清晰像素与完整解题上下文是不对称信息的两种来源；可恢复性对散度排序的解释待验证。</a></div><div class="link-item"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-open-mopd.html">Open-MOPD：研究把视觉信息差接入多教师框架；本库没有联合实验。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -223,7 +228,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

@@ -2766,6 +2766,58 @@ svg.hub-svg:root {
 .demo-svg-token { fill: var(--surface-2); stroke: var(--hairline); stroke-dasharray: 4 3; }
 .demo-svg-token.is-visible { fill: var(--accent-soft); stroke: var(--accent-line); stroke-dasharray: none; }
 .demo-svg-token.is-current { stroke: var(--accent); stroke-width: 2; }
+
+/* Source-backed learning guides: native disclosure works without JavaScript. */
+.learning-guide { margin-block: var(--sp-6); }
+.guide-problem { color: var(--ink-2); }
+.guide-path {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+  margin: var(--sp-5) 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: guide-step;
+}
+.guide-path > li {
+  counter-increment: guide-step;
+  padding: var(--sp-4);
+  border-top: 2px solid var(--accent-line);
+  background: var(--surface-2);
+}
+.guide-path > li::before {
+  content: counter(guide-step, decimal-leading-zero);
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+.guide-path h3 { margin: var(--sp-2) 0; }
+.guide-path p { margin-bottom: 0; }
+.guide-example, .guide-boundary { margin-block: var(--sp-4); }
+.guide-boundary { color: var(--ink-2); }
+.guide-check {
+  margin-top: var(--sp-5);
+  padding: var(--sp-4);
+  border: 1px solid var(--hairline);
+}
+.guide-check h3 { margin-top: 0; }
+.guide-answer { margin-block: var(--sp-3); }
+.guide-answer summary {
+  width: fit-content;
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.guide-answer summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.guide-answer[open] > p { margin-top: var(--sp-3); }
+.guide-transfer { margin-top: var(--sp-4); }
+.guide-status { font-size: 0.85em; color: var(--ink-3); }
+.reader-recall .learning-guide { display: none; }
+@media (max-width: 720px) {
+  .guide-path { grid-template-columns: 1fr; }
+  .guide-path > li { padding: var(--sp-3); }
+}
 @media (max-width: 520px) {
   .mechanism-demo { padding: var(--sp-3); }
   .demo-controls { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }

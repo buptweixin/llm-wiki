@@ -5,16 +5,50 @@ aliases: [Video-o3, Video-Holmes]
 topic: video-understanding
 mechanisms: [tool-use, cot-reasoning, group-rl]
 goals: [improve-reasoning]
-updated: 2026-09-07
+updated: 2026-10-04
 ---
 
 # Video-o3（全称：Video-o3: Native Interleaved Clue Seeking for Long Video Multi-Hop Reasoning）
 
-> **一句话本质**：**像侦探破案一样看视频**——先粗扫全片 → 发现疑点主动"放大"某段细看 → 看完再决定继续找还是收网答，整个找线索和答题在**同一个共享上下文**里交替进行，模型自己决定何时调工具、调哪里、用多少分辨率、何时停。
+> **一句话本质**：Video-o3 拿到问题后，在同一上下文里交替推理与裁剪视频，让新找到的证据继续参与回答。
 
 > 作者/机构：南京大学 + 上海 AI Lab（Zeng, Zhang et al.）｜ 年份：2026（ICML 2026）｜ 原文：Zotero 锚点（见下行） ｜ 入库：2026-08-17
 
 > Zotero：[citekey](zotero://select/items/@zengVideoo3NativeInterleaved2026) `zengVideoo3NativeInterleaved2026` ｜ [itemKey](zotero://select/items/FG746LWN) `FG746LWN` ｜ [DOI](https://doi.org/10.48550/ARXIV.2601.23224) `10.48550/ARXIV.2601.23224`
+
+## 五分钟重建
+
+<div class="learning-guide" id="guide-2026-video-o3">
+  <p class="guide-problem">长视频中的关键证据可能只出现几秒。均匀抽帧会漏掉它，把找线索与回答拆成两套流程又会丢上下文。Video-o3 把工具调用、证据与推理写在同一个上下文里。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>先看全局概览</h3><p>拿到问题后读低分辨率全局视频，判断缺少什么证据。</p></li>
+    <li><h3>按需调用 VideoCrop</h3><p>生成时间范围与视觉预算，裁剪结果加入当前上下文。模型再决定继续找还是回答。</p></li>
+    <li><h3>训练分工与效率</h3><p>SFT 对 10% 工具数据施加 TDAM；RL 用答案奖励、线索得分与轮数衰减约束轨迹。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：问“谁先拿起钥匙”。概览只看到两人走动，模型可请求查看桌边那几秒，再结合新证据回答。若裁剪仍没显示关键动作，可以继续调用，但受轮数与上下文预算限制。</p>
+  <p class="guide-boundary"><strong>边界</strong>：TDAM 是训练期分工：工具规划阶段遮局部裁剪，回答阶段遮全局。它只用于部分数据，不是要求推理时永远禁看全局。找到线索也不保证推理正确。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>删除轮数衰减，是否只会得到更好的答案？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>论文消融中工具调用更多，准确率反而下降。更多探索会增加成本，也可能使上下文碎片化。这个观察不表示每个问题都应只调用一次。</p></details>
+    <p class="guide-transfer">关掉提示后解释：共享上下文为什么既能帮助联合证据，也会产生注意力分散和 Fake Thinking？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+
+## 论文图解
+
+![直接回答分离搜索与交错搜索的比较](../../site/assets/figures/2026-video-o3/fig2.png)
+
+*图 2 费曼图解（论文 Figure 2）：左侧直接从初始视频答；中间把找线索与回答拆开；右侧把思考、调工具和回答放在同一条上下文中。本文采用右侧，让后续搜索能利用已有推理与证据。*
+
+![Video-o3 多轮裁剪与共享上下文](../../site/assets/figures/2026-video-o3/fig3.png)
+
+*图 3 费曼图解（论文 Figure 3）：下方的全局与局部视频被编码，上方的推理决定下一次时间范围和视觉预算。裁剪结果加入历史，再选择继续调用或作答。多轮搜索受工具轮数与上下文上限约束。*
+
+![TDAM 训练期的阶段可见性](../../site/assets/figures/2026-video-o3/fig4.png)
+
+*图 4 费曼图解（论文 Figure 4）：每行是当前 token，每列是可读取的历史信息。工具规划与回答阶段被分工：前者遮局部裁剪，后者遮全局概览。该掩码只用于部分 SFT 数据，不是所有推理步骤永久使用的规则。*
 
 ## 解决什么问题
 
@@ -135,8 +169,8 @@ A：VST 的"查询即答"和 Video-o3 的"多轮探索后才答"在**响应时�
 
 ## 关联
 
-- [VST](2026-vst.md) — **同属长视频推理但路线不同**。VST 是"推理前置"（播放期边看边想，FIFO 文本记忆），Video-o3 是"推理时主动检索"（动态裁剪视频，工具调用）。VST 解决实时性（0.56s），Video-o3 解决多跳精度（46.5% VideoHolmes）。两者可互补：VST 的文本记忆 + Video-o3 的工具裁剪组合；但"查询即答"vs"多轮探索"在响应时机上逻辑冲突，需统一调度。
-- [GeoAnchor](2026-geoanchor.md) — **同打破"纯文本 CoT"的两条对立路线**：Video-o3 把中间推理外化成工具调用（可见可审计、工具可插拔），GeoAnchor 内化成连续潜变量（保几何保真度、教师烧进权重）。本文 Related Works 2.2 自己把"think with images"工具流与 latent reasoning 对立。适用分界：动态场景/需人工审计选工具路线，静态图/连续几何精度选 latent 路线。
+- [VST](2026-vst.md) — **同属长视频推理但路线不同**。VST 是"推理前置"（播放期边看边想，FIFO 文本记忆），Video-o3 是"推理时主动检索"（动态裁剪视频，工具调用）。VST 解决实时性（0.56s），Video-o3 解决多跳精度（46.5% VideoHolmes）。组合设想（待验证）：VST 的文本记忆 + Video-o3 的工具裁剪；但"查询即答"vs"多轮探索"在响应时机上逻辑冲突，需统一调度。
+- [GeoAnchor](2026-geoanchor.md) — **同打破"纯文本 CoT"的两条对立路线**：Video-o3 把中间推理外化成工具调用（可见可审计、工具可插拔），GeoAnchor 内化成连续潜变量（保几何保真度、教师烧进权重）。本文 Related Works 2.2 自己把"think with images"工具流与 latent reasoning 对立。路线对照（库内综合）：前者中间步骤可审计，后者直接表达连续量；未验证两者在同任务下的通用优劣。
 - [VideoChat3](2026-videochat3.md) — **视觉策略互补**。VideoChat3 靠编码器压缩+状态机决定看多少像素，Video-o3 靠推理时工具调用决定看哪里。一个管感知效率，一个管检索精度。
 - 同领域可对比：Video-R1（文本 CoT，视觉固定）、VideoChat-R1.5/Video-RTS（解耦迭代推理）、VideoZoomer、LOVE-R1。
 - 待建概念页：`multi-hop reasoning` / `tool invocation` / `attention masking` / `GRPO` / `KV cache` / `test-time scaling`

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeepSeekMath · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -25,7 +25,7 @@
       <p class="cover-eyebrow">FULL NOTE · 强化学习与对齐</p>
       <h1>DeepSeekMath</h1>
       <p class="note-full">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models</p>
-      <p class="note-essence"><strong>一句话本质</strong>：不要昂贵的「独立裁判（Critic 价值模型）」，让同一个问题的一组采样解题路径（$G$ 个 rollout）在组内进行相对打分与优势归一化，以省去近半显存的极简架构实现超越传统 PPO 的大模型在线数学强化学习。</p>
+      <p class="note-essence"><strong>一句话本质</strong>：DeepSeekMath 用数学数据预训练、监督微调和 GRPO 提升数学推理；GRPO 用同题多次作答的相对奖励代替独立 Critic。</p>
       <dl class="cover-meta">
         <dt>作者 / 机构</dt><dd>Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song 等 ｜ DeepSeek-AI, 清华大学, 北京大学</dd>
         <dt>入库</dt><dd>2026-09-18</dd>
@@ -41,198 +41,205 @@
       </div>
     </header>
 
-    <figure class="paper-fig">
-      <img src="../../site/assets/figures/2024-deepseekmath/fig1.png" alt="开源模型在竞赛级 MATH 基准上的 Top-1 准确率" loading="lazy">
-      <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>无需外部工具与复杂投票，DeepSeekMath 7B 仅凭模型自身推理在竞赛级 MATH 上达到 51.7%，一举逼近闭源的 Gemini-Ultra 和 GPT-4，大幅拉开与以往开源模型的差距。</figcaption>
-    </figure>
-
-    <nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#problem">解决什么问题</a><a href="#intuition">大白话讲解</a><a href="#mechanism">关键机制</a><a href="#evidence">结果与代价</a><a href="#ai-notes">AI 预读备注</a><a href="#restatement">我的复述</a><a href="#pitfalls">卡壳点与解答</a><a href="#open">还没搞懂</a><a href="#relations">关联</a></nav>
-
-    <section class="note-sec" id="problem">
-      <h2>解决什么问题</h2>
-      <p>大语言模型在数学与长链逻辑推理上长期面临两大结构性瓶颈：</p>
-      <ol>
-        <li><strong>预训练数据来源的误区与偏见</strong>：
-          <ul>
-            <li>传统观念普遍认为数学推理能力主要来自形式化论文（如 arXiv LaTeX 源码）或高成本合成数据，而通用互联网网页（如 Common Crawl）充满噪声、缺乏深度；</li>
-            <li>但事实上单纯堆砌 arXiv 论文在 GSM8K、MATH、MMLU-STEM 等测试上提升极小甚至出现能力退化（arXiv 格式高度浓缩、符号繁复且缺少由浅入深的解题推导与讨论）；且现有高质量数学预训练集规模严重受限（如 Minerva 网页数据仅约 17B tokens）。</li>
-          </ul>
-        </li>
-        <li><strong>强化学习（PPO）在大模型推理对齐时的资源与估计瓶颈</strong>：
-          <ul>
-            <li><strong>显存开销巨大</strong>：传统 <a href="2017-ppo.html">PPO</a> 是典型的 Actor-Critic 结构，除了策略模型（Actor）和参考模型（Ref），还必须在显存中维护一个同等参数量级的价值模型（Critic），导致训练显存占用翻倍，限制了模型尺寸与上下文长度；</li>
-            <li><strong>稀疏奖励与逐 token 价值估计的矛盾</strong>：数学题通常只有在完整推导结束时才能检验最终答案的对错（Outcome Supervision）。让 Critic 模型去预测长链推理中每一个中间 token 的绝对期望收益 $V(s_t)$，不仅拟合极其困难，而且估计方差巨大、噪声极高；</li>
-            <li><strong>离线微调（RFT / DPO）缺乏动态探索与惩罚机制</strong>：拒绝采样微调（RFT）只挑选旧模型碰巧做对的样本做 SFT，不仅无法惩罚做错的路径，而且脱离了模型参数更新后的在线探索；DPO 则难以处理多步复杂推理中的动态长轨迹探索。</li>
-          </ul>
-        </li>
-      </ol>
-    </section>
-
-    <section class="note-sec" id="intuition">
-      <h2>大白话讲解</h2>
-      <h3>类比：开除特聘名师，改成班级自评</h3>
-      <ul>
-        <li><strong>传统 PPO 的做法</strong>：请了一位极其昂贵的特聘名师（Critic 价值模型）。学生（Actor）每写下一个公式、每推导一步，名师都必须在旁边打一个绝对预估分（估算当前状态的长期期望回报 $V(s_t)$）。
-          <ul>
-            <li><strong>痛点</strong>：雇名师的开销（显存）跟学生自己一样大；而且题目还没做完前，名师往往也只能瞎猜，打出来的中间分噪声极大，反而带偏了学生。</li>
-          </ul>
-        </li>
-        <li><strong>GRPO 的做法</strong>：<strong>把特聘名师直接开除</strong>。面对同一道数学难题，让学生自己连续做 64 遍（生成 $G=64$ 份不同的解题草稿）。
-          <ul>
-            <li>做完后，判卷人（规则或奖励模型）给每份草稿评一个最终分数。</li>
-            <li>计算这 64 份草稿的<strong>平均分</strong>与<strong>标准差</strong>；</li>
-            <li>高于平均分的草稿算「优秀变体」，赋予正优势值（向此轨迹学习）；低于平均分的草稿算「劣质变体」，赋予负优势值（抑制该推导路径）；</li>
-            <li>用组内相对排名代替绝对打分，既砍掉了名师的一半显存，又完全消除了绝对分数的校准偏差。</li>
-          </ul>
-        </li>
-      </ul>
-      <figure class="paper-fig">
-        <img src="../../site/assets/figures/2024-deepseekmath/fig4.png" alt="PPO 与 GRPO 架构对比" loading="lazy">
-        <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 4）</span>PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 G 个候选回答，利用组内平均与标准差归一化直接得到相对优势，显存节省近半。</figcaption>
-      </figure>
-    </section>
-
-    <section class="note-sec" id="mechanism">
-      <h2>关键机制</h2>
-      <h3>1. 从 PPO 到 GRPO 的目标函数重构</h3>
-      <p>传统 <a href="2017-ppo.html">PPO</a> 将 token 级的 KL 散度直接塞入奖励函数中（$r_t - \beta \log \frac{\pi_\theta}{\pi_{ref}}$），导致价值模型还需要额外拟合策略漂移惩罚。GRPO 彻底理清这一结构，将 KL 散度独立移入损失函数外层，形式如下：</p>
-      <p>$$\mathcal{J}_{GRPO}(\theta) = \mathbb{E}\left[ q \sim \mathcal{P}(Q), \{o_i\}_{i=1}^G \sim \pi_{\theta_{old}}(O|q) \right] \frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} \left[ \min\left( \frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}\hat{A}_{i,t}, \text{clip}\left(\frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}, 1-\varepsilon, 1+\varepsilon\right)\hat{A}_{i,t} \right) - \beta D_{KL}(\pi_\theta \parallel \pi_{ref}) \right]$$</p>
-      <p>其中采用 Schulman (2020) 提出的非负无偏 KL 散度估计器：</p>
-      <p>$$D_{KL}(\pi_\theta \parallel \pi_{ref}) = \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - \log \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - 1$$</p>
-
-      <h3>2. 优势函数估计（Advantage Estimation）</h3>
-      <p>对于输入问题 $q$，采样一组输出 $\{o_1, \dots, o_G\}$，得到各输出的得分 $\{r_1, \dots, r_G\}$：</p>
-      <ul>
-        <li><strong>结果监督（Outcome Supervision, OS）</strong>：
-          若仅在回答末尾打分（如规则判定最终数值答案对错，对=1，错=0），将整个组内的得分做标准化：
-          $$\tilde{r}_i = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r})}$$
-          该输出轨迹上的所有 token 共享相同的优势值：$\hat{A}_{i,t} = \tilde{r}_i$。</li>
-        <li><strong>过程监督（Process Supervision, PS）</strong>：
-          若配备过程奖励模型（PRM）对推导步骤打分，第 $i$ 个输出的第 $j$ 步得分归一化为 $\tilde{r}_{i}^{(j)}$，则 token $t$ 的优势值为其后续各步骤归一化得分的前向累加：
-          $$\hat{A}_{i,t} = \sum_{\text{step } j \ge t} \tilde{r}_{i}^{(j)}$$</li>
-      </ul>
-
-      <h3>3. 统一梯度范式：统一理解 SFT、RFT、DPO、PPO 与 GRPO</h3>
-      <p>论文在参数梯度更新的宏观框架下给出了统一表达式：</p>
-      <p>$$\nabla_\theta \mathcal{J}(\theta) = \mathbb{E}_{(q, o) \sim \mathcal{D}} \left[ \frac{1}{|o|}\sum_{t=1}^{|o|} GC(q, o, t, \pi_{rf}) \cdot \nabla_\theta \log \pi_\theta(o_t | q, o_{<t}) \right]$$</p>
-      <p>任何对齐算法均由三个要素决定：<strong>数据源 $\mathcal{D}$</strong>（离线 vs 在线）、<strong>奖励函数 $\pi_{rf}$</strong>（规则 vs 模型）、<strong>梯度系数 $GC$</strong>（如何把信号映射为更新步长）。</p>
-      <table class="dtable">
-        <thead><tr><th>算法</th><th>数据源 $\mathcal{D}$</th><th>奖励形式</th><th>梯度系数 $GC$ 特点</th><th>本质缺陷 / 优势</th></tr></thead>
-        <tbody>
-          <tr><td><strong>SFT</strong></td><td>离线人类标注</td><td>无</td><td class="num">恒等于 $1$</td><td>只能盲目拟合演示数据，无探索</td></tr>
-          <tr><td><strong>RFT</strong></td><td>离线 $\pi_{sft}$ 采样</td><td>规则（答对/错）</td><td class="num">答对为 $1$，答错为 $0$</td><td>只有正向更新，不惩罚错误，无在线探索</td></tr>
-          <tr><td><strong>DPO</strong></td><td>离线 $\pi_{sft}$ 采样对</td><td>成对偏好/规则</td><td>基于隐式奖励的 Sigmoid 权重</td><td>离线数据，随模型变强后无法产生新分布难例</td></tr>
-          <tr><td><strong>Online RFT</strong></td><td><strong>在线 $\pi_\theta$ 采样</strong></td><td>规则（答对/错）</td><td class="num">答对为 $1$，答错为 $0$</td><td>有在线探索，但依然无负向梯度惩罚</td></tr>
-          <tr><td><strong>PPO</strong></td><td><strong>在线 $\pi_\theta$ 采样</strong></td><td>奖励模型 + Critic</td><td>逐 token GAE 优势值 $A_t$</td><td>在线探索 + 动态正负梯度，但 Critic 显存沉重</td></tr>
-          <tr data-hi><td><strong>GRPO</strong></td><td><strong>在线 $\pi_\theta$ 组采样</strong></td><td>奖励模型 / 规则</td><td><strong>组内标准化相对优势 $\hat{A}_{i,t}$</strong></td><td><strong>在线探索 + 动态正负梯度 + 零 Critic 显存开销</strong></td></tr>
-        </tbody>
-      </table>
-
-      <figure class="paper-fig">
-        <img src="../../site/assets/figures/2024-deepseekmath/fig2.png" alt="Common Crawl 数学网页挖掘流水线" loading="lazy">
-        <figcaption><span class="fig-title">图 3 费曼图解（论文 Figure 2）</span>DeepSeekMath 数据挖掘引擎：以 OpenWebMath 为种子训练 FastText 分类器，从 40B 去重网页中召回数学候选页，再通过域名与 URL 路径分析迭代扩充高质量域名，最终沉淀出 120B token 的 DeepSeekMath Corpus。</figcaption>
-      </figure>
-
-      <h3>4. 预训练基座与数据发现</h3>
-      <ul>
-        <li><strong>代码基座的数学迁移力</strong>：以代码模型 DeepSeek-Coder-Base-v1.5 7B 作为初始化，在数学评测上全方位压倒直接以通用语言模型初始化的版本，验证了“代码训练能显著强化结构化逻辑推理”的假说；</li>
-        <li><strong>arXiv 数据迷思破除</strong>：在 1.3B 和 7B 模型上，仅用 arXiv 论文训练均未见数学推理能力提升，甚至轻微下降；而 Common Crawl 中清洗出的论坛讨论（如 MathOverflow）、教学博客、问答等含有更丰富直白的人类思维过程。</li>
-      </ul>
-    </section>
-
-    <section class="note-sec" id="evidence">
-      <h2>结果与代价</h2>
-      <h3>1. 评测表现</h3>
-      <ul>
-        <li><strong>MATH 基准</strong>：DeepSeekMath 7B 在无外挂代码解释器、无多数投票的单次生成（Top-1）下达到 <strong>51.7%</strong>，超过闭源的 Gemini Pro（32.6%）与 540B 的 Minerva（33.6%），逼近 GPT-4（52.9%）；</li>
-        <li><strong>自一致性投票（Maj@64）</strong>：在 64 次采样投票下，MATH 准确率进一步跃升至 <strong>60.9%</strong>；</li>
-        <li><strong>中文数学泛化</strong>：CMATH 达到 88.8%，大幅领先同期开源模型。</li>
-      </ul>
-
-      <figure class="paper-fig">
-        <img src="../../site/assets/figures/2024-deepseekmath/fig7.png" alt="Maj@K 与 Pass@K 对比" loading="lazy">
-        <figcaption><span class="fig-title">图 4 费曼图解（论文 Figure 7）</span>核心洞察：经过 GRPO 强化学习后，Maj@K（多数投票准确率）随着 K 显著上移；但 Pass@K（覆盖上限）曲线几乎与 SFT 模型完全重叠。这证实了强化学习的本质在于重塑采样分布、搬运概率质量，而非拓展知识边界。</figcaption>
-      </figure>
-
-      <h3>2. 强化学习的真相：Pass@K vs Maj@K 的深层启示</h3>
-      <p>论文在第 5.2.2 节给出了极为深刻的实验发现：</p>
-      <ul>
-        <li><strong>Pass@K 几乎没变</strong>：这意味着基座模型能够探索到的解空间上限并没有被 RL 凭空扩充；如果 SFT 阶段采 64 遍完全不可能答对的题，RL 后依然答不对；</li>
-        <li><strong>Maj@K 和 Top-1 大幅提升</strong>：RL 将原本隐藏在采样分布长尾里的 1% 正确解法，通过正负相对优势的梯度引导，集中搬运到了 Top 区域，显著收窄了输出方差，消除了逻辑幻觉。</li>
-      </ul>
-
-      <h3>3. 代价与局限性</h3>
-      <ul>
-        <li><strong>零方差失效边界</strong>：若采样组对难题全错（均为 0）或对送分题全对（均为 1），组内标准差 $\text{std}(\mathbf{r}) \to 0$，相对优势归零，无法提供梯度更新信号。训练必须依赖难度匹配且具备区分度的题目集；</li>
-        <li><strong>几何与形式化证明短板</strong>：因纯文本预训练与网页数据偏差，模型在涉及三角形、椭圆等连续空间几何图形的感知与推导上显著弱于通用超大模型；</li>
-        <li><strong>Few-shot 上限受限于 7B 参数量</strong>：相比 GPT-4 随提示词示例数增加准确率明显上升，7B 尺度的 DeepSeekMath 在 Few-shot 与 Zero-shot 之间提升不明显。</li>
-      </ul>
-    </section>
-
-    <section class="note-sec" id="ai-notes">
-      <h2>AI 预读备注</h2>
-      <p>Zotero AI Butler 预读笔记 <code>8CYDI7ER</code>（AI 总结）与 <code>RK4Y6U8L</code>（文献表格）提供了完整的架构提炼与背景梳理。经费曼核验，对 AI 预读补充两处关键盲点：</p>
-      <ol>
-        <li><strong>AI 预读漏检 Pass@K 的本质结论</strong>：AI 总结仅列举了 GSM8K 和 MATH 的绝对涨分，遗漏了论文第 5.2.2 节 Figure 7 揭示的「Pass@K 恒定、Maj@K 飙升」的核心理论发现（RL 究竟改变了能力还是改变了分布）；</li>
-        <li><strong>统一梯度系数框架的深化</strong>：AI 预读将 GRPO 视作孤立算法，缺少了原论文 Appendix A.1 将 SFT/RFT/DPO/PPO/GRPO 统一为 $GC$ 梯度系数对比的宏观视角。本笔记已予全量补齐。</li>
-      </ol>
-    </section>
-
-    <section class="note-sec" id="restatement">
-      <h2>我的复述</h2>
-      <p><em>费曼检验时 XinLi 自己的原话：</em></p>
-      <blockquote class="my-quote">
-        <p>1. 对同一个问题，rollout G 遍，然后计算他们 reward 的均值和标准差，接着用均值和标准差标准化 reward 得到优势， 高于均值的轨迹得到正优势低于均值的负优势。 LLM 通常只有到最后才能确认对错，仅有末尾奖励的时候对中间 token 绝对期望方差大噪声高。</p>
-        <p>2. 相对优势差为 0，该样本不产生梯度，这意味着 GRPO 极度依赖有区分度的题目；完全不会的题和闭眼都会的题在 RL 阶段不提供有效优化信号。而 PPO 由于有 critic 模型的存在，即使最后结果全对或全错但还是有中间 token 的区分度还是有梯度的。</p>
-        <p>3. 当前的强化学习并没有教模型学会原本在知识盲区里的新定理，而是重塑了输出分布——把分布中那 1% 零星被采到的正确答案推成高概率候选，抑制错误的幻觉路径。</p>
-      </blockquote>
-    </section>
-
-    <section class="note-sec" id="pitfalls">
-      <h2>卡壳点与解答</h2>
-      <div class="qa" id="qa-grpo-advantage">
-        <p class="qa-q">Q：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？</p>
-        <div class="qa-a">
-          <p>1. <strong>显存层面</strong>：LLM 的强化学习中，Critic 网络通常需要拥有与策略模型（Actor）相同的参数量与嵌入维度才能准确表征上下文价值，丢弃 Critic 直接削减了一半的显存开销与反向传播图；</p>
-          <p>2. <strong>建模稳定性</strong>：在数学等长链推理中，奖励通常是延迟到结尾的稀疏二值信号（对/错）。Critic 强行去预测每个 token 的绝对长期价值 $V(s_t)$，噪声极高且极易过拟合；</p>
-          <p>3. <strong>契合 RM 训练范式</strong>：主流奖励模型（Reward Model）是通过成对比较数据（Pairwise Preference，如 Bradley-Terry 目标）训练出来的。它天生擅长的是<strong>在同一个 Prompt 下给不同候选回答排序</strong>（相对大小），而不是输出具有绝对物理意义的校准标量。GRPO 的组内均值中心化与方差标准化，恰好顺应了奖励模型的比较本质。</p>
-        </div>
-      </div>
-
-      <div class="qa" id="qa-zero-variance">
-        <p class="qa-q">Q：在 Outcome 模式下全对或全错时，GRPO 与传统 PPO 的梯度行为有何不同？</p>
-        <div class="qa-a">
-          <p>1. <strong>GRPO 的行为</strong>：当 64 个回答全为 0 分或全为 1 分时，分子 $(r_i - \text{mean}(\mathbf{r})) = 0$，且标准差 $\text{std}(\mathbf{r}) \to 0$（加微小常数 $\epsilon_{div}$ 防止除零），归一化后的优势值 $\hat{A}_{i,t} \equiv 0$。策略梯度的 surrogate 部分完全消失，只剩下策略与参考模型间的 KL 正则惩罚项。因此，<strong>完全做不对的超级难题或闭眼都能做对的白给题，在 GRPO 阶段几乎不贡献策略探索的有效梯度</strong>；</p>
-          <p>2. <strong>传统 PPO 的对比</strong>：PPO 维护了独立的价值网络 $V(s_t)$。即使最终的回报全部为 0，只要每一步的状态估计 $V(s_t)$ 不为 0，就会计算出非零的 TD 误差（$r_t + \gamma V(s_{t+1}) - V(s_t)$），从而强行产生梯度。但由于这种梯度建立在稀疏末端奖励的噪声估计之上，反而容易带来虚假的策略漂移破坏已有能力。</p>
-        </div>
-      </div>
-
-      <div class="qa" id="qa-passk-essence">
-        <p class="qa-q">Q：如何看待「Pass@K 几乎没变，Maj@K 大幅跃升」这一现象？</p>
-        <div class="qa-a">
-          <p>这一发现揭示了强化学习在大语言模型上的真实机理：</p>
-          <p>1. <strong>知识与潜力的边界由预训练与 SFT 划定</strong>：强化学习并没有凭空为模型注入它未曾见过的数学公理或逻辑模式（如果基座在采样 $K$ 次内做出的概率为 0，RL 并不能凭空无中生有）；</p>
-          <p>2. <strong>RL 的核心是「概率质量搬运（Probability Mass Re-allocation）」</strong>：在 SFT 模型中，正确的解题路径可能混杂在大量充满逻辑瑕疵的采样中（例如仅占 5% 的概率密度）。GRPO 的正负相对优势就像一把筛子，通过对优质路径的强化和劣质路径的抑制，把散落在长尾中的正确推理模式搬运到了概率分布的主峰，使得贪婪搜索或少量采样（Top-1 / Maj@K）能稳定击中正解。</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="note-sec" id="open">
-      <h2>还没搞懂</h2>
-      <p><em>费曼检验三题已全部闭环，无残留疑问。</em></p>
-    </section>
-
-    <section class="note-sec" id="relations">
-      <h2>关联</h2>
-      <ul>
-        <li><a href="2017-ppo.html">PPO</a> — GRPO 的直接理论前身：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略过激更新，但 GRPO 彻底剪除了 Critic 模型与 GAE，改用组内相对优势估计，并将 KL 惩罚从奖励解耦到外层损失。</li>
-        <li><a href="2026-geoanchor.html">GeoAnchor</a> — 空间推理下游应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化模型对不同空间潜变量模式的选择策略。</li>
-        <li><a href="2026-u-opsd.html">U-OPSD</a> — 自生成监督的另一演进路线：U-OPSD 是在推理阶段通过采样 8 遍做多数投票构建伪解教师进行前向 KL 蒸馏，而 GRPO 是直接在在线采样组内用相对奖励计算优势进行策略梯度强化。</li>
-        <li><a href="2026-s2vopd.html">S²VOPD</a> — 零特权自对齐：探讨在无外部高阶标注的前提下，如何通过模型自身的多视角/多采样构建不对称信息差进行能力对齐。</li>
-      </ul>
-    </section>
-  </main>
+    <nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#rebuild">五分钟重建</a><a href="#figures">论文图解</a><a href="#problem">解决什么问题</a><a href="#intuition">大白话讲解</a><a href="#mechanism">关键机制</a><a href="#evidence">结果与代价</a><a href="#ai-notes">AI 预读备注</a><a href="#restatement">我的复述</a><a href="#pitfalls">卡壳点与解答</a><a href="#open">还没搞懂</a><a href="#relations">关联</a></nav>
+<section class="note-sec" id="rebuild"><h2>五分钟重建</h2><div class="learning-guide" id="guide-2024-deepseekmath">
+  <p class="guide-problem">PPO 通常用 Critic 估计价值基线。大语言模型再配一套价值网络，会增加显存和训练成本。GRPO 改用同一道题的一组回答作为比较基线。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>同题多次作答</h3><p>从旧策略采样一组回答，给每条回答打奖励分。</p></li>
+    <li><h3>组内比较</h3><p>用奖励减去组均值，再按组标准差归一化，得到相对优势。GRPO 因此省去独立 Critic。</p></li>
+    <li><h3>更新生成概率</h3><p>优势进入裁剪策略目标。参考模型的 KL 正则单独保留。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：同题四个回答的奖励是 [1,1,0,0]。均值为 0.5，标准差为 0.5。忽略稳定除数后，优势是 [+1,+1,-1,-1]。这里比较的是奖励差，不只是名次。</p>
+  <p class="guide-boundary"><strong>边界</strong>：省掉 Critic 不等于总显存必定减半。论文中 Pass@K 的观察也只支持其特定实验下的概率重分配解释，不能证明所有 RL 都无法扩展解题能力。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>四条回答全得 1 分时，组相对优势是什么？是不是整个训练目标都没有梯度？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>组相对优势全为零，策略 surrogate 部分没有这组回答的区分信号。KL 正则仍可能产生梯度，所以不能把两者混为一谈。</p></details>
+    <p class="guide-transfer">关掉提示后解释：GRPO 去掉了哪个模型？如果奖励模型还在，为什么这不矛盾？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div></section>
+<section class="note-sec" id="figures"><h2>论文图解</h2><figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig1.png" alt="开源模型在竞赛级 MATH 基准上的 Top-1 准确率" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：无需外部工具与复杂投票，DeepSeekMath 7B 仅凭模型自身推理在竞赛级 MATH 上达到 51.7%，一举逼近闭源的 Gemini-Ultra 和 GPT-4，大幅拉开与以往开源模型的差距。</figcaption></figure>
+</section>
+<section class="note-sec" id="problem"><h2>解决什么问题</h2><p>大语言模型在数学与长链逻辑推理上长期面临两大结构性瓶颈：</p>
+<ol>
+<li><strong>预训练数据来源的误区与偏见</strong>：<ul>
+<li>传统观念普遍认为数学推理能力主要来自形式化论文（如 arXiv LaTeX 源码）或高成本合成数据，而通用互联网网页（如 Common Crawl）充满噪声、缺乏深度；</li>
+<li>但事实上单纯堆砌 arXiv 论文在 GSM8K、MATH、MMLU-STEM 等测试上提升极小甚至出现能力退化（arXiv 格式高度浓缩、符号繁复且缺少由浅入深的解题推导与讨论）；且现有高质量数学预训练集规模严重受限（如 Minerva 网页数据仅约 17B tokens）。</li>
+</ul>
+</li>
+<li><strong>强化学习（PPO）在大模型推理对齐时的资源与估计瓶颈</strong>：<ul>
+<li><strong>显存开销巨大</strong>：传统 <a href="2017-ppo.html">PPO</a> 是典型的 Actor-Critic 结构，除了策略模型（Actor）和参考模型（Ref），还必须在显存中维护一个同等参数量级的价值模型（Critic），导致训练显存占用翻倍，限制了模型尺寸与上下文长度；</li>
+<li><strong>稀疏奖励与逐 token 价值估计的矛盾</strong>：数学题通常只有在完整推导结束时才能检验最终答案的对错（Outcome Supervision）。让 Critic 模型去预测长链推理中每一个中间 token 的绝对期望收益 <span class="note-math">$V(s_t)$</span>，不仅拟合极其困难，而且估计方差巨大、噪声极高；</li>
+<li><strong>离线微调（RFT / DPO）缺乏动态探索与惩罚机制</strong>：拒绝采样微调（RFT）只挑选旧模型碰巧做对的样本做 SFT，不仅无法惩罚做错的路径，而且脱离了模型参数更新后的在线探索；DPO 则难以处理多步复杂推理中的动态长轨迹探索。</li>
+</ul>
+</li>
+</ol>
+</section>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：开除特聘名师，改成班级自评</h3>
+<ul>
+<li><strong>传统 PPO 的做法</strong>：请了一位极其昂贵的特聘名师（Critic 价值模型）。学生（Actor）每写下一个公式、每推导一步，名师都必须在旁边打一个绝对预估分（估算当前状态的长期期望回报 <span class="note-math">$V(s_t)$</span>）。<ul>
+<li><strong>痛点</strong>：雇名师的开销（显存）跟学生自己一样大；而且题目还没做完前，名师往往也只能瞎猜，打出来的中间分噪声极大，反而带偏了学生。</li>
+</ul>
+</li>
+<li><strong>GRPO 的做法</strong>：<strong>把特聘名师直接开除</strong>。面对同一道数学难题，让学生自己连续做 64 遍（生成 <span class="note-math">$G=64$</span> 份不同的解题草稿）。<ul>
+<li>做完后，判卷人（规则或奖励模型）给每份草稿评一个最终分数。</li>
+<li>计算这 64 份草稿的<strong>平均分</strong>与<strong>标准差</strong>；</li>
+<li>高于平均分的草稿算「优秀变体」，赋予正优势值（向此轨迹学习）；低于平均分的草稿算「劣质变体」，赋予负优势值（抑制该推导路径）；</li>
+<li>用组内相对排名代替绝对打分，省去独立 Critic 的成本，并以组内相对奖励减少对绝对价值基线的依赖；总体显存收益取决于实现，奖励噪声仍会保留。</li>
+</ul>
+</li>
+</ul>
+<figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig4.png" alt="PPO 与 GRPO 架构对比" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 <span class="note-math">$G$</span> 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。</figcaption></figure>
+</section>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>1. 从 PPO 到 GRPO 的目标函数重构</h3>
+<p>传统 <a href="2017-ppo.html">PPO</a> 将 token 级的 KL 散度直接塞入奖励函数中（<span class="note-math">$r_t - \beta \log \frac{\pi_\theta}{\pi_{ref}}$</span>），导致价值模型还需要额外拟合策略漂移惩罚。GRPO 彻底理清这一结构，将 KL 散度独立移入损失函数外层，形式如下：</p>
+<pre class="note-pre">$$\mathcal{J}_{GRPO}(\theta) = \mathbb{E}\left[ q \sim \mathcal{P}(Q), \{o_i\}_{i=1}^G \sim \pi_{\theta_{old}}(O|q) \right] \frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} \left[ \min\left( \frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}\hat{A}_{i,t}, \text{clip}\left(\frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}, 1-\varepsilon, 1+\varepsilon\right)\hat{A}_{i,t} \right) - \beta D_{KL}(\pi_\theta \parallel \pi_{ref}) \right]$$</pre>
+<p>其中采用 Schulman (2020) 提出的非负无偏 KL 散度估计器：</p>
+<pre class="note-pre">$$D_{KL}(\pi_\theta \parallel \pi_{ref}) = \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - \log \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - 1$$</pre>
+<h3>2. 优势函数估计（Advantage Estimation）</h3>
+<p>对于输入问题 <span class="note-math">$q$</span>，采样一组输出 <span class="note-math">$\{o_1, \dots, o_G\}$</span>，得到各输出的得分 <span class="note-math">$\{r_1, \dots, r_G\}$</span>：</p>
+<ul>
+<li><strong>结果监督（Outcome Supervision, OS）</strong>：
+若仅在回答末尾打分（如规则判定最终数值答案对错，对=1，错=0），将整个组内的得分做标准化：<pre class="note-pre">$$\tilde{r}_i = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r})}$$</pre>
+该输出轨迹上的所有 token 共享相同的优势值：<span class="note-math">$\hat{A}_{i,t} = \tilde{r}_i$</span>。</li>
+<li><strong>过程监督（Process Supervision, PS）</strong>：
+若配备过程奖励模型（PRM）对推导步骤打分，第 <span class="note-math">$i$</span> 个输出的第 <span class="note-math">$j$</span> 步得分归一化为 <span class="note-math">$\tilde{r}_{i}^{(j)}$</span>，则 token <span class="note-math">$t$</span> 的优势值为其后续各步骤归一化得分的前向累加：<pre class="note-pre">$$\hat{A}_{i,t} = \sum_{\text{step } j \ge t} \tilde{r}_{i}^{(j)}$$</pre>
+</li>
+</ul>
+<h3>3. 统一梯度范式：统一理解 SFT、RFT、DPO、PPO 与 GRPO</h3>
+<p>论文在参数梯度更新的宏观框架下给出了统一表达式：</p>
+<pre class="note-pre">$$\nabla_\theta \mathcal{J}(\theta) = \mathbb{E}_{(q, o) \sim \mathcal{D}} \left[ \frac{1}{|o|}\sum_{t=1}^{|o|} GC(q, o, t, \pi_{rf}) \cdot \nabla_\theta \log \pi_\theta(o_t | q, o_{&lt;t}) \right]$$</pre>
+<p>任何对齐算法均由三个要素决定：<strong>数据源 <span class="note-math">$\mathcal{D}$</span></strong>（离线 vs 在线）、<strong>奖励函数 <span class="note-math">$\pi_{rf}$</span></strong>（规则 vs 模型）、<strong>梯度系数 <span class="note-math">$GC$</span></strong>（如何把信号映射为更新步长）。</p>
+<table class="dtable">
+<thead>
+<tr>
+<th>算法</th>
+<th>数据源 <span class="note-math">$\mathcal{D}$</span></th>
+<th>奖励形式</th>
+<th>梯度系数 <span class="note-math">$GC$</span> 特点</th>
+<th>本质缺陷 / 优势</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SFT</strong></td>
+<td>离线人类标注</td>
+<td>无</td>
+<td>恒等于 <span class="note-math">$1$</span></td>
+<td>只能盲目拟合演示数据，无探索</td>
+</tr>
+<tr>
+<td><strong>RFT</strong></td>
+<td>离线 <span class="note-math">$\pi_{sft}$</span> 采样</td>
+<td>规则（答对/错）</td>
+<td>答对为 <span class="note-math">$1$</span>，答错为 <span class="note-math">$0$</span></td>
+<td>只有正向更新，不惩罚错误，无在线探索</td>
+</tr>
+<tr>
+<td><strong>DPO</strong></td>
+<td>离线 <span class="note-math">$\pi_{sft}$</span> 采样对</td>
+<td>成对偏好/规则</td>
+<td>基于隐式奖励的 Sigmoid 权重</td>
+<td>离线数据，随模型变强后无法产生新分布难例</td>
+</tr>
+<tr>
+<td><strong>Online RFT</strong></td>
+<td><strong>在线 <span class="note-math">$\pi_\theta$</span> 采样</strong></td>
+<td>规则（答对/错）</td>
+<td>答对为 <span class="note-math">$1$</span>，答错为 <span class="note-math">$0$</span></td>
+<td>有在线探索，但依然无负向梯度惩罚</td>
+</tr>
+<tr>
+<td><strong>PPO</strong></td>
+<td><strong>在线 <span class="note-math">$\pi_\theta$</span> 采样</strong></td>
+<td>奖励模型 + Critic</td>
+<td>逐 token GAE 优势值 <span class="note-math">$A_t$</span></td>
+<td>在线探索 + 动态正负梯度，但 Critic 显存沉重</td>
+</tr>
+<tr>
+<td><strong>GRPO</strong></td>
+<td><strong>在线 <span class="note-math">$\pi_\theta$</span> 组采样</strong></td>
+<td>奖励模型 / 规则</td>
+<td><strong>组内标准化相对优势 <span class="note-math">$\hat{A}_{i,t}$</span></strong></td>
+<td><strong>在线探索 + 动态正负梯度 + 零 Critic 显存开销</strong></td>
+</tr>
+</tbody></table>
+<figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig2.png" alt="Common Crawl 数学网页挖掘流水线" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 2）：DeepSeekMath 数据挖掘引擎——以 OpenWebMath 为种子训练 FastText 分类器，从 40B 去重网页中召回数学候选页，再通过域名与 URL 路径分析迭代扩充高质量域名，最终沉淀出 120B token 的 DeepSeekMath Corpus。</figcaption></figure>
+<h3>4. 预训练基座与数据发现</h3>
+<ul>
+<li><strong>代码基座的数学迁移力</strong>：以代码模型 DeepSeek-Coder-Base-v1.5 7B 作为初始化，在数学评测上全方位压倒直接以通用语言模型初始化的版本，验证了“代码训练能显著强化结构化逻辑推理”的假说；</li>
+<li><strong>arXiv 数据迷思破除</strong>：在 1.3B 和 7B 模型上，仅用 arXiv 论文训练均未见数学推理能力提升，甚至轻微下降；而 Common Crawl 中清洗出的论坛讨论（如 MathOverflow）、教学博客、问答等含有更丰富直白的人类思维过程。</li>
+</ul>
+</section>
+<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3>1. 评测表现</h3>
+<ul>
+<li><strong>MATH 基准</strong>：DeepSeekMath 7B 在无外挂代码解释器、无多数投票的单次生成（Top-1）下达到 <strong>51.7%</strong>，超过闭源的 Gemini Pro（32.6%）与 540B 的 Minerva（33.6%），逼近 GPT-4（52.9%）；</li>
+<li><strong>自一致性投票（Maj@64）</strong>：在 64 次采样投票下，MATH 准确率进一步跃升至 <strong>60.9%</strong>；</li>
+<li><strong>中文数学泛化</strong>：CMATH 达到 88.8%，大幅领先同期开源模型。</li>
+</ul>
+<figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig7.png" alt="Maj@K 与 Pass@K 对比" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 7）：核心洞察——经过 GRPO 强化学习后，Maj@K（多数投票准确率）随着 K 显著上移；但 Pass@K（覆盖上限）曲线几乎与 SFT 模型完全重叠。该实验支持 GRPO 在这里主要重塑采样分布、提高已有正确解的采样概率；不是所有 RL 的普遍边界。</figcaption></figure>
+<h3>2. 强化学习的真相：Pass@K vs Maj@K 的深层启示</h3>
+<p>论文在第 5.2.2 节给出了极为深刻的实验发现：</p>
+<ul>
+<li><strong>Pass@K 几乎没变</strong>：这是论文特定模型、数据与有限 K 下的观察。有限次未采到正确解，不等于其概率严格为零，也不能推出所有题在 RL 后仍必然答不对；</li>
+<li><strong>Maj@K 和 Top-1 大幅提升</strong>：RL 将原本隐藏在采样分布长尾里的 1% 正确解法，通过正负相对优势的梯度引导，集中搬运到了 Top 区域，显著收窄了输出方差，消除了逻辑幻觉。</li>
+</ul>
+<h3>3. 代价与局限性</h3>
+<ul>
+<li><strong>零方差失效边界</strong>：若采样组对难题全错（均为 0）或对送分题全对（均为 1），组内标准差 <span class="note-math">$\text{std}(\mathbf{r}) \to 0$</span>，相对优势归零，无法提供梯度更新信号。训练必须依赖难度匹配且具备区分度的题目集；</li>
+<li><strong>几何与形式化证明短板</strong>：因纯文本预训练与网页数据偏差，模型在涉及三角形、椭圆等连续空间几何图形的感知与推导上显著弱于通用超大模型；</li>
+<li><strong>Few-shot 上限受限于 7B 参数量</strong>：相比 GPT-4 随提示词示例数增加准确率明显上升，7B 尺度的 DeepSeekMath 在 Few-shot 与 Zero-shot 之间提升不明显。</li>
+</ul>
+</section>
+<section class="note-sec" id="ai-notes"><h2>AI 预读备注</h2><p>Zotero AI Butler 预读笔记 <code>8CYDI7ER</code>（AI 总结）与 <code>RK4Y6U8L</code>（文献表格）提供了完整的架构提炼与背景梳理。经费曼核验，对 AI 预读补充两处关键盲点：</p>
+<ol>
+<li><strong>AI 预读漏检 Pass@K 的本质结论</strong>：AI 总结仅列举了 GSM8K 和 MATH 的绝对涨分，遗漏了论文第 5.2.2 节 Figure 7 揭示的「Pass@K 恒定、Maj@K 飙升」的核心理论发现（RL 究竟改变了能力还是改变了分布）；</li>
+<li><strong>统一梯度系数框架的深化</strong>：AI 预读将 GRPO 视作孤立算法，缺少了原论文 Appendix A.1 将 SFT/RFT/DPO/PPO/GRPO 统一为 <span class="note-math">$GC$</span> 梯度系数对比的宏观视角。本笔记已予全量补齐。</li>
+</ol>
+</section>
+<section class="note-sec" id="restatement"><h2>我的复述</h2><p><em>费曼检验时 XinLi 自己的原话：</em></p>
+<blockquote class="note-quote">
+<ol>
+<li>对同一个问题，rollout G 遍，然后计算他们 reward 的均值和标准差，接着用均值和标准差标准化 reward 得到优势， 高于均值的轨迹得到正优势低于均值的负优势。 LLM 通常只有到最后才能确认对错，仅有末尾奖励的时候对中间 token 绝对期望方差大噪声高。</li>
+<li>相对优势差为 0，该样本不产生梯度，这意味着 GRPO 极度依赖有区分度的题目；完全不会的题和闭眼都会的题在 RL 阶段不提供有效优化信号。而 PPO 由于有 critic 模型的存在，即使最后结果全对或全错但还是有中间 token 的区分度还是有梯度的。</li>
+<li>当前的强化学习并没有教模型学会原本在知识盲区里的新定理，而是重塑了输出分布——把分布中那 1% 零星被采到的正确答案推成高概率候选，抑制错误的幻觉路径。</li>
+</ol>
+</blockquote>
+</section>
+<section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><div class="qa" id="qa-grpo-advantage"><p class="qa-q">Q1：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？</p><div class="qa-a"><ul>
+<li><strong>解答</strong>：<ol>
+<li><strong>显存层面</strong>：LLM 的强化学习中，Critic 网络通常需要拥有与策略模型（Actor）相同的参数量与嵌入维度才能准确表征上下文价值，丢弃独立 Critic 可省去其参数、优化器与反向图成本；总显存节省比例取决于训练栈，不必定为一半；</li>
+<li><strong>建模稳定性</strong>：在数学等长链推理中，奖励通常是延迟到结尾的稀疏二值信号（对/错）。Critic 强行去预测每个 token 的绝对长期价值 <span class="note-math">$V(s_t)$</span>，噪声极高且极易过拟合；</li>
+<li><strong>契合 RM 训练范式</strong>：主流奖励模型（Reward Model）是通过成对比较数据（Pairwise Preference，如 Bradley-Terry 目标）训练出来的。它天生擅长的是<strong>在同一个 Prompt 下给不同候选回答排序</strong>（相对大小），而不是输出具有绝对物理意义的校准标量。GRPO 的组内均值中心化与方差标准化，恰好顺应了奖励模型的比较本质。</li>
+</ol>
+</li>
+</ul>
+</div></div><div class="qa" id="qa-zero-variance"><p class="qa-q">Q2：在 Outcome 模式下全对或全错时，GRPO 与传统 PPO 的梯度行为有何不同？</p><div class="qa-a"><ul>
+<li><strong>解答</strong>：<ol>
+<li><strong>GRPO 的行为</strong>：当 64 个回答全为 0 分或全为 1 分时，分子 <span class="note-math">$(r_i - \text{mean}(\mathbf{r})) = 0$</span>，且标准差 <span class="note-math">$\text{std}(\mathbf{r}) \to 0$</span>（加微小常数 <span class="note-math">$\epsilon_{div}$</span> 防止除零），归一化后的优势值 <span class="note-math">$\hat{A}_{i,t} \equiv 0$</span>。策略梯度的 surrogate 部分完全消失，只剩下策略与参考模型间的 KL 正则惩罚项。因此，<strong>完全做不对的超级难题或闭眼都能做对的白给题，在 GRPO 阶段几乎不贡献策略探索的有效梯度</strong>；</li>
+<li><strong>传统 PPO 的对比</strong>：PPO 维护了独立的价值网络 <span class="note-math">$V(s_t)$</span>。即使最终的回报全部为 0，只要每一步的状态估计 <span class="note-math">$V(s_t)$</span> 不为 0，就会计算出非零的 TD 误差（<span class="note-math">$r_t + \gamma V(s_{t+1}) - V(s_t)$</span>），从而强行产生梯度。但由于这种梯度建立在稀疏末端奖励的噪声估计之上，反而容易带来虚假的策略漂移破坏已有能力。</li>
+</ol>
+</li>
+</ul>
+</div></div><div class="qa" id="qa-passk-essence"><p class="qa-q">Q3：如何看待「Pass@K 几乎没变，Maj@K 大幅跃升」这一现象？</p><div class="qa-a"><ul>
+<li><strong>解答</strong>：
+先按论文 Figure 7 的范围读：其模型、数据与有限采样 K 下，Maj@K 提高而 Pass@K 变化较小。它支持该实验主要提高已有正确解的采样概率。有限 K 次没采到，不等于正确解的概率严格为零，也不能证明任意 RL 都无法形成新能力。
+教学类比：若正确路径原本占较小概率，GRPO 可以让它更容易被采到；“搬运概率质量”说明这一种改进方式，不是一条覆盖所有 RL 的定律。</li>
+</ul>
+</div></div></section>
+<section class="note-sec" id="open"><h2>还没搞懂</h2><p><em>费曼检验三题已全部闭环，无残留疑问。</em></p>
+</section>
+<section class="note-sec" id="relations"><h2>关联</h2><ul>
+<li><a href="2025-dapo.html">DAPO</a> — GRPO 在长思维链（Long-CoT）下的直接工业级演进：针对朴素 GRPO 在长逻辑场景下暴露的四大病根（对称裁剪导致的熵坍缩、全对/全错样本造成的有效批次萎缩、样本级平均导致的长度被稀释、超长硬截断噪声），提出非对称 Clip-Higher、动态重采样、Token-level 损失与软惩罚，将 Qwen2.5-32B 在 AIME 2024 上拉升至 50 分。</li>
+<li><a href="2017-ppo.html">PPO</a> — GRPO 的直接理论前身：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略过激更新，但 GRPO 彻底剪除了 Critic 模型与 GAE，改用组内相对优势估计，并将 KL 惩罚从奖励解耦到外层损失。</li>
+<li><a href="2026-geoanchor.html">GeoAnchor</a> — 空间推理下游应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化模型对不同空间潜变量模式的选择策略。</li>
+<li><a href="2026-u-opsd.html">U-OPSD</a> — 自生成监督的另一演进路线：U-OPSD 是在自蒸馏训练阶段通过采样 8 遍做多数投票构建伪解教师进行前向 KL 蒸馏，而 GRPO 是直接在在线采样组内用相对奖励计算优势进行策略梯度强化。</li>
+<li><a href="2026-s2vopd.html">S²VOPD</a> — 零特权自对齐：探讨在无外部高阶标注的前提下，如何通过模型自身的多视角/多采样构建不对称信息差进行能力对齐。</li>
+</ul>
+</section>
+<footer class="note-foot"><a href="../../papers/2024-deepseekmath.html">← 返回阅读页</a><a href="../../../wiki/papers/2024-deepseekmath.md">markdown 源文件（唯一真源）</a><span>本页是完整笔记的静态投影，保留原话、限定与假说标记。</span></footer>
+</main>
 </div>
-<script src="../../assets/wiki-slides.js"></script>
+<script src="../../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GenLIP · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -27,7 +27,7 @@
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>GenLIP</h1>
         <p class="cover-full">Let ViT Speak: Generative Language-Image Pre-training</p>
-        <p class="cover-essence">让 ViT 直接「说话」：图像 token 和文本 token 拼成一个序列丢进单个 Transformer，用标准「预测下一个词」训练。ViT 前半段看图（双向注意力），后半段逐字生成描述（因果注意力），训完扔掉语言头，剩下的就是被生成式目标直接训出来的视觉编码器。</p>
+        <p class="cover-essence">GenLIP 让同一个 Transformer 看图并生成描述，用下一词预测训练视觉表示，之后取出它作为视觉编码器。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>北交大 + ByteDance + NTU（Fang, Lan et al.）</dd>
           <dt>入库</dt><dd>2026-08-17</dd>
@@ -37,7 +37,33 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-genlip">
+  <p class="guide-problem">图像检索预训练与下游语言生成的目标不同。GenLIP 让同一个 Transformer 在预训练时看图、生成描述，用语言损失训练视觉表示。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>拼接图像与文本</h3><p>图像 token 在前，文本 token 在后。图像之间双向可见；文本看全部图像和已有文本，不能看未来文本。</p></li>
+    <li><h3>预测下一个词</h3><p>损失只算在文本位置。可学习门控乘在 attention 输出上，论文观察到它减轻了首 token 的 attention sink。</p></li>
+    <li><h3>取出视觉编码器</h3><p>下游只输入图像，丢弃语言头与分词器。视觉输出经 connector 接到下游 LLM。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：输入两块图像 token 和描述“猫 在 睡觉”。预测“睡觉”时可看全部图像与“猫 在”；图像 token 看不到训练描述。否则下游只输入图像时，视觉特征会缺少训练时偷看的信息。</p>
+  <p class="guide-boundary"><strong>边界</strong>：独立解码器路线同样能把梯度传回 ViT。GenLIP 的区别是共享单个 Transformer。池化不保证各 token 梯度均匀，门控也不是自动识别坏 token 的硬开关。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>训练结束后删掉 LM head，图像 token 还能互相看吗？为什么不需要生成描述才能得到视觉特征？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>还能。只剩图像前缀时，图像之间本来就是双向注意力。语言损失已在训练时更新了共享权重，推理时可直接读视觉表示。</p></details>
+    <p class="guide-transfer">关掉提示后画四格可见性表：图像到图像、图像到文本、文本到图像、文本到文本。</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="read-figures" data-section="figures"><div class="slide-inner"><div class="slide-head"><h2>论文图解</h2></div>
+<figure class="paper-fig"><img src="../assets/figures/2026-genlip/fig1.png" alt="GenLIP 与双塔和编码器解码器预训练比较" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：先看左侧：双塔比较图文表示，编码器解码器把生成分给独立模块，GenLIP 用一个 Transformer 处理图像和文本。右侧比较接到 LLM 后的语言目标适配情况；曲线结论限于该测试设置。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-genlip/fig2.png" alt="GenLIP 单塔门控与前缀注意力" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：左侧是图像前缀与文本后缀；中间的门控逐元素调节 attention 输出；右侧是可见性表。图像互看，文本看图像和已有文本，图像不看文本。生成描述是训练方式，下游可以只取视觉表示。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-genlip/fig3.png" alt="有无门控时的注意力分配" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 3）：前两幅看视觉和文本分给首 token 的注意力，第三幅看文本分给视觉 token 的注意力。加入门控后，首 token 集中现象减轻；这是模型消融证据，不是池化保证均匀梯度的证明。</figcaption></figure>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -46,7 +72,7 @@
         <div class="flow">
           <div class="flow-step">
             <h3>问题</h3>
-            <p>给 MLLM 训视觉编码器的三条旧路各有死穴：对比学习（CLIP/SigLIP）学判别式特征，与生成式下游目标错位；编-解码生成式（AIMv2）ViT 收不到直接梯度；多目标混合（SigLIP2）要 40B 样本才出效果。</p>
+            <p>给 MLLM 训视觉编码器的三条旧路各有死穴：对比学习（CLIP/SigLIP）学判别式特征，与生成式下游目标错位；编-解码生成式（AIMv2）ViT 的梯度经独立解码器传回；多目标混合（SigLIP2）要 40B 样本才出效果。</p>
           </div>
           <div class="flow-step" data-hi>
             <h3>方法</h3>
@@ -57,7 +83,7 @@
             <p>仅用 8B 样本（SigLIP2 的 1/5）全规模全面超越；ALL AVG 73.6 vs 68.9。代价：依赖高质量描述数据，丢掉零样本检索的天然优势。</p>
           </div>
         </div>
-        <p class="takeaway">下游是生成式，预训练就该直接是生成式，而且让 ViT 本体直接承担生成任务，梯度不绕弯。</p>
+        <p class="takeaway">GenLIP 让同一个 Transformer 看图并生成描述，用下一词预测训练视觉表示，之后取出它作为视觉编码器。</p>
       </div>
     </section>
 
@@ -96,14 +122,14 @@
           <span class="slide-no">04</span>
         </div>
         <p><strong>attention sink</strong>：生成式预训练中模型发现捷径，把信息往少数几个视觉 token 上汇聚，靠这几个枢纽就能预测文本，其余视觉 token 表征退化。</p>
-        <p><strong>为什么生成式更容易触发</strong>（对比学习反而不容易）：关键在梯度路由。对比学习的损失作用在全局 pooled 表示上，显式要求所有 token 共同贡献，梯度均匀回传；生成式的损失作用在逐 token 的 next word prediction 上，文本 token 通过注意力主动检索视觉信息，模型发现「只往少数枢纽汇聚」就能预测，梯度不断强化这条捷径。</p>
+        <p>论文 §3.2 与附录 D 的解释：图像前缀可聚合全局信息，后续文本可反复读取它，模型可能把生成所需的信息集中在少数视觉 token。池化不保证均匀梯度，对比学习也不保证没有 sink。</p>
         <div class="fig">
           <div class="fig-row">
-            <div class="fig-node" data-dim><span class="fig-node-tag">捷径</span>少数枢纽 token 吸走全部信息，其余 token 废掉</div>
+            <div class="fig-node" data-dim><span class="fig-node-tag">捷径</span>首 token 获得过多注意力，空间表示多样性受损</div>
             <span class="fig-arrow"></span>
             <div class="fig-node" data-hi><span class="fig-node-tag">门控</span>G = σ(XW_g + b_g)，逐元素乘 Ã = G ⊙ A</div>
             <span class="fig-arrow"></span>
-            <div class="fig-node"><span class="fig-node-tag">效果</span>压低捷径「音量」，逼模型用分布式的视觉信息</div>
+            <div class="fig-node"><span class="fig-node-tag">效果</span>调节 attention 输出，该设置下 sink 减轻</div>
           </div>
           <p class="fig-note">给注意力输出加可学习门，动态调节每个位置的信息流量；比加 register token 或 [CLS] token 更简洁。</p>
         </div>
@@ -136,7 +162,7 @@
         <table class="dtable">
           <thead><tr><th>维度</th><th>结果</th><th>附注</th></tr></thead>
           <tbody>
-            <tr data-hi><td>范式消融</td><td class="num">同 2B 数据全类别领先</td><td>vs 对比式 SigLIP、编-解码式 OpenVision2，证明单塔直接生成式范式本身优越</td></tr>
+            <tr data-hi><td>范式消融</td><td class="num">同 2B 数据全类别领先</td><td>vs 对比式 SigLIP、编-解码式 OpenVision2，支持该数据与模型设置下单塔生成式训练的优势</td></tr>
             <tr><td>可扩展性</td><td class="num">L→So→g 稳步提升</td><td>SigLIP2 的 So→g 几乎无收益</td></tr>
             <tr><td>代价</td><td class="num">依赖高质量描述数据</td><td>生成式方法固有依赖</td></tr>
             <tr><td>局限</td><td class="num">无零样本检索天然优势</td><td>没有显式对比目标；更大规模前沿模型的泛化性待验</td></tr>
@@ -152,10 +178,9 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-sink">
-            <p class="qa-q">为什么生成式预训练更容易触发 attention sink，对比学习反而不容易？</p>
-            <div class="qa-a"><p>梯度路由方式不同。对比学习有全局池化逼所有 token 贡献（梯度均匀回传）；生成式的逐 token 预测没有这个约束，文本 token 主动检索视觉信息时，模型自由选择了「少数枢纽」捷径并被梯度强化。一句话：对比学习有全局池化逼贡献，生成式没这个约束。</p></div>
-          </div>
+          <div class="qa" id="qa-sink"><p class="qa-q">Q：为什么生成式预训练更容易触发 attention sink（对比学习反而不容易）？（Q3 漏掉的半问）</p><div class="qa-a"><p>本文的关键是<strong>共享图像前缀的注意力结构</strong>。图像 token 可以聚合全局信息，后续文本可以反复读取前缀，模型便可能走「少数 token 承载全局信息」的捷径。原文 §3.2、附录 D 和 Figure 3 支持这个解释。对比学习并不保证各 token 梯度均匀，也不是 sink 的免疫机制。门控是学习到的信息流调节；消融显示它缓解了本模型的 sink，不能把它说成识别坏 token 后逐个压制的硬规则。</p>
+<p>2026-10-04：按原文修正此前「池化逼所有 token 均匀贡献」与「门自动识别 sink」的过强解释，历史复述原话保留。</p>
+</div></div>
           <div class="qa" id="qa-decoder">
             <p class="qa-q">「独立文本解码器」指什么？（2026-08-24 复测暴露的混淆点）</p>
             <div class="qa-a"><p>指的是<strong>预训练时</strong>的组件（AIMv2 式编-解码路线），不是下游 MLLM 的「ViT + MLP connector + LLM」推理接法。后者是 GenLIP 自己推理时也在用的标准接法（2 层 MLP 投影给 LLM），两者别搞混。</p></div>
@@ -171,21 +196,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group">
-            <h3>RELATED</h3>
-            <div class="link-item">
-              <span class="link-rel">正交</span>
-              <span><a href="2026-videochat3.html">VideoChat3</a>：它回答「视频 ViT 怎么处理时空冗余」，GenLIP 回答「这个 ViT 怎么预训练」；GenLIP 训出的 ViT 可被 inflate 成 3D 用</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">直接对接</span>
-              <span><a href="2026-last-vit.html">LaSt-ViT</a>：同为 ViT attention artifact，GenLIP 在生成式预训练发现 attention sink（少数 token 吸信息）用 Gated Attention 压制；LaSt-ViT 在判别式预训练发现 lazy aggregation（背景抢 CLS）用频域选择性聚合纠正；正交可组合</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">baseline</span>
-              <span>CLIP / SigLIP / SigLIP2（对比式）/ AIMv2 / OpenVision2 / CapPa（编-解码生成式）/ CoCa（多目标混合）</span>
-            </div>
-          </div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-last-vit.html">LaSt-ViT：两者分别调节 attention 信息流与 CLS 聚合；联合使用属于组合设想，本库没有实验。</a></div><div class="link-item"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-videochat3.html">VideoChat3：预训练视觉编码器与视频时空编码涉及不同环节；把 GenLIP 接入 I3D-ViT 的收益待验证。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -207,7 +218,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

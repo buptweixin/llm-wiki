@@ -1,0 +1,293 @@
+{
+  "date": "2026-10-04",
+  "dpi": 200,
+  "coordinateUnit": "PDF points",
+  "pageConvention": "one-based",
+  "papers": {
+    "2017-ppo": {
+      "zoteroItemKey": "Z6L573AE",
+      "figures": [
+        {
+          "figure": 1,
+          "page": 3,
+          "bbox": [
+            110,
+            446,
+            470,
+            597
+          ]
+        },
+        {
+          "figure": 2,
+          "page": 4,
+          "bbox": [
+            115,
+            112,
+            485,
+            245
+          ]
+        }
+      ]
+    },
+    "2026-genlip": {
+      "zoteroItemKey": "EAKWJXT8",
+      "figures": [
+        {
+          "figure": 1,
+          "page": 2,
+          "bbox": [
+            70,
+            70,
+            543,
+            208
+          ]
+        },
+        {
+          "figure": 2,
+          "page": 4,
+          "bbox": [
+            69,
+            70,
+            544,
+            251
+          ]
+        },
+        {
+          "figure": 3,
+          "page": 5,
+          "bbox": [
+            69,
+            555,
+            544,
+            660
+          ]
+        }
+      ]
+    },
+    "2026-last-vit": {
+      "zoteroItemKey": "XNL46XIR",
+      "figures": [
+        {
+          "figure": 1,
+          "page": 1,
+          "bbox": [
+            58,
+            213,
+            555,
+            367
+          ]
+        },
+        {
+          "figure": 2,
+          "page": 4,
+          "bbox": [
+            58,
+            72,
+            296,
+            176
+          ]
+        },
+        {
+          "figure": 5,
+          "page": 6,
+          "bbox": [
+            58,
+            72,
+            297,
+            201
+          ]
+        }
+      ]
+    },
+    "2026-u-opsd": {
+      "zoteroItemKey": "JD4RZABE",
+      "figures": [
+        {
+          "figure": 1,
+          "page": 4,
+          "bbox": [
+            108,
+            72,
+            507,
+            197
+          ]
+        },
+        {
+          "figure": 2,
+          "page": 5,
+          "bbox": [
+            107,
+            264,
+            508,
+            434
+          ]
+        }
+      ]
+    },
+    "2026-s2vopd": {
+      "zoteroItemKey": "AWVKHW9W",
+      "figures": [
+        {
+          "figure": 1,
+          "page": 4,
+          "bbox": [
+            107,
+            71,
+            507,
+            285
+          ]
+        },
+        {
+          "figure": 2,
+          "page": 9,
+          "bbox": [
+            107,
+            73,
+            508,
+            231
+          ]
+        }
+      ]
+    },
+    "2026-videochat3": {
+      "zoteroItemKey": "E5RZINH5",
+      "figures": [
+        {
+          "figure": 2,
+          "page": 4,
+          "bbox": [
+            70,
+            65,
+            544,
+            334
+          ]
+        },
+        {
+          "figure": 3,
+          "page": 5,
+          "bbox": [
+            70,
+            60,
+            544,
+            251
+          ]
+        },
+        {
+          "figure": 9,
+          "page": 14,
+          "bbox": [
+            70,
+            59,
+            544,
+            117
+          ]
+        }
+      ]
+    },
+    "2026-video-o3": {
+      "zoteroItemKey": "FG746LWN",
+      "figures": [
+        {
+          "figure": 2,
+          "page": 3,
+          "bbox": [
+            54,
+            59,
+            544,
+            154
+          ]
+        },
+        {
+          "figure": 3,
+          "page": 4,
+          "bbox": [
+            54,
+            62,
+            544,
+            291
+          ]
+        },
+        {
+          "figure": 4,
+          "page": 4,
+          "bbox": [
+            306,
+            329,
+            544,
+            501
+          ]
+        }
+      ]
+    },
+    "2026-locateanything": {
+      "zoteroItemKey": "7KYM7ZBM",
+      "figures": [
+        {
+          "figure": 2,
+          "page": 3,
+          "bbox": [
+            62,
+            85,
+            535,
+            190
+          ]
+        },
+        {
+          "figure": 3,
+          "page": 4,
+          "bbox": [
+            62,
+            85,
+            535,
+            219
+          ]
+        },
+        {
+          "figure": 5,
+          "page": 6,
+          "bbox": [
+            62,
+            85,
+            535,
+            235
+          ]
+        }
+      ]
+    },
+    "2026-vst": {
+      "zoteroItemKey": "6XPHGT5T",
+      "figures": [
+        {
+          "figure": 1,
+          "page": 2,
+          "bbox": [
+            134,
+            108,
+            481,
+            266
+          ]
+        },
+        {
+          "figure": 2,
+          "page": 4,
+          "bbox": [
+            134,
+            104,
+            481,
+            249
+          ]
+        },
+        {
+          "figure": 3,
+          "page": 5,
+          "bbox": [
+            134,
+            106,
+            481,
+            253
+          ]
+        }
+      ]
+    }
+  }
+}

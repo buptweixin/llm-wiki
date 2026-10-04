@@ -5,15 +5,35 @@ aliases: [GeoAnchor]
 topic: spatial-reasoning
 mechanisms: [latent-reasoning, grounding, group-rl]
 goals: [improve-reasoning, improve-grounding]
-updated: 2026-09-14
+updated: 2026-10-04
 ---
 
 # GeoAnchor（全称：GeoAnchor: Collaborative Reasoning via Latent Decomposition for 3D Spatial Understanding）
 
-> **一句话本质**：与其逼模型把「物体在 (1.2, 0.5, 3.4)」这种连续几何量写成文字再自己读回来，不如允许它推理中途「闭嘴想一想」——把 3D 信息存成三类有明确分工的连续潜变量（position 在哪、direction 朝哪、geometry 场景什么样），文本与潜变量交错推理，最后再开口给答案。
+> **一句话本质**：GeoAnchor 在文本推理之间插入位置、方向和场景结构三类连续潜变量，用它们辅助回答 3D 空间问题。
 
 > 作者/机构：Anonymous Author(s)（ACM MM'26 双盲投稿，Submission Id: 807）｜ 年份：2026 ｜ 原文：Zotero 锚点（见下行） ｜ 入库：2026-09-14
 > Zotero：citekey `2026`（条目无作者，BetterBibTeX 生成无效 citekey，如实登记）｜ [itemKey](zotero://select/items/GENIEJ93) `GENIEJ93` ｜ DOI：无（双盲投稿，原文 DOI 为占位符 XXXXXXX）
+
+## 五分钟重建
+
+<div class="learning-guide" id="guide-2026-geoanchor">
+  <p class="guide-problem">把几何中间量反复写成离散文本，可能损失细节，也可能让推理依赖语言线索。GeoAnchor 让文本规划与连续潜变量交替，分别表示位置、方向和场景结构。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>局部与全局分工</h3><p>position latent 表示物体位置，direction latent 表示方向，geometry latent 表示整体结构。</p></li>
+    <li><h3>用几何教师热身</h3><p>局部潜变量接受坐标与方向监督。少量全局 token 用 soft coverage 对齐较多 VGGT 特征，再经 projector 回到输入空间。</p></li>
+    <li><h3>松弛后选择模式</h3><p>S3 撤掉显式几何损失、保留文本损失；S4 用 GRPO 和 pattern reward 学 local-only 或 local+global 的选择。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：问“相框相对雕塑朝哪边”，需要两个位置锚和一条方向箭头。问更依赖房间布局的问题时，整体 geometry 提供另一类条件。这个例子说明分工，不保证模型每次都选对模式。</p>
+  <p class="guide-boundary"><strong>边界</strong>：latent 仍是有限精度向量，不是无损的真实 3D 场景。撤掉几何监督后的性能提升是消融观察；t-SNE 和注意力图不能单独证明所有几何信息都被完整保留。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>让 8 个 geometry token 对齐大量 VGGT 网格特征，为什么不必一格配一个 token？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>soft coverage 要求网格特征得到覆盖，而不要求固定一一对应。平衡项抑制所有网格挤向少数 token，避免浪费其余容量。</p></details>
+    <p class="guide-transfer">关掉提示后解释：projector 在连接哪两个向量空间？它为什么与三类潜变量的分工是不同问题？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
 
 ## 解决什么问题
 
@@ -31,7 +51,7 @@ MLLM 看单张 2D 图回答「冰箱在 3D 空间哪里」「相框到鹿雕塑�
 
 ### 类比一：不许念出声的心算
 
-让人心算 3.7×4.9，不许纸笔、不许念叨：中间只能保留「大概 18 上下」的连续感觉，最后才报数。**text CoT 是强迫你每一步都把中间数说出口**（一说出口就被四舍五入、丢精度，还容易被「18 是个吉利数」这类语言直觉带偏）；**latent 推理允许中间步骤留在「感觉层面」，只在最后 verbalize 一次**。
+让人心算 3.7×4.9，不许纸笔、不许念叨：中间只能保留「大概 18 上下」的连续感觉，最后才报数。**text CoT 是强迫你每一步都把中间数说出口**（一说出口就被四舍五入、丢精度，还容易被「18 是个吉利数」这类语言直觉带偏）；**latent 推理允许中间步骤留在「感觉层面」，在需要输出文本的阶段 verbalize**。
 
 ### 类比二：陌生房间里的两个锚
 
@@ -73,7 +93,7 @@ MLLM 看单张 2D 图回答「冰箱在 3D 空间哪里」「相框到鹿雕塑�
 ![四阶段协同训练](../../site/assets/figures/2026-geoanchor/fig3.png)
 *图 3 费曼图解（论文 Figure 3）：四阶段协同训练。S1 局部 grounding 热身 → S2 联合局部+全局推理 → S3 撤掉全部显式监督只留文本 loss（latent 弹回语言流形）→ S4 GRPO + pattern reward，按两种模式各自的历史准确率学会「够用的局部就别拉全局」。*
 
-> 🔧 **最容易卡住的点③：Stage 3 撤掉全部几何监督，为什么性能反而大涨、又不会把几何忘光？** S2 的强监督把 latent 拉向「几何流形」，离「语言流形」太远，后续文本推理受阻；S3 撤监督只留文本 loss，让 latent 弹回两个世界的兼容位置。不会忘光，因为几何信息已写进权重，文本 loss 只淘汰对答题无用的部分——有用的 latent 内容因贡献文本 loss 被梯度保留。双证据：Fig. 4 显示 S3 的收益远超「把 S2 多训一轮」的对照（ViewSpatial 46.3 vs 36.8/40.2），增益来自**撤监督这个动作本身**；Fig. 7 的 t-SNE 显示训后 global token 恰落在 VGGT 特征与 text token 之间——两头都沾。
+> 🔧 **最容易卡住的点③：Stage 3 撤掉全部几何监督，为什么性能反而大涨、又不会把几何忘光？** S2 的强监督把 latent 拉向「几何流形」，离「语言流形」太远，后续文本推理受阻；S3 撤监督只留文本 loss，让 latent 弹回两个世界的兼容位置。一种机制解释是：已有几何表示继续服务于文本目标，优化会保留有助答题的部分。消融显示撤监督有效，但没有证明几何信息完全不遗忘。双证据：Fig. 4 显示 S3 的收益远超「把 S2 多训一轮」的对照（ViewSpatial 46.3 vs 36.8/40.2），增益来自**撤监督这个动作本身**；Fig. 7 的 t-SNE 显示训后 global token 恰落在 VGGT 特征与 text token 之间——两头都沾。
 
 ### ④ Stage 4：GRPO + pattern reward
 
@@ -133,10 +153,10 @@ A：**语言先验主导**——推理全程在文本里走，模型用语言直
 A：不是「有的多有的少」的一般不均衡，而是**表示坍缩**：所有 VGGT 特征挤着认领同一个 geometry token，其余 7 个闲置，8 个 token 的容量退化成 1 个。平衡项（本质是分配均匀度的正则）防的就是这个病。
 
 **Q：Stage 3 为什么不会把几何「忘光」？机制层怎么讲？**（Q3 补齐）
-A：几何已在权重里；文本 loss 只淘汰对答题无用的 latent 内容（留着它们不降 loss、梯度不保留），有用的部分因贡献文本 loss 被梯度留下。证据双件套：Fig. 4（S3 远超「多训一轮 S2」对照）+ Fig. 7（t-SNE 上 global token 落在 VGGT 与 text 之间）。
+A：几何监督已经影响了权重，文本目标可继续利用其中有用的表示。这是机制解释，不是完整保留几何信息的证明。证据双件套：Fig. 4（S3 远超「多训一轮 S2」对照）+ Fig. 7（t-SNE 上 global token 落在 VGGT 与 text 之间）。
 
 **Q：Video-o3 vs GeoAnchor 还有一层更深的分叉是什么？**（Q4 加深）
-A：**工具演化成本**——Video-o3 的工具是可插拔的（换更好的裁剪/生成工具不用重训模型），GeoAnchor 的「工具」（VGGT、Depth Anything）是训练时烧进权重的，换几何教师等于重训。GeoAnchor 论文自己列的适用边界（静态图像、室内场景）也支持动态场景选 Video-o3 路线。
+A：**工具演化成本**——Video-o3 的工具是可插拔的（兼容调用接口下可尝试替换工具；新接口与使用策略是否需要再训练，仍须验证），GeoAnchor 的「工具」（VGGT、Depth Anything）是训练时烧进权重的，换几何教师等于重训。GeoAnchor 论文自己列的适用边界（静态图像、室内场景）也支持动态场景选 Video-o3 路线。
 
 ## 还没搞懂
 
@@ -144,7 +164,7 @@ _无_——四道检验题全部通过（两处点透、两处补半句即收敛
 
 ## 关联
 
-- [Video-o3](2026-video-o3.md) — **同打破「纯文本 CoT」但方向相反**：Video-o3 把中间推理**外化**成工具调用（裁剪放大，可见可读可人工审计，代价是跨模型边界 + 依赖工具质量 + 工具可插拔），GeoAnchor 把中间推理**内化**成潜变量（保连续性、零外部依赖，代价是中间过程不可读、几何教师烧进权重换教师等于重训）。本文 Related Works 2.2 自己把这两条路线对立。一条换可解释性、一条换保真度；适用分界：动态场景/需人工审计选 o3 路线，静态图/连续几何精度选 latent 路线。
+- [Video-o3](2026-video-o3.md) — **同打破「纯文本 CoT」但方向相反**：Video-o3 把中间推理**外化**成工具调用（裁剪放大，可见可读可人工审计，代价是跨模型边界 + 依赖工具质量 + 工具可插拔），GeoAnchor 把中间推理**内化**成潜变量（保连续性、零外部依赖，代价是中间过程不可读、几何教师烧进权重换教师等于重训）。本文 Related Works 2.2 自己把这两条路线对立。一条换可解释性、一条换保真度；路线对照（库内综合）：前者中间步骤可审计，后者直接表达连续量；本库没有同任务通用优劣的比较实验。
 - [DeepSeekMath](2024-deepseekmath.md) / [PPO](2017-ppo.md) — Stage 4 的 GRPO 是 DeepSeekMath 提出的 PPO 家族组相对变体（组内均值当 baseline、彻底丢弃 value 价值网络），本文是 GRPO 与 PPO 在空间潜变量模式选择上的下游应用锚点（Stage 4 用 GRPO + pattern reward 学自适应推理模式选择）。
 - [LocateAnything](2026-locateanything.md) — 同一问题「坐标该不该言语化」在输出侧的另一面：LocateAnything 仍把框坐标写成离散 token 块（整块并行解码换效率），GeoAnchor 干脆让几何量不经过词表进连续潜空间（换保真度）。两条路线都认为逐 token 蹦坐标不行，分歧在留在词表里还是离开词表。
 - 未来入库钩子：① 本文是库内第一篇 **3D 空间推理**论文，开新专题线；② 单 latent 先驱 Aurora（CVPR'25）/ SSR 入库时回链本页对照「分解 vs 单潜变量」；③ Spatial-MLLM（NeurIPS'25，frozen VGGT 当输入侧编码器）入库时对照「VGGT 当输入 vs 当监督教师」；④ SpatialLadder（ICLR'26，课程式 SFT，Abs. 距离 81.6 远超本文）入库时补「绝对距离为何 text 路线反强」这问。

@@ -5,15 +5,35 @@ aliases: [Open-MOPD, Multi-Teacher On-Policy Distillation, M-OPD]
 topic: distillation
 mechanisms: [on-policy-distillation, multi-teacher, budget-allocation]
 goals: [improve-training-efficiency]
-updated: 2026-09-07
+updated: 2026-10-04
 ---
 
 # Open-MOPD（全称：Diagnosing and Fixing Capability Imbalance in Multi-Teacher On-Policy Distillation）
 
-> **一句话本质**：多个领域专家蒸馏进一个学生模型时，掉分的主因不是「教师们意见打架」，而是**训练预算被系统性分错**——每个域实际拿到的优化量 = token 数量 × reward 幅度 × reward 新鲜度，这三样在三个时间尺度上全部失衡；论文用三个机制逐一修复，把提升回收率从 35.6% 修到 83.4%。
+> **一句话本质**：Open-MOPD 按 token 份额、奖励幅度和奖励新鲜度分配多教师蒸馏的训练预算，缓解各域优化失衡。
 
 > 作者/机构：Huan-ang Gao, Haohan Chi（共同一作）, Hao Zhou（通讯）等 ｜ 清华 AIR × ByteDance Seed（SIA-Lab）｜ 年份：2026 ｜ 原文：Zotero 锚点（见下行）或 [arXiv:2608.19098](https://arxiv.org/abs/2608.19098) ｜ [项目页](https://bytedtsinghua-sia.github.io/Open-MOPD/) ｜ 入库：2026-08-27
 > Zotero：[Gao2026](zotero://select/items/@Gao2026) `Gao2026` ｜ [S2DP7DZX](zotero://select/items/S2DP7DZX) `S2DP7DZX` ｜ [DOI](https://doi.org/10.48550/arXiv.2608.19098) `10.48550/arXiv.2608.19098`
+
+## 五分钟重建
+
+<div class="learning-guide" id="guide-2026-open-mopd">
+  <p class="guide-problem">把多个域专家一起蒸馏给学生，不能只按 prompt 数量算预算。长回答会贡献更多 token，各域奖励幅度会变化，同一批轨迹复用时奖励还会变旧。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>平衡 token 份额</h3><p>按每个域实际贡献的 token 份额加权损失，补偿回答长度差，不改 prompt 采样频率。</p></li>
+    <li><h3>跟随剩余差距</h3><p>把当前奖励幅度作为师生分布差的读数，让仍有差距的域获得更多预算。它不是完整能力差的测量。</p></li>
+    <li><h3>刷新学生奖励项</h3><p>教师 logprob 缓存复用；用 PPO 已算出的当前学生 logprob 更新 dense reward。轨迹本身仍是旧学生采样的。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：两个域各一条回答，长度为 2 与 8。未经加权，token 份额是 20% 与 80%；若目标各半，份额权重为 0.5/0.2=2.5 和 0.5/0.8=0.625。这里只隔离第一层预算。</p>
+  <p class="guide-boundary"><strong>边界</strong>：教师冲突在该论文的同源教师、3B 学生、oracle 路由设置里不是主要瓶颈。结论不覆盖任意教师组合。clip fraction 也不等于全部网络梯度被冻结的比例。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>同一批 rollout 只更新一次，即 K=1，reward refresh 还在修复多轮更新后的奖励陈旧吗？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>没有这种多轮陈旧需要修复。K&gt;1 时刷新奖励项才有作用；即使刷新，也没有把旧轨迹变成当前策略的新采样。</p></details>
+    <p class="guide-transfer">关掉提示后解释：三种修复分别发生在 batch 内、训练全程、rollout 复用周期的哪一个尺度？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
 
 ## 解决什么问题
 
@@ -33,11 +53,11 @@ updated: 2026-09-07
 
 ## 大白话讲解
 
-**先枪毙一个流行嫌疑人：teacher conflict（教师冲突）。** 三个 teacher 同源（都从同一个混合域 SFT checkpoint 分叉），共享格式词、连接词、推理模板——看起来很容易打架。三重检验全部否定：
+**先枪毙一个流行嫌疑人：teacher conflict（教师冲突）。** 三个 teacher 同源（都从同一个混合域 SFT checkpoint 分叉），共享格式词、连接词、推理模板——看起来很容易打架。三重检验支持它不是该设置的主要瓶颈：
 
 1. token 级教师分歧 c_t（各教师对该 token logprob 的最大差）全程均值仅 **0.126 nat**，从没超过 0.27 nat——冲突判据是 1 nat（最支持与最反对的教师概率比 e≈2.7），差一个数量级；
 2. c_t > 1 nat 的高冲突 token 全程只占 **0.62%**（分歧最大的 IF 域也才 3.9%）；
-3. **决定性证伪实验**：把 top 1%/5%/20% 高冲突 token 从 loss 里 mask 掉、或换成三教师平均的 consensus target——结果全部**降分**（−0.52~−0.83）。高分歧 token 不是噪声，反而可能携带领域信息。
+3. **该设置中的干预检验**：把 top 1%/5%/20% 高冲突 token 从 loss 里 mask 掉、或换成三教师平均的 consensus target——结果全部**降分**（−0.52~−0.83）。高分歧 token 不是噪声，反而可能携带领域信息。
 
 **真凶：预算错配，有三层。** 关键认知：OPD 的 loss 按 **token 平均**聚合，所以每个域真正得到的优化量不取决于你喂了多少 prompt，而取决于：
 
@@ -62,7 +82,7 @@ updated: 2026-09-07
 - 为什么不顺便把 reward 幅度归一化掉？幅度不是噪声，它携带「还差多少没学」的信息，抹掉等于自毁仪表盘（见机制二）。
 - 退化条件：若各域响应长度接近，s_d^tok ≈ prompt share，balancing 退化为无害无益的恒等变换。
 
-**机制二：gap-following allocation（修汇率，训练全程）。** m̄_d = E[|r_t|]，而 reward 核心项就是 |log π_ϕ − log π_θ|——**它不是 gap 的间接代理，它就是师生差距本身的直接读数**（学生越像教师差越小）。让预算跟着 gap 走：在机制一的权重上乘 (m_d/m_ref)^α（m_ref 为当 batch 各域均值，α=1），clamp 到 [0.05, 20] 防单域 reward 突变导致权重爆表，再归一化保持总 loss 不变。哪个域离 teacher 还远，就多给预算；收敛的域自动让出。
+**机制二：gap-following allocation（修汇率，训练全程）。** m̄_d = E[|r_t|]，而 reward 核心项就是 |log π_ϕ − log π_θ|——**它是所采样 token 上的师生 logprob 差的读数**，不等于完整任务能力差；学生在这些条件下越接近教师，该差通常越小。让预算跟着 gap 走：在机制一的权重上乘 (m_d/m_ref)^α（m_ref 为当 batch 各域均值，α=1），clamp 到 [0.05, 20] 防单域 reward 突变导致权重爆表，再归一化保持总 loss 不变。哪个域离 teacher 还远，就多给预算；收敛的域自动让出。
 
 - **全文最反直觉的点——方向反了会爆炸**：「reward 小 = 学得慢 = 该多帮」很诱人，但 m̄_d 小的真实含义往往是「已经快学完了」。反向归一化 m^(−α) 形成正反馈环：已收敛 → m̄ 缩小（IF 前 75 步缩 32.5×）→ 权重变大（24.4→80.9）→ 更多预算 → 更快收敛 → m̄ 更小……无刹车直到训练在第 74 步**崩溃**。α 的符号不是超参，是被 gap 的语义钉死的。
 
@@ -121,9 +141,10 @@ A：崩溃机制比「带崩」更机械：是**预算分配本身发散**。环
 **Q：reward refresh——第一轮完全没理解，全文最大卡壳点。（09-07 费曼复测二次深化）**
 A：**大白话直觉版（老师、学生与发霉的分数）**：
 - **场景**：大模型生成太慢（占 46.5% 耗时），所以学生写完一份作业草稿，要连续复用 4 轮内更新（$K=4$）来学，而不是每步重新写。
-- **病根**：每个字的奖励是 $r = \text{老师水平} - \text{学生水平}$。写草稿时老师 80 分、学生 30 分，差距是 **50 分大奖**。学完第 1 轮后，学生在这个字上已经涨到了 **75 分**！如果不刷新，第 2 轮依然用那张发霉的「50 分」去抽学生，算法以为学生还差得远、死命猛推，导致新旧概率比剧烈过冲。结果触发 PPO 紧急刹车（Clip）：**75.8% 的 token 梯度被冻结废弃，白白浪费算力**；强行推进还可能把原本已经学好的方向带崩。
-- **为什么白嫖（零开销）？**：刷新的奖励是 $r_{\text{new}} = 80 - 75 = 5$ 分。老师是冻结的，80 分一开始就存好了；而**学生当前的 75 分，PPO 在算 ratio 时本来就必须 forward 算出来**！这个数字已经在显存里，作者只是顺手把它填进奖励减法公式，一分钱没花、零额外计算、不重新生成。
-- **一句话总结**：**旧草稿还在复用，但给学生批改的分数随着他变聪明而实时刷新——不仅救回了被刹车踩死的 75.8% 算力，还完全零成本。**
+- **病根**：同一批 rollout 更新多轮后，学生已经变了，奖励里却仍用 rollout 时的学生 logprob。这个旧差值不能反映当前师生差。论文在 K=4 时报告约 75.8% 的 clip fraction，显示复用中的策略偏移较大。
+- **Clip 的边界**：clip fraction 通常统计比率落到阈值外的比例，不能直接说 75.8% 的全部网络梯度被冻结。裁剪目标是否变平还取决于优势符号；其他样本与损失仍可改变共享参数。
+- **为什么几乎没有额外开销？**：教师冻结，其 logprob 已缓存；PPO 每次更新为了算 ratio，本来就计算当前学生 logprob。refresh 用这些已有值重建奖励，不加教师或学生 forward，也不重新生成。论文计时差异在步间波动内。
+- **仍然旧的是什么？**：生成轨迹和前缀仍来自 rollout 时的学生。刷新奖励不等于重新采样；K=1 时也没有多轮奖励陈旧可修。
 
 ## 还没搞懂
 
@@ -131,8 +152,8 @@ _无_——检验题与两道补漏小检验全部收敛，无残留漏洞。
 
 ## 关联
 
-- [S²VOPD](2026-s2vopd.md) — OPD 家族第三页：「单教师信号从哪来」的视觉域答案（把学生输入图退化构造不对称，减学生而非加教师）。散度注记第三数据点：视觉不对称蒸馏里 JSD > reverse KL > forward KL，排序与 U-OPSD 完全颠倒（教师多出的像素信息不可恢复），三框架对照（U-OPSD 直接 loss / 本文 PPO reward 槽位 / S²VOPD 生成式 JSD）待 DistiLLM 系列统一沉淀。
-- [U-OPSD](2026-u-opsd.md) — 兑现其预留的 on-policy distillation 钩子。OPD 家族的两个**正交切片**：U-OPSD 管「单教师的信号从哪来」（自身多数投票伪解当特权上下文，去掉 GT 依赖），本文管「多教师信号之间怎么分账」（token/幅度/新鲜度三层预算分配）。组合方案成立：多个自蒸馏伪教师 + 本文三机制（三机制与「教师从哪来」完全正交，只要 K>1 复用 batch，refresh 白送 +0.81）。**散度形式对比注记**（不构成矛盾，记录备考）：U-OPSD 必须前向 KL 直接当 loss（reverse KL 直接优化会复读塌缩）；本文 dense reward 是 reverse-KL 式 per-token 形式，但角色是 PPO 的 **reward 信号**（sg 停梯度、走 policy gradient + clip），不是直接蒸馏损失——同一「方向」在不同框架里安全性不同，值得未来与 DistiLLM 系列一起沉淀。
+- [S²VOPD](2026-s2vopd.md) — OPD 家族第三页：「单教师信号从哪来」的视觉域答案（把学生输入图退化构造不对称，减学生而非加教师）。散度注记第三数据点：视觉不对称蒸馏里 JSD > reverse KL > forward KL，排序与 U-OPSD 完全颠倒（信息可恢复性的解释待验证），三框架对照（U-OPSD 直接 loss / 本文 PPO reward 槽位 / S²VOPD 生成式 JSD）待 DistiLLM 系列统一沉淀。
+- [U-OPSD](2026-u-opsd.md) — 兑现其预留的 on-policy distillation 钩子。OPD 家族的两个**正交切片**：U-OPSD 管「单教师的信号从哪来」（自身多数投票伪解当特权上下文，去掉 GT 依赖），本文管「多教师信号之间怎么分账」（token/幅度/新鲜度三层预算分配）。组合设想（待验证）：多个自蒸馏伪教师 + 本文三机制；本库没有联合实验，门控也可能改变各域实际 token 份额。**散度形式对比注记**（不构成矛盾，记录备考）：U-OPSD 实验中前向 KL 直接当 loss 更稳（reverse KL 实验出现复读塌缩）；本文 dense reward 是 reverse-KL 式 per-token 形式，但角色是 PPO 的 **reward 信号**（sg 停梯度、走 policy gradient + clip），不是直接蒸馏损失——同一「方向」在不同框架里优化行为不同，值得未来与 DistiLLM 系列一起沉淀。
 
-- [PPO](2017-ppo.md) — 本文机制三（reward refresh）与消融分析的底层优化载体：学生能力提升后若沿用旧 reward，会导致概率比率 $r_t$ 剧烈过冲进而触发 PPO 截断（Clip），使 75.8% 的 token 优化预算被当场冻结丢弃；本文在 PPO 的 ratio 计算中顺手白嫖学生当前 logprob 刷新 reward，既维系了 PPO 的近端更新安全性，又彻底盘活了算力预算。
+- [PPO](2017-ppo.md) — 本文机制三（reward refresh）与消融分析的底层优化载体：学生能力提升后若沿用旧 reward，会导致概率比率 $r_t$ 剧烈过冲进而触发 PPO 截断（Clip），论文报告约 75.8% 的 clip fraction；它不能直接等同于全部梯度或算力被冻结的比例；本文在 PPO 的 ratio 计算中顺手白嫖学生当前 logprob 刷新 reward，缓解奖励陈旧；收益来自该实验的消融，不是安全性或算力利用的普遍保证。
 未来入库钩子：AsyncOPD（reward refresh 的灵感来源，异步 stale RL）、DistiLLM 系列（on-policy 蒸馏散度设计）、GKD（dense reward 进 PPO 槽位的先例）、多教师/路由相关论文应回链本页。

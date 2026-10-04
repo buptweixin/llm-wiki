@@ -9,7 +9,7 @@
  *   taxonomy.md                          → WIKI_TOPICS / WIKI_TAXONOMY（受控词表）
  *   review.md                            → date(入库) / review.next / review.last / review.count
  *   markdown 正文 + site/notes/** 投影页   → 全文 · / 全文问答 · 条目
- *   既有 wiki-index.js                   → 仅编辑判断字段: title / essence / relations（论文关系卡）/
+ *   既有 wiki-index.js                   → 仅编辑判断字段: title / relations（论文关系卡）/
  *                                          速览条目 / review.result。新页面按 front-matter 推导并告警。
  *
  * 路径由页面类型决定（paper → papers/ + notes/papers/；synthesis → topics/ + notes/syntheses/），
@@ -65,6 +65,8 @@ const RELATION_TYPES = ["compare", "complement", "prerequisite", "possible-combi
 const EVIDENCE_STATUS = ["reported", "synthesis", "hypothesis"];
 
 function paperSectionId(heading, state) {
+  if (heading === "五分钟重建") return "rebuild";
+  if (heading === "论文图解") return "figures";
   if (heading === "解决什么问题") return "problem";
   if (heading === "大白话讲解") return "intuition";
   if (heading === "关键机制") {
@@ -208,7 +210,9 @@ function visibleText(value) {
 }
 
 function markdownText(value) {
-  return value
+  return decodeHtml(value
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<\/?(?:div|p|strong|em|ol|ul|li|h[1-6]|details|summary|span|a|button|label|input|select|option|output|table|thead|tbody|tr|td|th|img|figure|figcaption|br|svg|g|rect|path|line|text)\b[^>]*>/gi, " ")
     .replace(/^```[^\n]*\n/gm, "")
     .replace(/^```\s*$/gm, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -222,7 +226,7 @@ function markdownText(value) {
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/__(.*?)__/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^#{1,6}\s+/gm, ""))
     .replace(/\s+/g, " ")
     .trim()
     .replace(/——|—|–/g, "：");
@@ -530,7 +534,7 @@ for (const { id, kind } of manifest) {
     topic,
     aliases,
     tags: Array.from(new Set([...mechanisms, ...goals])),
-    essence: old ? old.essence : deriveEssence(markdown),
+    essence: deriveEssence(markdown),
     review: {
       next: reviewRow.next,
       last: reviewRow.last,
@@ -604,9 +608,11 @@ for (const { id, kind } of manifest) {
 
   const entries = [];
   for (const entry of (old ? old.entries : [])) {
-    if (/^全文(?:问答)? · /.test(entry.h)) continue;
+    if (/^全文(?:问答)? · /.test(entry.h) || entry.h === "速览 · 五分钟重建") continue;
     entries.push(entry);
   }
+  const guide = markdown.match(/<div class="learning-guide"[^>]*>[\s\S]*?<p class="guide-status">[^<]*<\/p>\s*<\/div>/)?.[0];
+  if (guide) entries.push({ h: "速览 · 五分钟重建", a: `${href}#${kind === "paper" ? "rebuild" : "map"}`, t: markdownText(guide) });
   const noteHtml = siteHtml(noteHref);
   if (noteHtml !== null) {
     entries.push(...projectedEntries(id, noteHref, markdown, noteHtml, spec.sectionId));
@@ -640,7 +646,7 @@ for (const dir of ["papers", "notes/papers", "topics", "notes/syntheses"]) {
 const output = [
   "/* 静态索引。真源：wiki/papers/*.md 与 wiki/syntheses/*.md（front-matter 与正文）、taxonomy.md、review.md。",
   " * 速览条目与全文投影条目均保留完整导航路径；搜索片段来自真实可见的速览、导读或完整笔记正文。",
-  " * title/essence/relations/速览条目是编辑判断字段，重建时从本文件保留；其余字段全部由真源生成。",
+  " * title/relations/既有速览条目是编辑判断字段，重建时从本文件保留；essence、机制练习与其余字段由真源生成。",
   " * 消费者读取 href / noteHref / sourceHref，不按 id 拼接目录；type 为 paper 或 synthesis。",
   " * 使用：node scripts/build-wiki-index.mjs（校验失败会拒绝生成；CHECK_DRY_RUN=1 输出到 stdout）。",
   " */",

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Open-MOPD · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -27,7 +27,7 @@
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>Open-MOPD</h1>
         <p class="cover-full">Diagnosing and Fixing Capability Imbalance in Multi-Teacher On-Policy Distillation</p>
-        <p class="cover-essence">多个领域专家蒸馏进一个学生模型时，掉分的主因不是「教师们意见打架」，而是训练预算被系统性分错：每个域实际拿到的优化量 = token 数量 × reward 幅度 × reward 新鲜度，三样在三个时间尺度上全部失衡。三个机制逐一修复，提升回收率从 35.6% 修到 83.4%。</p>
+        <p class="cover-essence">Open-MOPD 按 token 份额、奖励幅度和奖励新鲜度分配多教师蒸馏的训练预算，缓解各域优化失衡。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>清华 AIR × ByteDance Seed（SIA-Lab，Gao &amp; Chi 共同一作）</dd>
           <dt>入库</dt><dd>2026-08-27</dd>
@@ -37,7 +37,27 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-open-mopd">
+  <p class="guide-problem">把多个域专家一起蒸馏给学生，不能只按 prompt 数量算预算。长回答会贡献更多 token，各域奖励幅度会变化，同一批轨迹复用时奖励还会变旧。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>平衡 token 份额</h3><p>按每个域实际贡献的 token 份额加权损失，补偿回答长度差，不改 prompt 采样频率。</p></li>
+    <li><h3>跟随剩余差距</h3><p>把当前奖励幅度作为师生分布差的读数，让仍有差距的域获得更多预算。它不是完整能力差的测量。</p></li>
+    <li><h3>刷新学生奖励项</h3><p>教师 logprob 缓存复用；用 PPO 已算出的当前学生 logprob 更新 dense reward。轨迹本身仍是旧学生采样的。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：两个域各一条回答，长度为 2 与 8。未经加权，token 份额是 20% 与 80%；若目标各半，份额权重为 0.5/0.2=2.5 和 0.5/0.8=0.625。这里只隔离第一层预算。</p>
+  <p class="guide-boundary"><strong>边界</strong>：教师冲突在该论文的同源教师、3B 学生、oracle 路由设置里不是主要瓶颈。结论不覆盖任意教师组合。clip fraction 也不等于全部网络梯度被冻结的比例。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>同一批 rollout 只更新一次，即 K=1，reward refresh 还在修复多轮更新后的奖励陈旧吗？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>没有这种多轮陈旧需要修复。K&gt;1 时刷新奖励项才有作用；即使刷新，也没有把旧轨迹变成当前策略的新采样。</p></details>
+    <p class="guide-transfer">关掉提示后解释：三种修复分别发生在 batch 内、训练全程、rollout 复用周期的哪一个尺度？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -57,11 +77,8 @@
             <p>回收率 35.6% → 83.4%（28.05 → 31.24，距三模型上界 88% 只剩一步）。代价：仅 3B、三域、oracle 路由验证，路由有误的场景未测。</p>
           </div>
         </div>
-        <figure class="paper-fig">
-          <img src="../assets/figures/2026-open-mopd/fig1.png" alt="Naive M-OPD 的整合差距与不对称掉分" loading="lazy">
-          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>(a) IF 领域掉分 6.16 远大于 math 的 1.89；(b) 训练轨迹显示 IF 中期发生性能倒退；(c) 理论回收率对比中 IF 恢复最少（绿线仅约 28%）。</figcaption>
-        </figure>
-        <p class="takeaway">OPD 的 loss 按 token 平均聚合，所以每个域的真实优化量不取决于喂了多少 prompt，而取决于 token 数量 × 幅度 × 新鲜度。</p>
+        <figure class="paper-fig"><img src="../assets/figures/2026-open-mopd/fig1.png" alt="Naive M-OPD 的整合差距（Integration Gap）与不对称掉分" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：(a) 柱状图直观展现差距，IF 领域掉分 6.16 远大于 math 的 1.89；(b) 训练轨迹显示 IF 在中期甚至发生性能倒退；(c) 理论回收率对比中，IF 恢复最少（绿线仅约 28%）。</figcaption></figure>
+        <p class="takeaway">Open-MOPD 按 token 份额、奖励幅度和奖励新鲜度分配多教师蒸馏的训练预算，缓解各域优化失衡。</p>
       </div>
     </section>
 
@@ -71,7 +88,7 @@
           <h2>关键机制：先证伪 teacher conflict</h2>
           <span class="slide-no">03</span>
         </div>
-        <p>三个 teacher 同源（同一 SFT checkpoint 分叉），直觉上很容易「打架」。三重检验全部否定：</p>
+        <p>三个 teacher 同源（同一 SFT checkpoint 分叉），直觉上很容易「打架」。三重检验支持它不是该设置的主要瓶颈：</p>
         <table class="dtable">
           <thead><tr><th>证据</th><th>数值</th><th>含义</th></tr></thead>
           <tbody>
@@ -90,10 +107,7 @@
           <h2>关键机制：三个失衡对应三个正交修复</h2>
           <span class="slide-no">04</span>
         </div>
-        <figure class="paper-fig">
-          <img src="../assets/figures/2026-open-mopd/fig6.png" alt="Open-MOPD 系统架构" loading="lazy">
-          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 6）</span>Open-MOPD 系统架构：Prompt 经由真实标签硬路由分流；Teacher 冻结并缓存 logprob；Student 在 rollout 后顺手重算当前概率刷新 Dense reward，进入 PPO 更新。</figcaption>
-        </figure>
+        <figure class="paper-fig"><img src="../assets/figures/2026-open-mopd/fig6.png" alt="Open-MOPD 系统架构与三个修复机制" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 6）：Open-MOPD 总体工作流。Prompt 经由真实标签硬路由（Hard router）分流；Teacher 冻结并预先缓存 logprob；Student 在 rollout 后经过 Dense reward 刷新与 PPO 更新；三个正交机制（token 份额平衡、gap 跟随分配、reward 刷新）分别作用于不同环节。</figcaption></figure>
         <table class="dtable">
           <thead><tr><th>机制</th><th>时间尺度</th><th>怎么做</th></tr></thead>
           <tbody>
@@ -110,11 +124,11 @@
             <tr data-hi>
               <td>reward refresh（修时效）</td>
               <td class="num">rollout 周期内</td>
-              <td>教师项一次 prefill 永久缓存；学生项的重算<strong>恰好免费</strong>（PPO 每次内更新本来就要算当前学生 logprob 做 importance ratio）。轨迹本身的陈旧只有重新 rollout 才能换（生成占一步 46.5% 最贵），refresh 不碰，剩余交给 PPO clip 兜底</td>
+              <td>教师项一次 prefill 永久缓存；学生项的重算<strong>恰好免费</strong>（PPO 每次内更新本来就要算当前学生 logprob 做 importance ratio）。轨迹本身的陈旧只有重新 rollout 才能换（生成占一步 46.5% 最贵），refresh 不碰，剩余交给 PPO 裁剪目标缓和更新</td>
             </tr>
           </tbody>
         </table>
-        <p class="takeaway">refresh 的零开销实证：dense reward 计算只占一步 2.2%，刷新前 27.8s / 后 27.3s，差异在步间波动内。开销不是新增，是搬了位置。</p>
+        <p class="fig-note">refresh 的零开销实证：dense reward 计算只占一步 2.2%，刷新前 27.8s / 后 27.3s，差异在步间波动内。开销不是新增，是搬了位置。</p>
       </div>
     </section>
 
@@ -166,14 +180,17 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-feedback-loop">
-            <p class="qa-q">反向归一化的正反馈环到底怎么崩的？（初答只说「把学好的带崩」，链条断了）</p>
-            <div class="qa-a"><p>崩的是<strong>预算分配本身发散</strong>：IF 最先接近 teacher，m̄ 缩小；反向规则把「gap 已经小」误读成「需要更多帮助」，权重从 24.4 涨到 80.9；更多预算收敛更快，m̄ 更小；每圈更极端无刹车，step 74 整体崩溃。gap-following 的正方向自带两层刹车：语义级（收敛域权重自动回落让出预算）+ 兜底级（clamp [0.05, 20] 防单域突变）。</p></div>
-          </div>
-          <div class="qa" id="qa-reward-refresh">
-            <p class="qa-q">reward refresh 为什么能救命、为什么零开销？（全文最大卡壳点，09-07 复测彻底通透）</p>
-            <div class="qa-a"><p><strong>病根</strong>：学生写完草稿后复用 4 轮内更新（K=4）。第 1 轮学完后学生水平已涨到 75 分，若不刷新，第 2 轮仍用写草稿时发霉的「50 分差距大奖」继续抽打，导致新旧概率比剧烈过冲。结果触发 PPO 紧急刹车：<strong>75.8% 的 token 被 clip 冻结，算力浪费且带偏方向</strong>。<br><strong>零开销</strong>：刷新的真实差距是 80-75=5 分。教师冻结早就算好；而<strong>学生当前的 75 分，PPO 算 ratio 本来就必须算出来</strong>。顺手填入减法公式，零额外计算、零重新生成：refresh = 捡钱。</p></div>
-          </div>
+          <div class="qa" id="qa-feedback-loop"><p class="qa-q">Q：反向归一化的正反馈环：初答只说「把已经学好的带崩掉」，链条断了。</p><div class="qa-a"><p>奖励幅度是当前采样 token 上的师生 logprob 差读数。它反映这些条件下的分布差，不是完整任务能力的直接测量。预算跟随尚未缩小的差距，而不是给已收敛域反向加码。</p>
+</div></div>
+          <div class="qa" id="qa-reward-refresh"><p class="qa-q">Q：reward refresh：第一轮完全没理解，全文最大卡壳点。（09-07 费曼复测二次深化）</p><div class="qa-a"><p><strong>大白话直觉版（老师、学生与发霉的分数）</strong>：</p>
+<ul>
+<li><strong>场景</strong>：大模型生成太慢（占 46.5% 耗时），所以学生写完一份作业草稿，要连续复用 4 轮内更新（$K=4$）来学，而不是每步重新写。</li>
+<li><strong>病根</strong>：同一批 rollout 更新多轮后，学生已经变了，奖励里却仍用 rollout 时的学生 logprob。这个旧差值不能反映当前师生差。论文在 K=4 时报告约 75.8% 的 clip fraction，显示复用中的策略偏移较大。</li>
+<li><strong>Clip 的边界</strong>：clip fraction 通常统计比率落到阈值外的比例，不能直接说 75.8% 的全部网络梯度被冻结。裁剪目标是否变平还取决于优势符号；其他样本与损失仍可改变共享参数。</li>
+<li><strong>为什么几乎没有额外开销？</strong>：教师冻结，其 logprob 已缓存；PPO 每次更新为了算 ratio，本来就计算当前学生 logprob。refresh 用这些已有值重建奖励，不加教师或学生 forward，也不重新生成。论文计时差异在步间波动内。</li>
+<li><strong>仍然旧的是什么？</strong>：生成轨迹和前缀仍来自 rollout 时的学生。刷新奖励不等于重新采样；K=1 时也没有多轮奖励陈旧可修。</li>
+</ul>
+</div></div>
           <div class="qa" id="qa-oversample">
             <p class="qa-q">为什么不直接过采样 IF，也不把 reward 幅度归一化掉？</p>
             <div class="qa-a"><p>过采样：要拿 1/3 token 预算 IF 得放大 33.6 倍，math/code 长链 prompt 被挤到 0.7 倍，长链推理的监督密度没法维持；加权法保住 prompt 多样性（各域长度本就接近时，过采样与加权等价，退化无害）。不抹幅度：m̄ 不是噪声，它是「还差多少没学」的仪表盘，抹掉等于自毁 gap-following 的信号源。</p></div>
@@ -189,21 +206,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group">
-            <h3>RELATED</h3>
-            <div class="link-item">
-              <span class="link-rel">兑现钩子 · 正交切片</span>
-              <span><a href="2026-u-opsd.html">U-OPSD</a>：它管「单教师的信号从哪来」（无 GT 自蒸馏），本文管「多教师信号怎么分账」；组合成立：多个自蒸馏伪教师 + 本文三机制（只要 K&gt;1，refresh 白送 +0.81）</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">散度注记</span>
-              <span>U-OPSD 的前向 KL 是直接 loss（reverse 会复读塌缩）；本文 dense reward 是 reverse-KL 式形式但角色是 PPO 的 reward 信号（sg 停梯度 + clip 兜底），同方向不同框架不矛盾</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">未来钩子</span>
-              <span>AsyncOPD（refresh 灵感来源）/ DistiLLM 系列（散度设计）/ GKD（dense reward 进 PPO 槽位先例）入库时回链本页</span>
-            </div>
-          </div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-u-opsd.html">U-OPSD：多个自蒸馏教师与 token、幅度、新鲜度分配的组合是设想，本库无联合实验。</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-s2vopd.html">S²VOPD：本文管多教师预算；S²VOPD 用清晰图与退化图构造单教师信息差。</a></div><div class="link-item"><span class="link-rel">prerequisite · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2017-ppo.html">PPO：refresh 复用当前学生 logprob 更新奖励；论文的 clip fraction 不能等同于全部梯度或算力冻结。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -225,7 +228,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

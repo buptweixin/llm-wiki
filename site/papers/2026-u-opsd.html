@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>U-OPSD · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -27,7 +27,7 @@
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>U-OPSD</h1>
         <p class="cover-full">On-Policy Self-Distillation without Any Supervision</p>
-        <p class="cover-essence">让模型给自己的答错题「开小灶」：它自己把一道无答案的题做 8 遍，多数票当标准答案，专门拿答错的那几版去对照「看过答案的自己」逐 token 纠正，全程不需要任何外部答案。首个完全无外部监督的 on-policy 自蒸馏。</p>
+        <p class="cover-essence">U-OPSD 用模型自己投票形成的完整解题轨迹给教师增加上下文，再沿学生的反对轨迹做分布蒸馏。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>UC San Diego / Georgia Tech / UMD / ByteDance（Li et al.）</dd>
           <dt>入库</dt><dd>2026-08-19</dd>
@@ -37,7 +37,32 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-u-opsd">
+  <p class="guide-problem">普通自蒸馏仍可能给教师提供真实解题轨迹。U-OPSD 用模型自己的多次作答形成共识，选一条完整共识轨迹作为教师的额外上下文。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>采样与投票</h3><p>同题生成 8 条轨迹，规范化最终答案后投票。共识置信度用获胜票数除以全部 8 条，包含无效轨迹。</p></li>
+    <li><h3>门控并选参考</h3><p>置信度达到阈值、且存在不同答案的轨迹时才训练。y+ 是通向共识答案的一整条轨迹，不只是答案值。</p></li>
+    <li><h3>在学生前缀上蒸馏</h3><p>教师看题目、完整 y+ 和 y⁻ 前缀；学生只看题目与同一个 y⁻ 前缀。逐 token 用 forward KL 对齐完整分布。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：8 条中，5 条答案为 42、1 条为 17、2 条无效。共识置信度是 5/8，不是 5/6。教师多看的，是一条答案为 42 的完整推理；训练目标不是把一个“42”复制给学生。</p>
+  <p class="guide-boundary"><strong>边界</strong>：高共识可能一致答错。论文所测伪标签错误率为 13.3%，这是监督噪声风险，不是最终准确率的数学硬上界。散度消融只说明该设置里 forward KL 更稳。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>如果 8 条有效回答全是同一个答案，这道题是否还提供反对轨迹供本方法训练？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>不提供。没有与共识不同的 y⁻，会跳过。共识只描述模型之间的一致性，不证明答案是真值。</p></details>
+    <p class="guide-transfer">关掉提示后写出师生输入各包含什么，并解释为什么给学生也加入 y+ 会改变学习信号。</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="read-figures" data-section="figures"><div class="slide-inner"><div class="slide-head"><h2>论文图解</h2></div>
+<figure class="paper-fig"><img src="../assets/figures/2026-u-opsd/fig1.png" alt="依赖外部监督与无监督自蒸馏的差别" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：左侧给教师真实解或示例，中间给环境反馈，右侧用模型自己的投票结果。比较的是额外信息从哪里来；无外部答案监督不等于没有预训练知识或没有输入题目。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-u-opsd/fig2.png" alt="U-OPSD 投票参考与逐 token 蒸馏" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：学生先生成多条轨迹，投票选共识，并取一条完整获胜轨迹给教师。教师与学生在反对轨迹的相同前缀上预测下一 token，再对齐分布。答案值只用于分组，不代替完整参考轨迹。</figcaption></figure>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -54,10 +79,10 @@
           </div>
           <div class="flow-step">
             <h3>结果</h3>
-            <p>Non-thinking 模式 4B/8B 比基座 +8.5/+10.7，无 GT 反而超过有 GT 的 OPSD（+3.2/+2.3）。代价：伪标签 13.3% 是错的，构成性能硬上界。</p>
+            <p>Non-thinking 模式 4B/8B 比基座 +8.5/+10.7，无 GT 反而超过有 GT 的 OPSD（+3.2/+2.3）。代价：伪标签 13.3% 是错的，带来监督噪声风险，不能当作准确率硬上界。</p>
           </div>
         </div>
-        <p class="takeaway">学习信号从「教师知道答案、学生不知道」的上下文差里长出来：学生若也看了伪解，教师 = 学生，KL 恒 0。</p>
+        <p class="takeaway">U-OPSD 用模型自己投票形成的完整解题轨迹给教师增加上下文，再沿学生的反对轨迹做分布蒸馏。</p>
       </div>
     </section>
 
@@ -104,7 +129,7 @@
               <td>光知道「答案是 42」无法引导中间步骤；y+ 必须是通向答案的整条路</td>
             </tr>
             <tr data-hi>
-              <td>必须 forward KL</td>
+              <td>该实验中 forward KL 更稳</td>
               <td class="num">reverse KL 训练崩塌：长度 2.7k→99k、boxed 率 99%→33%、丧失终止</td>
               <td>forward 是 mode-covering（老师会的都得会）；reverse 是 mode-seeking（只抱最高概率的峰，塌成复读机）；JSD 掉 13.8%</td>
             </tr>
@@ -138,7 +163,7 @@
           <div class="metric">
             <div class="metric-value">13.3<small>%</small></div>
             <div class="metric-label">过门后的伪标签错误率</div>
-            <div class="metric-why">性能硬上界，但被门控+课程+稠密信号三重抬高净收益</div>
+            <div class="metric-why">监督噪声风险；该实验总体仍有收益，方法不保证错共识无害</div>
           </div>
         </div>
         <table class="dtable">
@@ -160,22 +185,56 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-fwd-kl">
-            <p class="qa-q">为什么必须前向 KL，反向 KL 会崩？（08-24 复测暴露两处易记偏）</p>
-            <div class="qa-a"><p>厨师比喻：前向 KL（老师‖学生）= 老师会的学生都得会，漏掉任何一道（哪怕低概率）就罚 → mode-covering，学生变成全面厨师。反向 KL（学生‖老师）= 学生敢做老师菜单外的菜就罚 → mode-seeking，学生死抱老师概率最高的招牌菜，其余全放弃。易记偏的两处：反向 KL 罚的是<strong>学生</strong>越菜单；实测失败模式是<strong>复读塌缩</strong>（长度爆炸、无限重复、丧失终止），不是幻觉。</p></div>
-          </div>
-          <div class="qa" id="qa-13-3">
-            <p class="qa-q">13.3% 的错标签为什么没把模型带偏？</p>
-            <div class="qa-a"><p>四重设计抬高净收益：门控先拦截瞎猜题（13.3% 是<strong>过门后</strong>的错误率）；自发课程聚焦能力边界（大多数时候对的题上 y+ 大概率对）；前向 KL + 全词表是稠密信号，一条 rollout 数百个纠正点，正梯度盖过少数错 y+ 的负梯度；教师不需要 y+ 完美，只需多数方向对，噪声 token 被平均。</p></div>
-          </div>
-          <div class="qa" id="qa-y-plus">
-            <p class="qa-q">y+ 是单个答案值还是多个 token？为什么 &lt;t 只在 y⁻ 上？</p>
-            <div class="qa-a"><p>ã(x) 是单值（如 boxed 42），用来投票和分组；<strong>y+ 是通向 ã(x) 的整条推理轨迹</strong>（几百上千 token），整条喂教师当背景知识，不截断。&lt;t 在 y⁻ 上因为蒸馏沿答错那条逐 token 往前走：t 每加 1，在新位置算一次教师/学生的下一 token 分布 KL。label-only 消融掉 10.3~15.8% 的来由正是「只给答案值，教师不知道怎么走到这个答案」。</p></div>
-          </div>
-          <div class="qa" id="qa-ttrl">
-            <p class="qa-q">「共识被用作上下文」和 TTRL 类方法的本质区别？</p>
-            <div class="qa-a"><p>TTRL/RENT/Intuitor 把多数投票当<strong>标量奖励</strong>（整条 rollout 一个数，稀疏）；U-OPSD 把共识当<strong>教师的特权上下文</strong>（y+ 拼进教师输入，每个 token 都有完整下一 token 分布，稠密）。同样 rollout 预算领先 7~11 个点的本质原因。</p></div>
-          </div>
+          <div class="qa" id="qa-fwd-kl"><p class="qa-q">Q：为什么必须前向 KL，反向 KL 会崩？（散度方向的直觉）</p><div class="qa-a"><p>先区分公式方向。forward KL 是 <code>KL(教师‖学生)</code>，按教师概率加权，学生漏掉教师有概率的项会付出代价；reverse KL 是 <code>KL(学生‖教师)</code>，按学生概率加权，学生把概率放在教师不支持的项上会付出代价。常说的 mode-covering 与 mode-seeking 是拟合受限时的倾向，不是每次必然覆盖全部峰或只留一座峰。若能精确匹配教师，两种 KL 都在分布相同时取零。</p>
+<p>本文消融的事实：reverse KL 出现复读塌缩（长度 2.7k→99k 字符、boxed 率 99%→33%），JSD 掉 13.8 个点，forward KL 更稳。这个结果支持本设置采用 forward KL，不构成所有逐 token 蒸馏的普适定律。</p>
+<blockquote class="note-quote">
+<p>2026-08-24 的历史复测提醒保留：反向 KL 按学生分布加权；本文实测失败是复读和丧失终止能力。2026-10-04 收紧了「必然单峰塌缩」的解释，未进行新的复测。</p>
+</blockquote>
+</div></div>
+          <div class="qa" id="qa-13-3"><p class="qa-q">Q：13.3% 的错标签为什么没把模型带偏？</p><div class="qa-a"><p>错共识仍会提供误导监督。论文抽查中，过门后的伪标签有 13.3% 错误；实验总体仍提升，说明这份噪声没有抵消该设置的全部收益。门控、自发课程和稠密分布信号是方法设计，但原文没有证明「正确梯度必然盖过错误梯度」或「噪声 token 必然被平均掉」。13.3% 也不是最终准确率的硬上界。稳定地多数答错仍是失败情形。</p>
+</div></div>
+          <div class="qa" id="qa-y-plus"><p class="qa-q">Q：y+ 是单个 token 还是多个 token？<code>&lt;t</code> 为什么只在 y⁻ 上不在 y+ 上？</p><div class="qa-a"><p><strong>y+ 是多个 token：一整条完整的解题轨迹，不是单个 token，也不是单个答案值。</strong> 把符号对齐：</p>
+<table class="dtable">
+<thead>
+<tr>
+<th>符号</th>
+<th>是什么</th>
+<th>几个 token</th>
+<th>有无 <code>&lt;t</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>y+</td>
+<td>一条完整的<strong>同意</strong> rollout（整个解题过程，结尾 <code>\boxed{共识答案}</code>）</td>
+<td>多个（几百~上千）</td>
+<td>无：整条喂教师，不截断</td>
+</tr>
+<tr>
+<td>y⁻</td>
+<td>一条完整的<strong>反对</strong> rollout（整个解题过程）</td>
+<td>多个（几百~上千）</td>
+<td>无：也是整条</td>
+</tr>
+<tr>
+<td>y⁻&lt;t</td>
+<td>y⁻ 的<strong>前 t 个 token</strong>（前缀）</td>
+<td>t 个，逐步增长</td>
+<td>有：随 t 推进前缀变长</td>
+</tr>
+</tbody></table>
+<p><code>&lt;t</code> 是&quot;截到第 t 个位置为止&quot;的意思，只在 y⁻ 上出现、不在 y+ 上出现，因为<strong>蒸馏是沿 y⁻（答错那条）逐 token 往前走的</strong>：t 从 1 走到 y⁻ 全长，前缀一格格变长；而 y+ 这条&quot;参考答案&quot;是整条一起拼进教师输入当背景知识，不需截断。</p>
+<p>一个 token 位置 t 的画面：</p>
+<pre><code>教师输入: [题目 x] + [完整参考解 y+ ........boxed] + [y⁻ 的前 t 个 token ...]
+学生输入: [题目 x] +                                    [y⁻ 的前 t 个 token ...]
+                      ↑                                       ↑
+                 教师多看这一整条                          两者共享的前缀
+                  (完整,不截断)                          (随 t 一格格变长)
+</code></pre>
+<p>y+ 是&quot;心里有数的完整答案&quot;，y⁻&lt;t 是&quot;学生正在解题、走到第 t 步&quot;的状态模拟。t 每加 1，在新位置算一次教师/学生下一 token 分布的 KL，产生一个梯度，沿 y⁻ 走完全长累计成总损失。</p>
+<p>[这里最容易卡住] 别把 y+ 误当成共识答案值 ã(x) 本身（即 <code>\boxed{42}</code> 这个单值）。<strong>ã(x) 是单值，用来投票和分组；y+ 是通向 ã(x) 的整条推理轨迹，用来喂教师当上下文。</strong> 这正是消融&quot;label-only（只给教师看 boxed 答案）掉 10.3：15.8%&quot;的来由：只给一个答案值没用，教师不知道&quot;怎么走到这个答案&quot;，没法在每个 token 上给出&quot;已知这条路的我现在该怎么走&quot;的指引。y+ 必须是完整轨迹。</p>
+</div></div>
+          <div class="qa" id="qa-ttrl"><p class="qa-q">Q：Q3&quot;共识被用作上下文&quot;不确定对不对。</p><div class="qa-a"><p>对，就是这一句话。TTRL/RENT/Intuitor 把多数投票/置信度当<strong>标量奖励</strong>（整条 rollout 一个数，稀疏，信息被压成 scalar）；U-OPSD 把共识当<strong>教师的特权上下文</strong>（y+ 拼进教师输入，每个 token 都有教师完整下一 token 分布，稠密）。同样 rollout 预算领先 7：11 个点的本质原因。</p>
+</div></div>
         </div>
       </div>
     </section>
@@ -187,17 +246,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group">
-            <h3>RELATED</h3>
-            <div class="link-item">
-              <span class="link-rel">兑现钩子 · 正交切片</span>
-              <span><a href="2026-open-mopd.html">Open-MOPD</a>：本文管「单教师的信号从哪来」（无 GT 自蒸馏），Open-MOPD 管「多教师信号怎么分账」（三层预算失衡）；组合方案成立。散度注记：本文前向 KL 是直接 loss，Open-MOPD 的 reverse-KL 式 dense reward 是 PPO 奖励信号，同方向不同框架不矛盾</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">未来钩子</span>
-              <span>on-policy distillation（DistiLLM 系列）/ self-consistency（Wang et al. 2023）/ 推理预算控制（Thinkless、BudgetThinker）入库时回链本页</span>
-            </div>
-          </div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">compare · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-s2vopd.html">S²VOPD：两篇实验的散度排序不同；用教师信息的可恢复性解释这份差异是待验证假说。</a></div><div class="link-item"><span class="link-rel">possible-combination · <span class="evidence is-hypothesis">待验证假说</span></span><a href="../papers/2026-open-mopd.html">Open-MOPD：研究将自投票教师接入多教师预算框架；本库无联合实验，门控还可能改变各域 token 份额。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -219,7 +268,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

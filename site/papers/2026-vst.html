@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VST · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -27,7 +27,7 @@
         <p class="cover-eyebrow">PAPER · ECCV 2026</p>
         <h1>VST</h1>
         <p class="cover-full">Video Streaming Thinking: VideoLLMs Can Watch and Think Simultaneously</p>
-        <p class="cover-essence">让 VideoLLM 边看边想：把 CoT 推理切碎塞进视频流片段间的「等待空档」里异步执行，写成文本笔记存进固定容量的长期记忆；用户提问时模型已经「想完了」，直接读笔记秒答，零额外查询延迟。</p>
+        <p class="cover-essence">VST 在视频片段之间先思考、写入有限文本记忆，查询到达后用已完成的记忆回答，以降低查询延迟。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>华科 + 小米（Guan, Yin et al.）</dd>
           <dt>入库</dt><dd>2026-08-17</dd>
@@ -37,7 +37,33 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-vst">
+  <p class="guide-problem">等用户提问后再做长推理，会增加查询延迟。VST 利用视频片段之间的空档先想、先记，查询到达后使用已完成的记忆作答。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>片段到达</h3><p>短期视觉缓冲只保留最近 L 个视觉 token，未来片段尚不可见。</p></li>
+    <li><h3>空档内写想法</h3><p>把当前画面与已有笔记联系起来，写入固定容量 FIFO 文本记忆。最旧条目会被淘汰。</p></li>
+    <li><h3>查询到达后回答</h3><p>用当前画面与已完成记忆回答。后台思考未完成时，可回退到最近一次完整记忆。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：一个片段间隔为 16 秒，思考用 7 秒，可以在下一段到达前完成。若改成 20 秒思考，就可能落后，只能利用最近已完成的记忆。这里说明调度，不预测新硬件上的延迟。</p>
+  <p class="guide-boundary"><strong>边界</strong>：低查询延迟不等于没有后台计算。固定记忆也不保证保留全部历史证据。训练可见范围必须与部署对齐，过去已到达与未来尚未到达是两类条件。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>把视觉部署改为保留所有已到达 token，训练仍只看最近 L 个，会造成哪种不一致？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>训练与部署的历史视觉范围不同。训练应同步改为已到达前缀；未来依然不可见。下面的可见性演示可以继续改变 t 与 L 检查反例。</p></details>
+    <p class="guide-transfer">关掉提示后解释：视觉窗口、FIFO 文本记忆和因果掩码分别保留或限制哪一种信息？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="read-figures" data-section="figures"><div class="slide-inner"><div class="slide-head"><h2>论文图解</h2></div>
+<figure class="paper-fig"><img src="../assets/figures/2026-vst/fig1.png" alt="在线离线表现与推理时机比较" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：下方三条时间线比较只感知、查询后推理和查询前思考。VST 把部分思考放进播放期，上方给出对应测试结果。查询延迟变低，不表示总计算成本消失。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-vst/fig2.png" alt="视觉短期缓冲与文本长期记忆" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：当前视频片段先进入有限视觉缓冲，再与已有文本笔记一起形成新想法。FIFO 淘汰旧文本条目，所以长期记忆也有容量限制，不是保存全部历史画面。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-vst/fig3.png" alt="因果 SFT 与答案奖励 RL" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 3）：左侧的流式注意力图限制视觉可见范围；右侧用最终答案奖励更新整条生成轨迹。训练既要防未来泄露，也要模拟部署的窗口规则；答案奖励不逐句证明每条 thought 都正确。</figcaption></figure>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -57,7 +83,7 @@
             <p>StreamingBench 79.5%（超 GPT-4o +6.2%）；QA 延迟 0.56s vs Video-R1 的 8.8s。代价：思考本身烧后台 token，文本记忆有损。</p>
           </div>
         </div>
-        <p class="takeaway">空档期思考被播放时间吸收：它增加的是后台算力，不是用户感知的响应延迟。</p>
+        <p class="takeaway">VST 在视频片段之间先思考、写入有限文本记忆，查询到达后用已完成的记忆回答，以降低查询延迟。</p>
       </div>
     </section>
 
@@ -163,21 +189,20 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-mask">
-            <p class="qa-q">流式注意力掩码除了防信息泄露，还顺带解决了什么？（2026-08-17/19/28 曾三次漏答，08-28 换框架后复验通过）</p>
-            <div class="qa-a">
-              <p><strong>训练与推理的架构一致性</strong>。不加掩码时训练能看全片、推理只能看滑动窗口，分布漂移导致掉点。焊住的框架：掩码是<strong>推理可见性的一面镜子</strong>，训练是彩排、推理是正式演出，彩排的可见性必须照演出来。</p>
-              <p>拆成两条规则：「不看未来」永远需要（流式性决定）；「视觉只看最近 L 个」完全跟着推理架构走（若推理改成全片可见或笔记 top-3 检索，这条就得相应改，留着反而自己制造新漂移）。</p>
-            </div>
-          </div>
-          <div class="qa" id="qa-fifo">
-            <p class="qa-q">长期记忆存的是「前序所有片段」吗？</p>
-            <div class="qa-a"><p>不是。FIFO 固定容量，只留最近若干条 thought，「最近的思想笔记」而非「全部历史」。旧记忆被挤出正是失败案例里早期证据丢失的根源。</p></div>
-          </div>
-          <div class="qa" id="qa-fifo-why">
-            <p class="qa-q">FIFO 明知有损，为何不换更大或可检索的记忆？</p>
-            <div class="qa-a"><p>固定容量 = token 预算可控 = 实时性（可检索记忆每步要检索全库，破坏「分摊」前提）；且消融显示管理策略本身相对不重要，换精巧管理收益不大。</p></div>
-          </div>
+          <div class="qa" id="qa-mask"><p class="qa-q">Q：流式注意力掩码除了防信息泄露，还顺带解决了什么？（Q2 漏掉的半问；08-17/08-19/08-28 三次没答出）</p><div class="qa-a"><p><strong>训练-推理架构一致性</strong>。训练时不加掩码，模型能 attend 到全片所有视觉 token；推理时滑动窗口只能看最近 L 个。两者分布不一样 → 推理掉点（分布漂移）。掩码让训练时就模拟推理时的滑动窗口（视觉只看最近 L 个，文本全可见），漂移消失。一句话：掩码既<strong>堵未来</strong>（防泄露），又<strong>堵漂移</strong>（对齐架构）。</p>
+<blockquote class="note-quote">
+<p>🔧 <strong>08-28 三漏后的重讲版</strong>（前两次「堵未来+堵漂移」口径记不住，换框架才焊住）：掩码不是安全措施，是<strong>彩排规则</strong>：训练是彩排，推理是正式演出，彩排的可见性必须照演出来。彩排若看全片，模型养成「记不清就回头看远处画面」的习惯，正式演出（滑动窗口）做不到就懵：分布漂移就是彩排和演出的剧本不一致。<strong>锚点：掩码是推理可见性的一面镜子，推理长什么样，训练就照什么样。</strong> 由此拆两条规则：</p>
+<ul>
+<li><strong>规则①「不看未来」</strong>：永远需要，与架构无关：未来片段还没到，流式性本身决定的；</li>
+<li><strong>规则②「视觉只看最近 L 个」</strong>：需不需要完全跟着推理架构走：推理若改成全片视觉不丢（无窗口），这条必须删，留着反而自己制造新漂移；推理若改成文本只检索 top-3 相关笔记（RAG 式），文本可见性也得跟着改成 top-3。
+两个反例变换复验（08-28）均通过，原则可迁移。</li>
+</ul>
+</blockquote>
+</div></div>
+          <div class="qa" id="qa-fifo"><p class="qa-q">Q：VST 的长期记忆是「前序所有片段」吗？（Q3 表述误差）</p><div class="qa-a"><p>不是「所有」：是 <strong>FIFO 固定容量</strong>，会淘汰最早的 thought 条目，只留最近的若干条。所以是「最近的思想笔记」而非「全部历史」。旧记忆被挤出正是 failure case 里「早期证据过度压缩/丢失」的根源。</p>
+</div></div>
+          <div class="qa" id="qa-fifo-why"><p class="qa-q">Q：FIFO 明知有损为何不换更大/可检索的记忆？（Q3b 深挖）</p><div class="qa-a"><p>(1) 固定容量 = token 预算可控 = 实时性（可检索记忆每步要检索整个库，增延迟，破坏「分摊」前提）；(2) 消融显示 FIFO 更新策略本身「相对不重要」，关键在「有文本记忆」而非「记忆管理多精巧」，换复杂管理收益不大。</p>
+</div></div>
         </div>
       </div>
     </section>
@@ -189,21 +214,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group">
-            <h3>RELATED</h3>
-            <div class="link-item">
-              <span class="link-rel">正交 · 可互补</span>
-              <span><a href="2026-videochat3.html">VideoChat3</a>：它管感知效率（编码器压 token + 状态机），VST 管认知时机（推理前置 + 文本记忆）；组合需统一调度响应时机</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">同域不同路线</span>
-              <span><a href="2026-video-o3.html">Video-o3</a>：VST 是推理前置（0.56s 查询即答），Video-o3 是推理时主动检索（10.2s 多轮找线索）；实时性 vs 多跳精度，可互补</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">baseline</span>
-              <span>Video-R1 / LongVILA-R1（查询后长 CoT）/ StreamForest / TimeChatOnline / Streamo / Dispider</span>
-            </div>
-          </div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-videochat3.html">VideoChat3：感知成本与思考时机是不同环节；两路记忆及回复时机的联合调度尚待验证。</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-video-o3.html">Video-o3：VST 在查询前写记忆；Video-o3 在查询后多轮裁剪找证据。文中计时来自各自实验，不能直接当作同任务速度排名。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -225,7 +236,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

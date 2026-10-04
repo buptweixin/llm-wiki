@@ -6,18 +6,38 @@ topic: video-understanding
 members: [2026-videochat3, 2026-vst, 2026-video-o3, 2026-tspo]
 mechanisms: [video-mlm, token-compression, streaming-inference, memory, cot-reasoning, tool-use, temporal-sampling, group-rl, policy-gradient]
 goals: [improve-efficiency, lower-latency, improve-reasoning, improve-grounding, reduce-supervision]
-updated: 2026-09-14
+updated: 2026-10-04
 ---
 
 # 视频理解与响应：看多少、何时想、怎样找证据？
 
-> **一句话本质**：长视频与流式视频的三个瓶颈被四篇论文分头处理：进入 LLM 的视觉 token 太多（感知成本）、深度推理与实时响应冲突（思考时机）、稀疏关键证据被均匀采样淹没（证据获取）；TSPO 和 Video-o3 是证据获取的两条不同路线，整个专题不是一个已验证的组合系统，也不代表论文按顺序升级。
+> **一句话本质**：本专题按感知成本、思考时机和证据获取组织四篇视频论文，帮助比较它们各自解决的瓶颈。
 
-> 主线论文：4 篇（VideoChat3、VST、Video-o3、TSPO）｜ 跨专题引用：1 篇（GenLIP，回答 VideoChat3 用的 ViT 怎么预训练，主归属仍是视觉编码器）｜ 更新：2026-09-14
+> 主线论文：4 篇（VideoChat3、VST、Video-o3、TSPO）｜ 跨专题引用：1 篇（GenLIP，回答 VideoChat3 用的 ViT 怎么预训练，主归属仍是视觉编码器）｜ 更新：2026-10-04
 
 > 状态：本页由四篇已通过首轮费曼检验的论文页整理而成；专题级的组织方式（问题分解、阅读顺序）已做过一次复测，见 [review.md](../../review.md)。TSPO 与其他论文的组合仍按证据状态就地标注。
 
 ## 专题本质
+
+### 用问题重建专题
+
+<div class="learning-guide" id="guide-video-understanding">
+  <p class="guide-problem">读这组论文先问三件事：进入 LLM 的画面信息有多少，思考发生在什么时候，回答所需证据从哪里来。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>感知成本</h3><p>VideoChat3 在编码器里压 token，并控制下一窗口的分辨率。</p></li>
+    <li><h3>思考时机</h3><p>VST 在查询前积累文本记忆；Video-o3 在查询后找证据、推理。</p></li>
+    <li><h3>证据获取</h3><p>TSPO 先一次性选候选帧；Video-o3 可多轮裁剪回看。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子</strong>：阅读对照：一个短事件若没进入 TSPO 候选，选帧器无从选择；VST 还要遵守未来不可见与固定记忆限制；Video-o3 的裁剪访问条件另有前提。比较前先写清可见范围。</p>
+  <p class="guide-boundary"><strong>边界</strong>：压缩倍率不是整条系统的加速倍率。VST 的查询延迟不包含全部播放期思考成本。这组方法的组合尚无库内验证。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>能否用 VST 的 0.56 秒与 Video-o3 的 10.2 秒，直接判断哪一个系统对同一任务更高效？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>不能。前者把思考分摊到查询前，后者查询后搜索；任务、访问范围与统计口径也不同。需要同一条件下计入总成本再比较。</p></details>
+    <p class="guide-transfer">关掉提示后给四篇各写一个主要瓶颈，再指出组合时要重新设计的响应时机或证据预算。</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
 
 视频进入多模态大模型后有三笔账要算。第一笔是感知成本：帧率和分辨率一上去视觉 token 爆炸，LLM 注意力随序列长度二次方增长，长视频和实时流几乎跑不动（[VideoChat3 解决什么问题](../papers/2026-videochat3.md#解决什么问题)）。第二笔是思考时机：显式链式推理能提高多跳精度，但离线式「查询到达后再想」让延迟从 0.54s 涨到 8.8s，实时场景不可用（[VST 解决什么问题](../papers/2026-vst.md#解决什么问题)）。第三笔是证据获取：关键 2 秒藏在 10 分钟里，均匀采样把它淹没在冗余中。TSPO 训练 query-aware temporal agent，一次性选出关键帧；Video-o3 则拿到问题后多轮裁剪找证据（[TSPO 解决什么问题](../papers/2026-tspo.md#解决什么问题)、[Video-o3 解决什么问题](../papers/2026-video-o3.md#解决什么问题)）。
 
@@ -64,13 +84,13 @@ flowchart TB
 
 | 关系 ID | 起点 | 类型 | 终点 | 一句主张 | 证据状态 | 依据锚点 | 指纹 |
 |---|---|---|---|---|---|---|---|
-| rel-video-perception-vs-timing | 2026-videochat3 | complement | 2026-vst | VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 | reported | notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations | 4e0e4225 |
-| rel-video-timing-before-vs-after | 2026-vst | compare | 2026-video-o3 | 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 | synthesis | notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations | 85af28c3 |
-| rel-video-how-much-vs-where | 2026-videochat3 | complement | 2026-video-o3 | VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） | synthesis | notes/papers/2026-video-o3.html#relations | 362d9965 |
-| rel-video-tspo-vs-video-o3 | 2026-tspo | compare | 2026-video-o3 | 两者都针对稀疏证据，但 TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活，延迟与适应性取舍不同 | synthesis | notes/papers/2026-tspo.html#relations | ced4080e |
-| rel-video-combine-feasible | 2026-vst | possible-combination | 2026-video-o3 | 组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度 | hypothesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | aaa025f0 |
-| rel-video-combine-timing-conflict | 2026-vst | tension | 2026-video-o3 | 组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 | synthesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | aaa025f0 |
-| rel-video-encoder-pretraining | 2026-genlip | complement | 2026-videochat3 | VideoChat3 的 I3D-ViT 把图像 ViT 撑成 3D 处理视频，但没讨论这个 ViT 怎么预训练；GenLIP 回答这一层，训出的 ViT 可被 inflate 成 3D 使用 | synthesis | notes/papers/2026-videochat3.html#relations | b8df1d10 |
+| rel-video-perception-vs-timing | 2026-videochat3 | complement | 2026-vst | VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 | reported | notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations | 1146b31b |
+| rel-video-timing-before-vs-after | 2026-vst | compare | 2026-video-o3 | 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 | synthesis | notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations | b3219999 |
+| rel-video-how-much-vs-where | 2026-videochat3 | complement | 2026-video-o3 | VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） | synthesis | notes/papers/2026-video-o3.html#relations | 5b28a654 |
+| rel-video-tspo-vs-video-o3 | 2026-tspo | compare | 2026-video-o3 | 两者都针对稀疏证据，但 TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活，延迟与适应性取舍不同 | synthesis | notes/papers/2026-tspo.html#relations | 3bd90554 |
+| rel-video-combine-feasible | 2026-vst | possible-combination | 2026-video-o3 | 组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度 | hypothesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | 5f9d0a5a |
+| rel-video-combine-timing-conflict | 2026-vst | tension | 2026-video-o3 | 组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 | synthesis | notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations | 5f9d0a5a |
+| rel-video-encoder-pretraining | 2026-genlip | possible-combination | 2026-videochat3 | GenLIP 讨论视觉编码器的预训练，VideoChat3 讨论时空编码；将 GenLIP 接入 I3D-ViT 是组合设想，本库没有该替换实验 | hypothesis | notes/papers/2026-videochat3.html#relations | 8abdd1b0 |
 
 ## 分叉与演进
 

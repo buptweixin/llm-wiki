@@ -5,16 +5,50 @@ aliases: [LocateAnything, Parallel Box Decoding, PBD]
 topic: structured-output
 mechanisms: [parallel-decoding, grounding]
 goals: [improve-grounding, improve-efficiency]
-updated: 2026-09-07
+updated: 2026-10-04
 ---
 
 # LocateAnything（全称：Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding）
 
-> **一句话本质**：VLM 做视觉定位时，输出的"原子单元"不该是 token 而该是整个框：把 `<box> x1 y1 x2 y2 </box>` 当一个固定长块，训练用"接龙卷 + 填空卷"双格式喂，推理时一次 forward 并行填出整框（框与框仍逐个来），又快又准（尤其贴边的高 IoU 精度）。
+> **一句话本质**：LocateAnything 把一个框对齐成固定长 token 块，在框内并行生成坐标，必要时只对不可靠的块退回逐词解码。
 
 > 作者/机构：Shihao Wang, Shilong Liu, Yuanguo Kuang, Xinyu Wei, Yangzhou Liu, Zhiqi Li, Yunze Man, Guo Chen, Andrew Tao, Guilin Liu, Jan Kautz, Lei Zhang, Zhiding Yu ｜ NVIDIA（实习作者来自港理工/普林斯顿/南大/UIUC）｜ 原文：Zotero 锚点（见下行）或 URL ｜ 入库：2026-09-04
 
 > Zotero：[wangLocateAnythingFastHighQuality2026](zotero://select/items/@wangLocateAnythingFastHighQuality2026) `wangLocateAnythingFastHighQuality2026` ｜ [7KYM7ZBM](zotero://select/items/7KYM7ZBM) `7KYM7ZBM` ｜ [DOI](https://doi.org/10.48550/arXiv.2605.27365) `10.48550/arXiv.2605.27365`
+
+## 五分钟重建
+
+<div class="learning-guide" id="guide-2026-locateanything">
+  <p class="guide-problem">逐 token 生成框坐标需要多次 forward。随意把 token 分块，又可能拆散同一个框。LocateAnything 把框作为固定长块，让同块位置并行预测。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>把框对齐成块</h3><p>一个框块有 6 格，包括结构 token 和四个坐标。框与框按顺序生成，同一个框内部并行。</p></li>
+    <li><h3>同时练接龙与填空</h3><p>NTP 流练逐词生成，MTP 流保留块首 token、遮住其余位置。两流隔离，防止从完整答案流偷看坐标。</p></li>
+    <li><h3>可疑块局部回退</h3><p>Hybrid 先并行生成。格式异常，或低置信且候选跨度大时，丢弃当前问题块，用 NTP 重写，再继续并行。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：一个坐标 top-1 概率为 0.6，top-5 跨度为 40。它不满足空间歧义的双条件；若跨度改为 100，才同时满足低于 0.7 与大于 80。格式错误另有独立触发条件。</p>
+  <p class="guide-boundary"><strong>边界</strong>：同块互见的是当前输入与 mask 位置，不是尚未生成的真实坐标。联合 token 交叉熵能学习几何规律，但不等于硬性保证每个框合法。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>置信度为 0.9、跨度为 100，且格式合法时，是否因空间歧义回退？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>不回退。空间歧义要求两个条件同时满足，只有跨度大还不够。这个结论只描述触发规则，不保证该框一定正确。</p></details>
+    <p class="guide-transfer">关掉提示后解释：为什么 Hybrid 只重写坏块，而不需要把整段输出从头重做？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+
+## 论文图解
+
+![逐词随意分块与框对齐并行比较](../../site/assets/figures/2026-locateanything/fig2.png)
+
+*图 2 费曼图解（论文 Figure 2）：第一行逐坐标生成，第二行按固定长度随意切块，第三行把边界对齐到完整框。并行加速的关键是块内同时预测，框与框仍按顺序生成。*
+
+![模型架构与四种输出块](../../site/assets/figures/2026-locateanything/fig3.png)
+
+*图 3 费曼图解（论文 Figure 3）：图像与查询进入 VLM，输出组织成语义、框、负样本和结束四类块。框块有固定位置，训练共享权重学习其结构；它不是额外的硬几何合法性判卷器。*
+
+![坏块的局部 NTP 重解码](../../site/assets/figures/2026-locateanything/fig5.png)
+
+*图 5 费曼图解（论文 Figure 5）：图里给出格式混乱与空间歧义两种错误。Hybrid 作废当前问题块，回到已提交前缀，用逐词生成重写该块，然后切回并行，不用重做整段输出。*
 
 ## 解决什么问题
 
@@ -31,7 +65,7 @@ VLM 做检测/grounding 普遍把 2D 框序列化成 1D token 流，两类旧表
 
 ### 前提：框在 VLM 眼里是什么
 
-图像 → ViT 切成视觉 token；查询文本 → 语义 token；拼成序列喂 Transformer。模型继续"写字"，词表里预置结构词（`<ref>`、`<box>`、`<eos>`…）和坐标词（[0,1000] 每个整数一个词）。"热狗在框 (342,567)-(890,345)" 就是一句话：`<ref> hot dog </ref> <box> 342 567 890 345 </box> <eos>`。旧做法把这 11 个词一个接一个蹦出来（一次 forward 一个词）。
+图像 → ViT 切成视觉 token；查询文本 → 语义 token；拼成序列喂 Transformer。模型继续"写字"，词表里预置结构词（`<ref>`、`<box>`、`<eos>`…）和坐标词（[0,1000] 每个整数一个词）。"热狗在框 (342,345)-(890,567)" 就是一句话：`<ref> hot dog </ref> <box> 342 345 890 567 </box> <eos>`。旧做法把这 11 个词一个接一个蹦出来（一次 forward 一个词）。
 
 Transformer 有个被浪费的隐藏能力：训练时它学的是"每个位置都预测下一个词"，自回归解码却只取最后一个位置的预测。PBD 的全部心思：**把浪费掉的预测位置用起来，一次吐多个词**。
 
@@ -44,7 +78,7 @@ Transformer 有个被浪费的隐藏能力：训练时它学的是"每个位置�
 
 推理（Fast/Hybrid）时只用填空技能：喂 `[图+查询 | <box> MASK MASK MASK MASK MASK]`，一次 forward 填出 `342 567 890 345 </box>`——**整个框一次出来，从 6 步变 1 步**。框与框仍逐个来（半自回归），每轮填完把结果定稿提交进 KV cache。
 
-**这里最容易卡住（本次费曼讲解最大卡点）：坐标之间没有先后，怎么"互相约束"？** 不是先填 x1 再把 x1 传给 x2（并行没有回头路），而是：① 4 个坐标在训练时**一起挨罚**（同一块的 mask 位置 loss 同时算），模型想拿满分就得学会"输出的四数构成合法框"，这个约束被焊进权重；② 块内双向注意力让这些位置在 Transformer 内部互见。类比：不是"先迈左脚站稳再迈右脚"，而是**一个舞步动作四肢同时摆好**——肌肉记忆里配合是一次成型的。
+**这里最容易卡住：并行坐标如何共同学习结构？** 同块位置共享图像、问题和历史块，并在当前 mask 位置之间做双向注意力。训练把各位置的 token 交叉熵一起优化，使共享权重学习框结构。原文 §3.2 的目标是 `L_ntp + L_mtp`，不是「整框合法才得分」的硬几何判卷器，也不保证每次输出都合法。并行位置不能读取尚未生成的真实坐标；它们也不是统计上独立的四个猜测。
 
 **为什么要留着接龙技能不用？** 填空有时整块填歪（类别边界犹豫时格式错乱、密集网格里坐标滑到两物体中间）。Hybrid 每块填完验两道：格式合法吗？空间置信够吗？（歧义判据 = top-1 坐标概率 < 0.7 **且** top-5 候选极差 > 80，两条件同满足 = 候选在坐标轴上撕裂，真歧义）。可疑就作废这块，退回上一块定稿处，**改用接龙技能逐词重写这一块**，写完再切回填空。Slow 模式更是纯接龙。所以接龙技能不能砍：它既是最高精度兜底，也是回退的引擎。
 
@@ -142,16 +176,18 @@ summary 笔记质量高（pipeline 全流程、块结构、混合掩码三规则
 A：卡在机制没落到 token 级操作。重讲的三步走通：① 原材料：框 = 一串词（结构词 + 坐标词），旧法一个 forward 蹦一个；② Transformer 天生"每个位置都预测下一词"，只是自回归只取最后一个——PBD 把浪费的位置用起来，训练时专出"填空题"（块留首格、后 5 格 [MASK]、一次填）；③ 推理 = 只做填空，一段段填。**教训：这篇的机制必须讲到 token 级演算才能建立直觉，纯架构图讲不通。**
 
 **Q：坐标并行出、没有先后，凭什么"互相约束"？**
-A：不是"先填 x1 再传给 x2"（并行无回头路），是两条：① 训练时 4 坐标一起挨罚（同块 mask 的 loss 同时算），模型想拿满分必须让四数构成合法框，约束焊进权重；② 块内双向注意力让这些位置在 Transformer 内部互见。类比：舞步动作四肢同时摆好，配合靠肌肉记忆一次成型，不是一步步迈。
+A：不是先生成 x1 再传给 x2。四个 mask 位置共享上下文，在块内双向交互，并同时接受各位置的 token 交叉熵监督。共享权重由此学习框结构。实际目标没有额外的“整框合法才得分”判卷器，位置也读不到尚未生成的真实坐标。并行预测减少串行错误传递，但不保证四个预测统计独立或每个框都合法。
 
 **Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了）**
 A：先澄清：条件 2 的"top-5 极差 > 80"指 5 个候选坐标词在 [0,1000] 坐标轴上**互相差多远**，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测：**候选分布是否"撕裂"**。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有"不自信 + 候选在几何上严重分裂"（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。
 
 **Q：PBD-Slow 也是 NTP 解码，凭啥比旧 Quantized-NTP 高 +2？（消融归因）**
-A：初答"两种形式互相促进"太泛、抓不到点。决定性数据点是 Table 6c 第一行：**只训 Lntp（表征已经块对齐）→ Slow 50.1，跟旧 Quantized-NTP 分毫不差**——只把坐标包成块、不加填空监督，零增益。所以 +2 只有一个来源：**Lblk 这条块级填空损失**。它的作用不是"教并行"（Slow 不并行），而是用"一次猜对整块才得分"把几何联合约束压进共享权重，x1 的分布不再孤立被评、和 y1/x2/y2 绑一起评；这份结构化监督在权重里沉淀后，换回 NTP 推理依然生效。这就是论文 "box-aligned formulation provides stronger supervision than 1D serialization, **without sacrificing throughput**" 的意思：精度收益从"必须靠并行"里解放出来了。
+A：初答"两种形式互相促进"太泛、抓不到点。决定性数据点是 Table 6c 第一行：**只训 Lntp（表征已经块对齐）→ Slow 50.1，跟旧 Quantized-NTP 分毫不差**——只把坐标包成块、不加填空监督，零增益。所以 +2 只有一个来源：**Lblk 这条块级填空损失**。它的作用不是"教并行"（Slow 不并行），而是用"同块各位置共同接受 token 交叉熵监督"把几何联合约束压进共享权重，x1 的分布不再孤立被评、和 y1/x2/y2 绑一起评；这份结构化监督在权重里沉淀后，换回 NTP 推理依然生效。这就是论文 "box-aligned formulation provides stronger supervision than 1D serialization, **without sacrificing throughput**" 的意思：精度收益从"必须靠并行"里解放出来了。
 
 **Q：通用 MTP（SDLM/BlockDiff）为什么又慢又差？**
 A：结构无关切块让块边界大概率落在无意义处，一个块同时装"上一框尾巴坐标 + 下一类别的开头词"，模型被迫拟合横跨框边界、横跨类别的虚假相关（共现统计，非真实规律），纯消耗容量还错误传播。加速弱是因为块内容不连贯，实际可用性差（SDLM 只到 ~5.5 BPS）。PBD 用"块 = 框"把这个伪模式源头拆掉。
+
+2026-10-04 核对原文 §3.2：历史问答中「整块全对才拿分」「合法框约束直接入 loss」是过强类比。实际为两种序列的 token 交叉熵联合训练。Table 6 的增益支持结构化训练有效，不证明增加了硬几何损失。
 
 ## 还没搞懂
 
@@ -159,7 +195,7 @@ _无_——检验题全部补齐，无残留漏洞。「块内双向注意力在
 
 ## 关联
 
-- [VST](2026-vst.md) — 同主题"系统延迟"的两个**正交解法**：VST 把推理切碎塞进视频播放空档（把延迟藏起来，查询即答），LocateAnything 把几何输出块化、一步出一个框（把解码步数本身减掉）。可组合：视频交互系统用 VST 的推理时机 + 本文的快速低层感知。
+- [VST](2026-vst.md) — 同主题"系统延迟"的两个**正交解法**：VST 把推理切碎塞进视频播放空档（把延迟藏起来，查询即答），LocateAnything 把几何输出块化、一步出一个框（把解码步数本身减掉）。组合设想（待验证）：视频交互系统用 VST 的推理时机 + 本文的快速低层感知。
 - [Video-o3](2026-video-o3.md) / [VST](2026-vst.md) — 本文是**感知侧**（GUI/指代定位给得又快又准，ScreenSpot-Pro 60.3 SOTA 是 GUI/具身 agent 的感知底座），Video-o3/VST 是**拿到框之后的推理/行动侧**。下游不变量：UI grounding 的产出是 agent 下一个动作的坐标参数。
 - [GeoAnchor](2026-geoanchor.md) — 同一问题「坐标该不该言语化」在**空间推理侧**的对照答案：本文仍把框坐标写成离散 token 块（整块并行解码换效率），GeoAnchor 干脆让几何量不经过词表进连续潜空间（换保真度）。两条路线都认为逐 token 蹦坐标不行，分歧在留在词表里还是离开词表。
 - 未来入库钩子：① 本文是库内第一篇 **VLM 检测/grounding** 论文，开「解码表征与推理效率」新线；② 同线 Related Work 提及的结构无关 MTP 家族（SDLM / Block Diffusion / LLaDA / Dream，扩散语言模型是另一条并行解码路线）与 DiffusionVL（VL 域）入库时回链本页对照"结构对齐 vs 结构无关"；③ 结构输出并行可迁移族（分割多边形 / 动作基元 / 表格单元格，AI 笔记延伸非正文）；④ grounding 后训练 RL（Vision-R1 / UniVG-R1 / GW-VLM，论文 Related Work 提及）入库时回链，对照"解码范式 vs 强化对齐"两路线。

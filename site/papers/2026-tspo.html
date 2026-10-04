@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TSPO · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -24,7 +24,7 @@
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>TSPO</h1>
         <p class="cover-full">Temporal Sampling Policy Optimization for Long-form Video Language Understanding</p>
-        <p class="cover-essence">让长视频模型用答题结果教会轻量 temporal agent 选择 query 相关关键帧，再把选帧与生成答案放进同一个联合策略里用 GRPO 式强化学习优化。</p>
+        <p class="cover-essence">TSPO 根据问题从候选帧中选择一组关键帧，用冻结 MLLM 的回答奖励训练选帧策略。</p>
         <dl class="cover-meta">
           <dt>作者</dt><dd>Tang、Han、Sun 等；西安交通大学、中国电信 TeleAI、北京科技大学</dd>
           <dt>入库</dt><dd>2026-09-14</dd>
@@ -34,7 +34,27 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-tspo">
+  <p class="guide-problem">均匀选帧与问题无关，可能漏掉短暂证据。TSPO 训练一个小型 temporal agent，根据问题从候选帧中选出一组帧，再交给冻结的 MLLM 回答。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>给候选帧打分</h3><p>1 FPS 得到候选，冻结 CLIP 提特征。可训练 agent 结合帧级与事件级信息。</p></li>
+    <li><h3>探索不同选帧组</h3><p>Gumbel Top-K 形成不同选择，冻结 MLLM 对每组帧作答。主要更新选帧 agent。</p></li>
+    <li><h3>用奖励训练选择</h3><p>答案奖励 R_A 评价整组选帧；目标片段奖励 R_T 评价选中帧有多少位于标注片段。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：选 4 帧，其中 3 帧在目标片段，R_T=3/4。它没有把未选中的目标帧算进分母，所以更接近 precision，而不是完整的时间 IoU。</p>
+  <p class="guide-boundary"><strong>边界</strong>：一组帧让 MLLM 答对，不证明每帧都有用。若短事件没有进入 1 FPS 候选，selector 无法重新创造那帧。奖励还依赖冻结 MLLM 能否读懂证据。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>两组帧都答对，一组 4/4 在目标片段，另一组 2/4 在片段。只有 R_A 时能区分这项冗余差吗？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>不能直接区分，两组答案奖励相同。R_T 提供额外的集中程度信号，分别为 1 和 0.5，但它也不是逐帧因果贡献的证明。</p></details>
+    <p class="guide-transfer">关掉提示后解释：为什么论文说端到端优化，却仍可冻结 CLIP 和负责回答的 MLLM？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head"><h2>一页看懂</h2><span class="slide-no">02</span></div>
         <div class="flow">
@@ -42,11 +62,8 @@
           <div class="flow-step" data-hi><h3>方法</h3><p>Temporal Agent 从 1 FPS 候选中概率化选帧；多组帧分别交给冻结 MLLM，用答案正确率和目标片段定位奖励做组相对策略优化。</p></div>
           <div class="flow-step"><h3>结果</h3><p>LongVideoBench +5.0%、MLVU +6.0%；但偏整体理解的 Video-MME 仅 +1.1%，说明方法更擅长 query-localization。</p></div>
         </div>
-<figure class="paper-fig">
-          <img src="../assets/figures/2026-tspo/fig1.png" alt="不同帧采样方法对比" loading="lazy">
-          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>三类采样方法对比。均匀采样按固定间隔抽帧、与问题无关（关键瞬间可能恰好漏掉）；training-free 检索用现成相似度找帧但不会因答错而改进；TSPO 把「选哪些帧」当策略，用最终答案对错反向训练采样器。</figcaption>
-        </figure>
-               <p class="takeaway">答案奖励只能说明一组帧够用，不能说明每一帧都必要；TSPO 用目标片段内选帧比例补上这层区分。</p>
+<figure class="paper-fig"><img src="../assets/figures/2026-tspo/fig1.png" alt="不同帧采样方法对比" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：三类采样方法对比。均匀采样按固定间隔抽帧、与问题无关（关键瞬间可能恰好漏掉）；training-free 检索用现成相似度找帧但不会因答错而改进；TSPO 把「选哪些帧」当策略，用最终答案对错反向训练采样器。</figcaption></figure>
+               <p class="takeaway">TSPO 根据问题从候选帧中选择一组关键帧，用冻结 MLLM 的回答奖励训练选帧策略。</p>
       </div>
     </section>
 
@@ -62,10 +79,7 @@
       </div>
     </section>
 
-<figure class="paper-fig">
-          <img src="../assets/figures/2026-tspo/fig2.png" alt="TSPO 框架总览" loading="lazy">
-          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 2）</span>TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。</figcaption>
-        </figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-tspo/fig2.png" alt="TSPO 框架总览" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。</figcaption></figure>
           <section class="slide" id="slide-4" data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head"><h2>关键机制: 双数据与双奖励</h2><span class="slide-no">04</span></div>
@@ -77,10 +91,7 @@
       </div>
     </section>
 
-<figure class="paper-fig">
-          <img src="../assets/figures/2026-tspo/fig4.png" alt="TSPO 双数据构建流程" loading="lazy">
-          <figcaption><span class="fig-title">图 3 费曼图解（论文 Figure 4）</span>双风格训练数据。Comprehensive Temporal Data 过滤过易过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱并保留伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。</figcaption>
-        </figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-tspo/fig4.png" alt="TSPO 双数据构建流程" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 4）：双风格训练数据。Comprehensive Temporal Data 过滤过易/过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱，保留目标片段伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。</figcaption></figure>
           <section class="slide" id="slide-5" data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head"><h2>证据与边界</h2><span class="slide-no">05</span></div>
@@ -93,8 +104,10 @@
       <div class="slide-inner">
         <div class="slide-head"><h2>卡壳点</h2><span class="slide-no">06</span></div>
         <div class="qa-list">
-          <div class="qa" id="qa-signal"><p class="qa-q">答对的一组帧是否意味着每一帧都真正有用？</p><div class="qa-a"><p>不意味着。<code>R_A</code> 只说明整组帧足以让冻结 MLLM 答对；多组不同帧都可能包含足够证据。它是组级偏好信号，不能把功劳精确分给某一帧。</p></div></div>
-          <div class="qa" id="qa-rt"><p class="qa-q">R_T 是 IoU 吗？Video-MME 上 TSPO 是否失效？</p><div class="qa-a"><p><code>R_T</code> 是选中目标片段的帧数占总选帧数的比例，更接近 precision，而不是完整 IoU。Video-MME 不是完全失效，只是整体理解占比高，所以 query-aware 局部定位优势较小。</p></div></div>
+          <div class="qa" id="qa-signal"><p class="qa-q">Q：答对的那组帧是否就意味着每一帧都真正有用？（2026-09-14 首测）</p><div class="qa-a"><p>不意味着。$R_A$ 只说明这组帧整体足以让冻结 MLLM 答对，而且不同帧组合可能都包含了足够证据。组内相对奖励只能偏好「更容易得到正确答案」的采样方案，不能把功劳精确分配到某一帧。needle 数据的 $R_T$ 用目标片段内选帧比例进一步偏好更集中的方案，但它是粗粒度的 precision-like 信号，不是 IoU。</p>
+</div></div>
+          <div class="qa" id="qa-rt"><p class="qa-q">Q：Video-MME 上 TSPO 是否失效？</p><div class="qa-a"><p>不是完全失效，而是收益较小。Video-MME 更偏整体视频理解，问题不一定对应一个很窄的关键片段；TSPO 的 query-aware 局部采样优势因此不容易发挥。</p>
+</div></div>
         </div>
       </div>
     </section>
@@ -103,14 +116,14 @@
       <div class="slide-inner">
         <div class="slide-head"><h2>关联与来源</h2><span class="slide-no">07</span></div>
         <div class="link-groups">
-          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">同题不同调度</span><span><a href="2026-video-o3.html">Video-o3</a>：TSPO 训练 selector 后一次性选帧，Video-o3 查询后多轮裁剪搜索；前者路径短，后者 test-time 搜索更灵活。</span></div><div class="link-item"><span class="link-rel">不同维度</span><span><a href="2026-videochat3.html">VideoChat3</a>：它压缩编码器内的时空 token，TSPO 决定哪些时间点交给 MLLM；组合尚无实验。</span></div><div class="link-item"><span class="link-rel">查询时机对照</span><span><a href="2026-vst.html">VST</a>：查询前写文本记忆，TSPO 需要 query 才能选帧。</span></div></div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-video-o3.html">Video-o3：TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-videochat3.html">VideoChat3：TSPO 决定哪些时间点交给 MLLM，VideoChat3 在编码器内压缩时空 token；二者维度不同，组合尚无实验</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-vst.html">VST：VST 在查询前写文本记忆，TSPO 需要 query 才能选择关键帧；前者主要解决实时响应，后者主要解决 query 相关证据获取</a></div></div>
           <div class="link-group"><h3>SOURCE</h3><div class="link-item"><span class="link-rel">完整笔记</span><span><a href="../notes/papers/2026-tspo.html">notes/papers/2026-tspo.html</a>（markdown 的完整静态投影）</span></div><div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/papers/2026-tspo.md">wiki/papers/2026-tspo.md</a></span></div><div class="link-item"><span class="link-rel">原文</span><span><a href="zotero://select/items/QXMPGWGR">Zotero</a>（tangTSPOTemporalSampling2025）</span></div></div>
         </div>
       </div>
     </section>
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

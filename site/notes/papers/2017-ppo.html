@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PPO · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -25,7 +25,7 @@
       <p class="cover-eyebrow">FULL NOTE · 强化学习与对齐</p>
       <h1>PPO</h1>
       <p class="note-full">Proximal Policy Optimization Algorithms</p>
-      <p class="note-essence"><strong>一句话本质</strong>：PPO-Clip 用裁剪后的代理目标减弱把采样动作概率继续推远的激励，支持在同一批交互样本上进行多轮小批量更新；它只需一阶优化，实际概率比仍可能越过裁剪区间。</p>
+      <p class="note-essence"><strong>一句话本质</strong>：PPO-Clip 修改策略更新的评分规则，减弱把采样动作概率继续推远的激励，让一批近期轨迹可以做有限轮更新。</p>
       <dl class="cover-meta">
         <dt>作者 / 机构</dt><dd>John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, Oleg Klimov ｜ OpenAI</dd>
         <dt>入库</dt><dd>2026-09-09</dd>
@@ -41,262 +41,263 @@
       </div>
     </header>
 
-    <nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#problem">解决什么问题</a><a href="#intuition">大白话讲解</a><a href="#mechanism">关键机制</a><a href="#evidence">结果与代价</a><a href="#ai-notes">AI 预读备注</a><a href="#restatement">我的复述</a><a href="#pitfalls">卡壳点与解答</a><a href="#open">还没搞懂</a><a href="#relations">关联</a></nav>
+    <nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#rebuild">五分钟重建</a><a href="#figures">论文图解</a><a href="#problem">解决什么问题</a><a href="#intuition">大白话讲解</a><a href="#mechanism">关键机制</a><a href="#evidence">结果与代价</a><a href="#ai-notes">AI 预读备注</a><a href="#restatement">我的复述</a><a href="#pitfalls">卡壳点与解答</a><a href="#open">还没搞懂</a><a href="#relations">关联</a></nav>
+<section class="note-sec" id="rebuild"><h2>五分钟重建</h2><div class="learning-guide" id="guide-2017-ppo">
+  <p class="guide-problem">普通策略梯度每次更新后就改变了采样策略。反复用旧样本训练，会让样本与当前策略越来越不匹配。PPO 用概率比和裁剪目标，让一批新样本可以做有限轮更新。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>采一批新轨迹</h3><p>保存旧策略的动作概率，估计每个动作的优势 A。A 的正负表示这个动作比基线好还是差。</p></li>
+    <li><h3>比较新旧概率</h3><p>比率 r = 新概率 / 旧概率。优化 min(rA, clip(r)A)，裁剪阈值由 epsilon 决定。</p></li>
+    <li><h3>有限复用后重采</h3><p>裁剪取消沿有利方向继续推大的激励。完成几轮更新后，重新用当前策略采样。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：旧策略对一个好动作的概率为 0.20，新策略为 0.30，r=1.5。设 A=1、epsilon=0.2，该样本目标取 min(1.5,1.2)=1.2。目标变平，概率本身仍可以超过 0.24。</p>
+  <p class="guide-boundary"><strong>边界</strong>：这是单个样本的 surrogate 目标。共享参数、价值损失和熵项仍会影响策略。clip 不能保证整个网络每次都在安全范围内。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>保持 r=1.5，把 A 改为 -1。目标还会变平吗？先给出 min 两项的数值。</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>两项为 -1.5 和 -1.2，min 取 -1.5。坏动作概率被错误提高时，未裁剪项保留纠偏信号。超出区间并不总意味着该样本梯度为零。</p></details>
+    <p class="guide-transfer">关掉提示后解释：为什么 PPO 可以短期复用一批样本，却不能把任意旧轨迹长期当作当前策略的数据？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div></section>
+<section class="note-sec" id="figures"><h2>论文图解</h2><figure class="paper-fig"><img src="../../assets/figures/2017-ppo/fig1.png" alt="优势正负决定裁剪平台的位置" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：左图的好动作概率提高过多后，目标变平；右图的坏动作概率降低到阈值以下后，目标变平。反方向仍可保留未裁剪项。横轴是概率比，不是被强制限制的概率。</figcaption></figure>
+<figure class="paper-fig"><img src="../../assets/figures/2017-ppo/fig2.png" alt="不同代理目标沿一次更新方向的变化" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：横轴是在旧参数与一次 PPO 更新结果之间插值。红线是带 min 的裁剪目标，其他线给出对照。它解释局部目标如何改变更新激励，不是对任意后续更新的安全保证。</figcaption></figure>
+</section>
+<section class="note-sec" id="problem"><h2>解决什么问题</h2><p>强化学习中利用神经网络作为函数拟合器时，长期面临两大互相撕裂的阵营痛点：</p>
+<ol>
+<li><strong>经典在线策略梯度（Vanilla PG / A2C）极其脆弱且昂贵</strong>：<ul>
+<li><strong>单次使用即废</strong>：标准策略梯度定理要求动作采样自当前参数 <span class="note-math">$\theta$</span>。没有纠偏时，参数一变，旧数据就不再来自当前策略；继续反复更新会引入策略失配，样本利用率极低；</li>
+<li><strong>悬崖效应（Cliff-falling）与恶性循环</strong>：如果学习率稍大或单批次优势函数估计方差过高，一次过大的更新就会把策略推入性能断崖。在监督学习中，更新坏了一步后续样本还能纠偏；但在强化学习中，<strong>下一批交互数据完全由当前策略产生</strong>。策略一旦崩溃，采出的全是无效探索垃圾，智能体可能进入难以恢复的低质量采样循环；并非理论上绝不可能恢复。</li>
+</ul>
+</li>
+<li><strong>信任域策略优化（TRPO）理论扎实但工程实现极其笨重</strong>：<ul>
+<li>TRPO 严格约束了策略更新的 KL 散度 <span class="note-math">$\mathbb{E}[D_{KL}(\pi_{old} \parallel \pi_\theta)] \le \delta$</span>，受信任域理论启发；实际采样与近似优化并不保证每一步真实回报都单调增加；</li>
+<li>但求解该约束优化需要构建 Fisher 信息矩阵（涉及 Hessian 矩阵向量积）、依赖共轭梯度算法（Conjugate Gradient）与回溯线搜索（Line Search）；</li>
+<li><strong>工程代价惨痛</strong>：代码实现极其繁重复杂，计算开销大，且无法天然兼容带噪声的网络结构（如 Dropout）、循环神经网络（RNN）或 Actor 与 Critic 共享底座参数的现代端到端网络。</li>
+</ul>
+</li>
+</ol>
+<p>PPO 的目标是：<strong>只用最普通的一阶随机梯度优化器（如 Adam/SGD），就能获得 TRPO 的更新稳定性与样本效率，同时极易实现并通用于任意神经网络架构。</strong></p>
+</section>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>核心直觉：教练调整评分，鼓励小步练习</h3>
+<ul>
+<li><strong>Vanilla PG 的学法</strong>：你刚摸索到一点平衡感，突然猛打了一把方向盘，直接摔断了腿。因为腿断了，你以后跨上车都只能直接倒地，彻底断送学习生涯。</li>
+<li><strong>TRPO 的学法</strong>：请了一位严苛的物理学教练，你每次想调整重心，他都拿出仪器计算全身体重分布和角动量方程，确认绝对安全才准你微调一毫米：稳如泰山，但每迈一步都累死人。</li>
+<li><strong>PPO 的学法</strong>：教练改变评分规则。对一个好动作，你把它的概率提高到一定程度后，继续提高也不再增加这条样本的分数；对一个坏动作，如果反而提高它的概率，评分仍会变差，保留纠偏信号。评分平台减弱继续把策略推远的激励，让同一批经验能用于多轮小步练习。</li>
+</ul>
+<p>类比的边界：Clip 改的是<strong>代理目标中的激励</strong>。它不把车把或实际概率比硬锁在 <span class="note-math">$[1-\epsilon, 1+\epsilon]$</span> 内，也不保证不会摔倒。多个样本共享网络参数，整体策略仍可能继续变化，需要结合更新轮数、学习率与 KL 监控判断步幅。2026-10-04 按原论文 §3、式 7 与 Figure 1 核对，替换了此前「机械限位器锁死安全区」的过强类比；用户原话保留。</p>
+<h3>结合 BipedalWalker-v3（连续控制实战场景）</h3>
+<p>在连续动作任务中，PPO 的稳定优势展现得淋漓尽致：</p>
+<ul>
+<li><strong>连续扭矩控制</strong>：BipedalWalker 拥有 24 维状态（躯干角、角速度、关节角度、激光雷达测距等），输出 4 维连续动作（双腿髋关节、膝关节扭矩 <span class="note-math">$\in [-1, 1]$</span>）。策略网络输出高斯分布的均值 <span class="note-math">$\mu(s)$</span> 和标准差 <span class="note-math">$\sigma(s)$</span>，从中采样连续动作，无需任何生硬的离散化；</li>
+<li><strong>三阶段学习规律</strong>：<ol>
+<li><strong>站立阶段（0 ~ 500k 步）</strong>：策略先学“不摔倒”，原地扭动维持平衡以跑满 1600 步避免 -100 摔倒重罚，回报从 -110 回升到 -35 左右；</li>
+<li><strong>挪步阶段（500k ~ 1M 步）</strong>：策略进入高风险过渡期，出现<strong>双模态震荡</strong>（回报标准差高达 73 分），有时走顺拿 100+ 分，有时绊倒跌入 -100 分。此时策略极其脆弱；</li>
+<li><strong>稳定行走阶段（1M ~ 2M 步）</strong>：步态成型，多关节协调流动，1118 步迅速通关，回报稳定突破 280+ 分（环境 solved 线为 300）。</li>
+</ol>
+</li>
+<li>如果没有 PPO 的截断保护，在脆弱的挪步期，一次过激的扭矩参数调整就会把刚刚积累的站立与重心平衡先验彻底抹杀，直接让机器人瘫痪。</li>
+</ul>
+<h3>四大监控指标的因果关联体系</h3>
+<p>下面是既有 BipedalWalker 工程案例的仪表盘。阶段步数与阈值来自该讲解案例，未作为 PPO 论文结论；它们不能当作所有任务的通用健康标准：</p>
+<ul>
+<li><strong>回合奖励（Episode Reward）</strong>：观察滑动平均趋势，切忌被单回合地形扰动造成的上下震荡带偏；</li>
+<li><strong>策略熵（Policy Entropy）</strong>：衡量高斯策略的标准差大小（探索活力）。初期高、随训练缓慢下降为健康；若过早塌缩至零，意味着陷入“呆站不动”的局部次优；</li>
+<li><strong>裁剪比例（Clip Fraction）</strong>：有多少动作比率 <span class="note-math">$r_t(\theta)$</span> 撞上了 <span class="note-math">$[1-\epsilon, 1+\epsilon]$</span> 边界。该案例关注 0.05 ~ 0.15 的范围；解释高低还需看 epsilon、更新轮数、优势符号与奖励趋势，不能只按一个阈值判定崩盘或收敛；</li>
+<li><strong>近似 KL 散度（Approximate KL）</strong>：新旧策略的分布距离。本案例把 0.03 与 0.05 用作诊断参考，未核实为普适阈值；应按任务和实现设定目标 KL，再结合回报变化判断。</li>
+</ul>
+<table class="dtable">
+<thead>
+<tr>
+<th>现象</th>
+<th>回合奖励</th>
+<th>策略熵</th>
+<th>裁剪比例</th>
+<th>近似 KL 散度</th>
+<th>诊断结论与处置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>健康训练</strong></td>
+<td>稳步上升</td>
+<td>缓慢平稳下降</td>
+<td>0.05 ~ 0.15</td>
+<td>0.01 ~ 0.03</td>
+<td>策略在安全区内稳步推进</td>
+</tr>
+<tr>
+<td><strong>激进崩盘</strong></td>
+<td>突然跳水</td>
+<td>剧烈震荡</td>
+<td>飙升 <span class="note-math">$&gt; 0.20$</span></td>
+<td>飙升 <span class="note-math">$&gt; 0.05$</span></td>
+<td>步子迈太大，需调小 lr 或增大 n_steps</td>
+</tr>
+<tr>
+<td><strong>过早早停</strong></td>
+<td>停滞不前</td>
+<td>快速暴跌至 0</td>
+<td>接近 0</td>
+<td>接近 0</td>
+<td>探索坍缩，需调高 ent_coef 强制探索</td>
+</tr>
+<tr>
+<td><strong>训练后期</strong></td>
+<td>稳定高位</td>
+<td>维持健康低位</td>
+<td>稳定偏低</td>
+<td>维持极低</td>
+<td>步态收敛，进入微调阶段</td>
+</tr>
+</tbody></table>
+</section>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>1. 重要性采样概率比率（Probability Ratio）</h3>
+<p>定义参数更新时新旧策略的动作概率比：</p>
+<pre class="note-pre">$$r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{old}}(a_t \mid s_t)}$$</pre>
+<ul>
+<li>在刚完成交互采样时，<span class="note-math">$\theta = \theta_{old}$</span>，此时 <span class="note-math">$r_t(\theta_{old}) = 1$</span>；</li>
+<li>当我们在同一个数据 Batch 上进行多轮 SGD 更新时，<span class="note-math">$\theta$</span> 不断改变，<span class="note-math">$r_t(\theta)$</span> 反映了新策略偏离采样策略的程度。</li>
+<li>未经约束的 Conservative Policy Iteration (CPI) 目标为：<span class="note-math">$L^{CPI}(\theta) = \hat{\mathbb{E}}_t [ r_t(\theta) \hat{A}_t ]$</span>。若直接对其做多步优化，极易因 <span class="note-math">$r_t(\theta)$</span> 极端膨胀或缩小而毁掉策略。</li>
+</ul>
+<h3>2. 截断代理目标与悲观下界（Clipped Surrogate Objective）</h3>
+<p>PPO-Clip 的核心损失函数定义为：</p>
+<pre class="note-pre">$$L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min\Big( r_t(\theta) \hat{A}_t,\; \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \Big) \right]$$</pre>
+<p>其中超参数 <span class="note-math">$\epsilon$</span> 通常取 0.2。</p>
+<p>外层取 <span class="note-math">$\min$</span> 构成了对未截断目标的一个<strong>悲观下界（Pessimistic Lower Bound）</strong>，它在正负优势下起到了精妙的不对称约束：</p>
+<ol>
+<li><strong>正优势 <span class="note-math">$\hat{A}_t &gt; 0$</span>（好动作，应当鼓励）</strong>：<ul>
+<li>我们希望增大该动作概率，即增大 <span class="note-math">$r_t(\theta)$</span>；</li>
+<li>一旦 <span class="note-math">$r_t(\theta) &gt; 1+\epsilon$</span>（例如 1.2），裁剪项锁死在 <span class="note-math">$(1+\epsilon)\hat{A}_t$</span>；</li>
+<li>此时 <span class="note-math">$\min(r_t \hat{A}_t, (1+\epsilon)\hat{A}_t) = (1+\epsilon)\hat{A}_t$</span>；</li>
+<li><strong>数学结果</strong>：超出上限后目标函数值不再上升，<strong>关于 <span class="note-math">$\theta$</span> 的导数直接归零</strong>！算法不再因一次采样的好运而贪婪地把动作概率拉满，保护了探索空间。</li>
+</ul>
+</li>
+<li><strong>负优势 <span class="note-math">$\hat{A}_t &lt; 0$</span>（坏动作，应当惩罚）</strong>：<ul>
+<li>我们希望减小该动作概率，即减小 <span class="note-math">$r_t(\theta)$</span>；</li>
+<li>当 <span class="note-math">$r_t(\theta) &lt; 1-\epsilon$</span>（例如 0.8）时，裁剪项被锁死在 <span class="note-math">$(1-\epsilon)\hat{A}_t$</span>。因为 <span class="note-math">$\hat{A}_t &lt; 0$</span>，裁剪后的值为 <span class="note-math">$-0.8|\hat{A}_t|$</span>，未裁剪值为 <span class="note-math">$-0.6|\hat{A}_t|$</span>，取 <span class="note-math">$\min$</span> 选取了更悲观的值；</li>
+<li><strong>至关重要的反向情况</strong>：若在优化过程中，网络犯错<strong>反而大幅增加了坏动作的概率</strong>（例如 <span class="note-math">$r_t = 2.0$</span>），未裁剪项是 <span class="note-math">$2.0 \hat{A}_t = -2.0|\hat{A}_t|$</span>；如果只有裁剪项，会被锁在 <span class="note-math">$1.2 \hat{A}_t = -1.2|\hat{A}_t|$</span>（惩罚被大幅减轻，且导数归零无法纠偏）。</li>
+<li>外层 <span class="note-math">$\min$</span> 保证此时选取未裁剪项 <span class="note-math">$2.0 \hat{A}_t$</span>：巨大的负值带来<strong>巨大的纠偏负梯度</strong>，把跑偏的策略强行拉回正轨。</li>
+</ul>
+</li>
+</ol>
+<h3>3. 自适应 KL 惩罚变体（Adaptive KL Penalty）</h3>
+<p>作为 PPO 的另一分支（常作为基线或在机器人控制中使用），直接在目标中加入动态权重的 KL 惩罚：</p>
+<pre class="note-pre">$$L^{KLPEN}(\theta) = \hat{\mathbb{E}}_t \left[ \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{old}}(a_t \mid s_t)}\hat{A}_t - \beta D_{KL}(\pi_{\theta_{old}}(\cdot \mid s_t) \parallel \pi_\theta(\cdot \mid s_t)) \right]$$</pre>
+<ul>
+<li>每轮迭代后计算平均 KL 散度 <span class="note-math">$d = \hat{\mathbb{E}}_t[D_{KL}]$</span>；</li>
+<li>若 <span class="note-math">$d &lt; d_{targ} / 1.5$</span>，说明更新太保守，<span class="note-math">$\beta \leftarrow \beta / 2$</span>；</li>
+<li>若 <span class="note-math">$d &gt; d_{targ} \times 1.5$</span>，说明更新太激进，<span class="note-math">$\beta \leftarrow \beta \times 2$</span>；</li>
+<li>论文实验证实：<strong>Clip 截断目标在各项任务中全面优于自适应 KL 惩罚</strong>。</li>
+</ul>
+<h3>4. GAE（广义优势估计）与联合优化目标</h3>
+<p>为了降低优势函数 <span class="note-math">$\hat{A}_t$</span> 的方差，PPO 结合 GAE（Generalized Advantage Estimation）：</p>
+<pre class="note-pre">$$\hat{A}_t = \sum_{l=0}^{T-t-1} (\gamma \lambda)^l \delta_{t+l}^V, \quad \text{其中 } \delta_t^V = r_t + \gamma V(s_{t+1}) - V(s_t)$$</pre>
+<p><span class="note-math">$\lambda$</span> 在 1-步 TD（低方差、高偏差）与全蒙特卡洛回报（零偏差、高方差）之间做平滑插值，通常取 <span class="note-math">$\lambda = 0.95$</span>。</p>
+<p>在 Actor 与 Critic 共享底座参数的现代网络架构中，PPO 的综合优化目标为：</p>
+<pre class="note-pre">$$L^{CLIP+VF+S}_t(\theta) = \hat{\mathbb{E}}_t \left[ L^{CLIP}_t(\theta) - c_1 \big(V_\theta(s_t) - V_t^{targ}\big)^2 + c_2 S[\pi_\theta](s_t) \right]$$</pre>
+<p>其中 <span class="note-math">$c_1$</span> 是价值损失系数（通常 0.5），<span class="note-math">$c_2$</span> 是熵奖励系数（通常 0.01 或 0.005），<span class="note-math">$S$</span> 为策略熵 <span class="note-math">$H(\pi_\theta(\cdot \mid s_t))$</span>。</p>
+</section>
+<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3>实验结果</h3>
+<ol>
+<li><strong>MuJoCo 7 项连续控制基准（HalfCheetah, Hopper, Walker2d 等）</strong>：<ul>
+<li>目标函数消融对比（归一化得分，随机策略为 0，最佳为 1）：<ul>
+<li><strong>无裁剪无惩罚</strong>：<span class="note-math">$-0.39$</span>（在 HalfCheetah 上直接彻底跑崩，得分远低于初始随机策略）；</li>
+<li><strong>PPO-Clip (<span class="note-math">$\epsilon=0.2$</span>)</strong>：<strong><span class="note-math">$0.82$</span></strong>（全面领先所有变体）；</li>
+<li><strong>PPO-Clip (<span class="note-math">$\epsilon=0.1$</span> / <span class="note-math">$\epsilon=0.3$</span>)</strong>：<span class="note-math">$0.76$</span> / <span class="note-math">$0.70$</span>；</li>
+<li><strong>自适应 KL 惩罚</strong>：<span class="note-math">$0.68 \sim 0.74$</span>；</li>
+<li><strong>固定 KL 惩罚</strong>：<span class="note-math">$0.62 \sim 0.72$</span>；</li>
+</ul>
+</li>
+<li>算法横向对比：在全部 7 个连续控制任务上，PPO (Clip) 综合表现一致击败 TRPO、CEM、Cross-Entropy、Vanilla PG (Adaptive Step) 以及 A2C。</li>
+</ul>
+</li>
+<li><strong>高维拟人机器人控制（3D RoboschoolHumanoid）</strong>：<ul>
+<li>在极高自由度的人形机器人奔跑、变向巡航（Flagrun）、以及<strong>被重物方块砸倒后重新爬起</strong>的严酷控制任务中，PPO 展现出强大的高维连续策略学习能力。</li>
+</ul>
+</li>
+<li><strong>Atari 49 款游戏基准</strong>：<ul>
+<li>样本复杂度大幅击败 A2C；</li>
+<li>在全训练周期平均回报指标上，PPO 在 30 款游戏中战胜 A2C 与复杂的 ACER，以极简的代码架构匹敌最先进的专用算法。</li>
+</ul>
+</li>
+</ol>
+<h3>代价与局限</h3>
+<ul>
+<li><strong>本质依然是 on-policy</strong>：虽然支持多轮 minibatch 更新，但数据依然是局部近端有效；一旦新旧策略偏离，重要性采样比率失效，数据必须丢弃。其绝对样本效率远低于具备经验回放池的纯 off-policy 算法（如 SAC、TD3）；</li>
+<li><strong>对实现细节极度敏感</strong>：后续研究（如 Engstrom et al., &quot;Implementation Matters&quot;）指出，PPO 论文标称的优异表现中，相当一部分得益于代码级技巧（如优势值归一化、梯度截断、正交初始化、学习率线性退火等），纯裸 PPO 核心若缺少这些工程包裹容易退化；</li>
+<li><strong>奖励黑客与奖励函数依赖</strong>：在复杂环境（如行走姿态、LLM 对齐）中，策略极易通过扭曲动作去钻简单标量奖励的空子（Reward Hacking）。</li>
+</ul>
+</section>
+<section class="note-sec" id="ai-notes"><h2>AI 预读备注</h2><ul>
+<li><strong>底稿来源</strong>：Zotero 库内笔记（itemKey：<code>382LXMI9</code>，关于 PPO 论文核心贡献的摘要笔记）。</li>
+<li><strong>核对与差异补充</strong>：<ul>
+<li>预读笔记准确定位了 PPO 在连续控制与 Atari 上的基准优势，以及替代 TRPO 的一阶极简特性；</li>
+<li>预读底稿未展开剖析核心数学公式中为什么必须同时存在 <code>clip</code> 与外层 <code>min</code> 的不对称纠偏机制；本页面重点结合 BipedalWalker-v3 连续控制与四大监控指标矩阵，补齐了实操层面的因果闭环。</li>
+</ul>
+</li>
+</ul>
+</section>
+<section class="note-sec" id="restatement"><h2>我的复述</h2><!-- 费曼检验时 用户 自己的回答，保留原话，不润色 -->
 
-    <section class="note-sec" id="problem">
-      <h2>解决什么问题</h2>
-      <p>强化学习中利用神经网络作为函数拟合器时，长期面临两大互相撕裂的阵营痛点：</p>
-      <ol>
-        <li><strong>经典在线策略梯度（Vanilla PG / A2C）极其脆弱且昂贵</strong>：
-          <ul>
-            <li><strong>单次使用即废</strong>：标准策略梯度定理要求动作采样自当前参数 $\theta$。为了维持无偏估计，每批数据只能做<strong>一次</strong>随机梯度上升，随后必须立刻丢弃，样本利用率极低；</li>
-            <li><strong>悬崖效应（Cliff-falling）与恶性循环</strong>：如果学习率稍大或单批次优势函数估计方差过高，一次过大的更新就会把策略推入性能断崖。在监督学习中，更新坏了一步后续样本还能纠偏；但在强化学习中，<strong>下一批交互数据完全由当前策略产生</strong>。策略一旦崩溃，采出的全是无效探索垃圾，智能体陷入死循环，再也无法自愈。</li>
-          </ul>
-        </li>
-        <li><strong>信任域策略优化（TRPO）理论扎实但工程实现极其笨重</strong>：
-          <ul>
-            <li>TRPO 严格约束了策略更新的 KL 散度 $\mathbb{E}[D_{KL}(\pi_{old} \parallel \pi_\theta)] \le \delta$，提供了单调改进的理论保障；</li>
-            <li>但求解该约束优化需要构建 Fisher 信息矩阵（涉及 Hessian 矩阵向量积）、依赖共轭梯度算法（Conjugate Gradient）与回溯线搜索（Line Search）；</li>
-            <li><strong>工程代价惨痛</strong>：代码实现极其繁重复杂，计算开销大，且无法天然兼容带噪声的网络结构（如 Dropout）、循环神经网络（RNN）或 Actor 与 Critic 共享底座参数的现代端到端网络。</li>
-          </ul>
-        </li>
-      </ol>
-      <p>PPO 的目标是：<strong>只用最普通的一阶随机梯度优化器（如 Adam/SGD），就能获得 TRPO 的更新稳定性与样本效率，同时极易实现并通用于任意神经网络架构。</strong></p>
-    </section>
+<blockquote class="note-quote">
+<p><strong>检验题 1（为什么有外层 min 与悲观下界）</strong>：
+“没有外层的 min 的话，如果是负优势的话说明把坏动作弄的更差了，不加min那么优化方向会被限制住，加了的话可以让巨大的负梯度把它拉回来”</p>
+</blockquote>
+<blockquote class="note-quote">
+<p><strong>检验题 2（BipedalWalker 训练指标异常排查）</strong>：
+“模型训飞了，训得和初始模型太远了，导致 KL 过大，探索空间剧增也就是策略熵变大，同时大部分的 loss 都超过 1+\epsilon范围被截断了”</p>
+</blockquote>
+<blockquote class="note-quote">
+<p><strong>检验题 3（PPO 多轮复用的底气来源）</strong>：
+“它限制了模型和优势的更新幅度，让模型在范围内探索的同时避免把自身搞坏。”</p>
+</blockquote>
+</section>
+<section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><div class="qa" id="qa-min-bound">
+  <p class="qa-q">Q：为什么公式里既要有 clip 又必须有外层的 min？只保留 clip(r, 1-eps, 1+eps) * A 会发生什么？</p>
+  <div class="qa-a">
+    <p>如果只有裁剪项，当一个动作的优势为负（$\hat{A}_t < 0$，糟糕动作），且网络在某次更新中错误地**大幅增加了该动作的概率**（例如 $r_t = 2.0$）时，裁剪项会把比率截断在 $1+\epsilon = 1.2$。这会导致两个致命错误：</p>
+    <ol>
+      <li><strong>惩罚被严重缩小</strong>：损失值从真实的 $2.0 \hat{A}_t$ 变成了 $-1.2|\hat{A}_t|$，对恶性错误的惩罚被人为减轻；</li>
+      <li><strong>梯度直接归零</strong>：因为比率被锁定在常数边界 1.2 上，导数变为 0，优化器根本收不到惩罚信号来降低这个危险动作的概率！</li>
+    </ol>
+    <p>外层的 $\min$ 取未裁剪项 $r_t \hat{A}_t$ 与截断项的最小值，在负优势且动作概率激增时强行保留了真实的未截断值，保留沿降低坏动作概率方向的纠偏信号；梯度大小和最终更新效果仍取决于参数化、优势与其他样本。</p>
+  </div></div>
 
-    <section class="note-sec" id="intuition">
-      <h2>大白话讲解</h2>
-      <h3>核心直觉：教练调整评分，鼓励小步练习</h3>
-      <ul>
-        <li><strong>Vanilla PG 的学法</strong>：你刚摸索到一点平衡感，突然猛打了一把方向盘，直接摔断了腿。因为腿断了，你以后跨上车都只能直接倒地，彻底断送学习生涯。</li>
-        <li><strong>TRPO 的学法</strong>：请了一位严苛的物理学教练，你每次想调整重心，他都拿出仪器计算全身体重分布和角动量方程，确认绝对安全才准你微调一毫米：稳如泰山，但每迈一步都累死人。</li>
-        <li><strong>PPO 的学法</strong>：教练改变评分规则。对一个好动作，你把它的概率提高到一定程度后，继续提高也不再增加这条样本的分数；对一个坏动作，如果反而提高它的概率，评分仍会变差，保留纠偏信号。评分平台减弱继续把策略推远的激励，让同一批经验能用于多轮小步练习。</li>
-      </ul>
+<div class="qa" id="qa-on-policy-reuse">
+  <p class="qa-q">Q：既然可以在同一批数据上跑多个 Epoch，为什么说 PPO 依然是严格的 on-policy 算法？为什么不能丢进 Replay Buffer 长期复用？</p>
+  <div class="qa-a">
+    <p>PPO 每轮通常重新采样，然后对同一批近期开出的轨迹做有限次更新。它因此通常归为 on-policy 方法；在内更新期间，当前策略与采样策略已经有偏移，不能把每个内更新都说成严格同分布。</p>
+    <p>ratio 对动作概率的偏移进行纠偏，但没有把旧状态分布和旧优势估计自动变成当前值。数据长期陈旧时，比率可能有较大方差，状态分布与优势也会失配。clip 不会消除这些误差。</p>
+    <p>对正优势且 r 高于上界，或负优势且 r 低于下界，该样本裁剪目标会变平；相反方向仍可能有梯度。因此不能说长期复用必然让全部梯度归零。常规 PPO 更新几轮后重采样，更多离策略复用需要另外设计和验证。</p>
+  </div></div>
 
-      <p>类比的边界：Clip 改的是<strong>代理目标中的激励</strong>。它不把车把或实际概率比硬锁在 $[1-\epsilon, 1+\epsilon]$ 内，也不保证不会摔倒。多个样本共享网络参数，整体策略仍可能继续变化，需要结合更新轮数、学习率与 KL 监控判断步幅。2026-10-04 按原论文 §3、式 7 与 Figure 1 核对，替换了此前「机械限位器锁死安全区」的过强类比；用户原话保留。</p>
-
-      <h3>结合 BipedalWalker-v3（连续控制实战场景）</h3>
-      <p>在连续动作任务中，PPO 的稳定优势展现得淋漓尽致：</p>
-      <ul>
-        <li><strong>连续扭矩控制</strong>：BipedalWalker 拥有 24 维状态（躯干角、角速度、关节角度、激光雷达测距等），输出 4 维连续动作（双腿髋关节、膝关节扭矩 $\in [-1, 1]$）。策略网络输出高斯分布的均值 $\mu(s)$ 和标准差 $\sigma(s)$，从中采样连续动作，无需任何生硬的离散化；</li>
-        <li><strong>三阶段学习规律</strong>：
-          <ol>
-            <li><strong>站立阶段（0 ~ 500k 步）</strong>：策略先学“不摔倒”，原地扭动维持平衡以跑满 1600 步避免 -100 摔倒重罚，回报从 -110 回升到 -35 左右；</li>
-            <li><strong>挪步阶段（500k ~ 1M 步）</strong>：策略进入高风险过渡期，出现<strong>双模态震荡</strong>（回报标准差高达 73 分），有时走顺拿 100+ 分，有时绊倒跌入 -100 分。此时策略极其脆弱；</li>
-            <li><strong>稳定行走阶段（1M ~ 2M 步）</strong>：步态成型，多关节协调流动，1118 步迅速通关，回报稳定突破 280+ 分（环境 solved 线为 300）。</li>
-          </ol>
-        </li>
-        <li>如果没有 PPO 的截断保护，在脆弱的挪步期，一次过激的扭矩参数调整就会把刚刚积累的站立与重心平衡先验彻底抹杀，直接让机器人瘫痪。</li>
-      </ul>
-
-      <h3>四大监控指标的因果关联体系</h3>
-      <p>结合工程实操，诊断 PPO 训练健康的四个关键仪表盘：</p>
-      <ul>
-        <li><strong>回合奖励（Episode Reward）</strong>：观察滑动平均趋势，切忌被单回合地形扰动造成的上下震荡带偏；</li>
-        <li><strong>策略熵（Policy Entropy）</strong>：衡量高斯策略的标准差大小（探索活力）。初期高、随训练缓慢下降为健康；若过早塌缩至零，意味着陷入“呆站不动”的局部次优；</li>
-        <li><strong>裁剪比例（Clip Fraction）</strong>：有多少动作比率 $r_t(\theta)$ 撞上了 $[1-\epsilon, 1+\epsilon]$ 边界。<strong>健康基准为 0.05 ~ 0.15</strong>。若 $> 0.2$ 则更新过于激进，随时有跳水风险；若接近 0 则说明学步太慢或已经完全收敛；</li>
-        <li><strong>近似 KL 散度（Approximate KL）</strong>：新旧策略的分布距离。健康应低于 0.03，若突然飙升到 0.05 以上则是策略崩盘的红色告警。</li>
-      </ul>
-
-      <table class="dtable">
-        <thead><tr><th>现象</th><th>回合奖励</th><th>策略熵</th><th>裁剪比例</th><th>近似 KL 散度</th><th>诊断结论与处置</th></tr></thead>
-        <tbody>
-          <tr><td><strong>健康训练</strong></td><td>稳步上升</td><td>缓慢平稳下降</td><td>0.05 ~ 0.15</td><td>0.01 ~ 0.03</td><td>策略在安全区内稳步推进</td></tr>
-          <tr><td><strong>激进崩盘</strong></td><td>突然跳水</td><td>剧烈震荡</td><td>飙升 &gt; 0.20</td><td>飙升 &gt; 0.05</td><td>步子迈太大，需调小 lr 或增大 n_steps</td></tr>
-          <tr><td><strong>过早早停</strong></td><td>停滞不前</td><td>快速暴跌至 0</td><td>接近 0</td><td>接近 0</td><td>探索坍缩，需调高 ent_coef 强制探索</td></tr>
-          <tr><td><strong>训练后期</strong></td><td>稳定高位</td><td>维持健康低位</td><td>稳定偏低</td><td>维持极低</td><td>步态收敛，进入微调阶段</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section class="note-sec" id="mechanism">
-      <h2>关键机制</h2>
-      <h3>1. 重要性采样概率比率（Probability Ratio）</h3>
-      <p>定义参数更新时新旧策略的动作概率比：</p>
-      <p>$$r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{old}}(a_t \mid s_t)}$$</p>
-      <ul>
-        <li>在刚完成交互采样时，$\theta = \theta_{old}$，此时 $r_t(\theta_{old}) = 1$；</li>
-        <li>当我们在同一个数据 Batch 上进行多轮 SGD 更新时，$\theta$ 不断改变，$r_t(\theta)$ 反映了新策略偏离采样策略的程度。</li>
-        <li>未经约束的 Conservative Policy Iteration (CPI) 目标为：$L^{CPI}(\theta) = \hat{\mathbb{E}}_t [ r_t(\theta) \hat{A}_t ]$。若直接对其做多步优化，极易因 $r_t(\theta)$ 极端膨胀或缩小而毁掉策略。</li>
-      </ul>
-
-      <h3>2. 截断代理目标与悲观下界（Clipped Surrogate Objective）</h3>
-      <p>PPO-Clip 的核心损失函数定义为：</p>
-      <p>$$L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min\Big( r_t(\theta) \hat{A}_t,\; \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \Big) \right]$$</p>
-      <p>其中超参数 $\epsilon$ 通常取 0.2。</p>
-      <p>外层取 $\min$ 构成了对未截断目标的一个<strong>悲观下界（Pessimistic Lower Bound）</strong>，它在正负优势下起到了精妙的不对称约束：</p>
-      <ol>
-        <li><strong>正优势 $\hat{A}_t > 0$（好动作，应当鼓励）</strong>：
-          <ul>
-            <li>我们希望增大该动作概率，即增大 $r_t(\theta)$；</li>
-            <li>一旦 $r_t(\theta) > 1+\epsilon$（例如 1.2），裁剪项锁死在 $(1+\epsilon)\hat{A}_t$；</li>
-            <li>此时 $\min(r_t \hat{A}_t, (1+\epsilon)\hat{A}_t) = (1+\epsilon)\hat{A}_t$；</li>
-            <li><strong>数学结果</strong>：超出上限后目标函数值不再上升，<strong>关于 $\theta$ 的导数直接归零</strong>！算法不再因一次采样的好运而贪婪地把动作概率拉满，保护了探索空间。</li>
-          </ul>
-        </li>
-        <li><strong>负优势 $\hat{A}_t < 0$（坏动作，应当惩罚）</strong>：
-          <ul>
-            <li>我们希望减小该动作概率，即减小 $r_t(\theta)$；</li>
-            <li>当 $r_t(\theta) < 1-\epsilon$（例如 0.8）时，裁剪项被锁死在 $(1-\epsilon)\hat{A}_t$。因为 $\hat{A}_t < 0$，裁剪后的值为 $-0.8|\hat{A}_t|$，未裁剪值为 $-0.6|\hat{A}_t|$，取 $\min$ 选取了更悲观的值；</li>
-            <li><strong>至关重要的反向情况</strong>：若在优化过程中，网络犯错<strong>反而大幅增加了坏动作的概率</strong>（例如 $r_t = 2.0$），未裁剪项是 $2.0 \hat{A}_t = -2.0|\hat{A}_t|$；如果只有裁剪项，会被锁在 $1.2 \hat{A}_t = -1.2|\hat{A}_t|$（惩罚被大幅减轻，且导数归零无法纠偏）。</li>
-            <li>外层 $\min$ 保证此时选取未裁剪项 $2.0 \hat{A}_t$：巨大的负值带来<strong>巨大的纠偏负梯度</strong>，把跑偏的策略强行拉回正轨。</li>
-          </ul>
-        </li>
-      </ol>
-
-      <h3>3. 自适应 KL 惩罚变体（Adaptive KL Penalty）</h3>
-      <p>作为 PPO 的另一分支（常作为基线或在机器人控制中使用），直接在目标中加入动态权重的 KL 惩罚：</p>
-      <p>$$L^{KLPEN}(\theta) = \hat{\mathbb{E}}_t \left[ \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{old}}(a_t \mid s_t)}\hat{A}_t - \beta D_{KL}(\pi_{\theta_{old}}(\cdot \mid s_t) \parallel \pi_\theta(\cdot \mid s_t)) \right]$$</p>
-      <ul>
-        <li>每轮迭代后计算平均 KL 散度 $d = \hat{\mathbb{E}}_t[D_{KL}]$；</li>
-        <li>若 $d < d_{targ} / 1.5$，说明更新太保守，$\beta \leftarrow \beta / 2$；</li>
-        <li>若 $d > d_{targ} \times 1.5$，说明更新太激进，$\beta \leftarrow \beta \times 2$；</li>
-        <li>论文实验证实：<strong>Clip 截断目标在各项任务中全面优于自适应 KL 惩罚</strong>。</li>
-      </ul>
-
-      <h3>4. GAE（广义优势估计）与联合优化目标</h3>
-      <p>为了降低优势函数 $\hat{A}_t$ 的方差，PPO 结合 GAE（Generalized Advantage Estimation）：</p>
-      <p>$$\hat{A}_t = \sum_{l=0}^{T-t-1} (\gamma \lambda)^l \delta_{t+l}^V, \quad \text{其中 } \delta_t^V = r_t + \gamma V(s_{t+1}) - V(s_t)$$</p>
-      <p>$\lambda$ 在 1-步 TD（低方差、高偏差）与全蒙特卡洛回报（零偏差、高方差）之间做平滑插值，通常取 $\lambda = 0.95$。</p>
-      <p>在 Actor 与 Critic 共享底座参数的现代网络架构中，PPO 的综合优化目标为：</p>
-      <p>$$L^{CLIP+VF+S}_t(\theta) = \hat{\mathbb{E}}_t \left[ L^{CLIP}_t(\theta) - c_1 \big(V_\theta(s_t) - V_t^{targ}\big)^2 + c_2 S[\pi_\theta](s_t) \right]$$</p>
-      <p>其中 $c_1$ 是价值损失系数（通常 0.5），$c_2$ 是熵奖励系数（通常 0.01 或 0.005），$S$ 为策略熵 $H(\pi_\theta(\cdot \mid s_t))$。</p>
-    </section>
-
-    <section class="note-sec" id="evidence">
-      <h2>结果与代价</h2>
-      <h3>实验结果</h3>
-      <ol>
-        <li><strong>MuJoCo 7 项连续控制基准（HalfCheetah, Hopper, Walker2d 等）</strong>：
-          <ul>
-            <li>目标函数消融对比（归一化得分，随机策略为 0，最佳为 1）：
-              <ul>
-                <li><strong>无裁剪无惩罚</strong>：$-0.39$（在 HalfCheetah 上直接彻底跑崩，得分远低于初始随机策略）；</li>
-                <li><strong>PPO-Clip ($\epsilon=0.2$)</strong>：<strong>$0.82$</strong>（全面领先所有变体）；</li>
-                <li><strong>PPO-Clip ($\epsilon=0.1$ / $\epsilon=0.3$)</strong>：$0.76$ / $0.70$；</li>
-                <li><strong>自适应 KL 惩罚</strong>：$0.68 \sim 0.74$；</li>
-                <li><strong>固定 KL 惩罚</strong>：$0.62 \sim 0.72$；</li>
-              </ul>
-            </li>
-            <li>算法横向对比：在全部 7 个连续控制任务上，PPO (Clip) 综合表现一致击败 TRPO、CEM、Cross-Entropy、Vanilla PG (Adaptive Step) 以及 A2C。</li>
-          </ul>
-        </li>
-        <li><strong>高维拟人机器人控制（3D RoboschoolHumanoid）</strong>：
-          <ul>
-            <li>在极高自由度的人形机器人奔跑、变向巡航（Flagrun）、以及<strong>被重物方块砸倒后重新爬起</strong>的严酷控制任务中，PPO 展现出强大的高维连续策略学习能力。</li>
-          </ul>
-        </li>
-        <li><strong>Atari 49 款游戏基准</strong>：
-          <ul>
-            <li>样本复杂度大幅击败 A2C；</li>
-            <li>在全训练周期平均回报指标上，PPO 在 30 款游戏中战胜 A2C 与复杂的 ACER，以极简的代码架构匹敌最先进的专用算法。</li>
-          </ul>
-        </li>
-      </ol>
-
-      <h3>代价与局限</h3>
-      <ul>
-        <li><strong>本质依然是 on-policy</strong>：虽然支持多轮 minibatch 更新，但数据依然是局部近端有效；一旦新旧策略偏离，重要性采样比率失效，数据必须丢弃。其绝对样本效率远低于具备经验回放池的纯 off-policy 算法（如 SAC、TD3）；</li>
-        <li><strong>对实现细节极度敏感</strong>：后续研究（如 Engstrom et al., "Implementation Matters"）指出，PPO 论文标称的优异表现中，相当一部分得益于代码级技巧（如优势值归一化、梯度截断、正交初始化、学习率线性退火等），纯裸 PPO 核心若缺少这些工程包裹容易退化；</li>
-        <li><strong>奖励黑客与奖励函数依赖</strong>：在复杂环境（如行走姿态、LLM 对齐）中，策略极易通过扭曲动作去钻简单标量奖励的空子（Reward Hacking）。</li>
-      </ul>
-    </section>
-
-    <section class="note-sec" id="ai-notes">
-      <h2>AI 预读备注</h2>
-      <ul>
-        <li><strong>底稿来源</strong>：Zotero 库内笔记（itemKey：<code>382LXMI9</code>，关于 PPO 论文核心贡献的摘要笔记）。</li>
-        <li><strong>核对与差异补充</strong>：
-          <ul>
-            <li>预读笔记准确定位了 PPO 在连续控制与 Atari 上的基准优势，以及替代 TRPO 的一阶极简特性；</li>
-            <li>预读底稿未展开剖析核心数学公式中为什么必须同时存在 <code>clip</code> 与外层 <code>min</code> 的不对称纠偏机制；本页面重点结合 BipedalWalker-v3 连续控制与四大监控指标矩阵，补齐了实操层面的因果闭环。</li>
-          </ul>
-        </li>
-      </ul>
-    </section>
-
-    <section class="note-sec" id="restatement">
-      <h2>我的复述</h2>
-      <p>（费曼检验时原话保留）</p>
-      <blockquote class="note-quote">
-        <p><strong>检验题 1（为什么有外层 min 与悲观下界）</strong>：<br>
-        “没有外层的 min 的话，如果是负优势的话说明把坏动作弄的更差了，不加min那么优化方向会被限制住，加了的话可以让巨大的负梯度把它拉回来”</p>
-      </blockquote>
-      <blockquote class="note-quote">
-        <p><strong>检验题 2（BipedalWalker 训练指标异常排查）</strong>：<br>
-        “模型训飞了，训得和初始模型太远了，导致 KL 过大，探索空间剧增也就是策略熵变大，同时大部分的 loss 都超过 1+\epsilon范围被截断了”</p>
-      </blockquote>
-      <blockquote class="note-quote">
-        <p><strong>检验题 3（PPO 多轮复用的底气来源）</strong>：<br>
-        “它限制了模型和优势的更新幅度，让模型在范围内探索的同时避免把自身搞坏。”</p>
-      </blockquote>
-    </section>
-
-    <section class="note-sec" id="pitfalls">
-      <h2>卡壳点与解答</h2>
-      <div class="qa" id="qa-min-bound">
-        <p class="qa-q">Q：为什么公式里既要有 clip 又必须有外层的 min？只保留 clip(r, 1-eps, 1+eps) * A 会发生什么？</p>
-        <div class="qa-a">
-          <p>如果只有裁剪项，当一个动作的优势为负（$\hat{A}_t < 0$，糟糕动作），且网络在某次更新中错误地**大幅增加了该动作的概率**（例如 $r_t = 2.0$）时，裁剪项会把比率截断在 $1+\epsilon = 1.2$。这会导致两个致命错误：</p>
-          <ol>
-            <li><strong>惩罚被严重缩小</strong>：损失值从真实的 $2.0 \hat{A}_t$ 变成了 $-1.2|\hat{A}_t|$，对恶性错误的惩罚被人为减轻；</li>
-            <li><strong>梯度直接归零</strong>：因为比率被锁定在常数边界 1.2 上，导数变为 0，优化器根本收不到惩罚信号来降低这个危险动作的概率！</li>
-          </ol>
-          <p>外层的 $\min$ 取未裁剪项 $r_t \hat{A}_t$ 与截断项的最小值，在负优势且动作概率激增时强行保留了真实的未截断值，输出巨大的纠偏负梯度把策略拉回安全区。</p>
-        </div></div>
-
-      <div class="qa" id="qa-on-policy-reuse">
-        <p class="qa-q">Q：既然可以在同一批数据上跑多个 Epoch，为什么说 PPO 依然是严格的 on-policy 算法？为什么不能丢进 Replay Buffer 长期复用？</p>
-        <div class="qa-a">
-          <p>PPO 能够多轮复用同一批数据，靠的是<strong>重要性采样比率 $r_t(\theta)$ 对小幅度策略偏移的纠偏</strong>，以及 <strong>Clip 对过冲梯度的硬性截断</strong>。但这套机制只在当前策略的近端邻域内有效。</p>
-          <p>如果将陈旧历史数据塞入类似 DQN 的 Replay Buffer 长期复用，会导致两大致命后果：</p>
-          <ol>
-            <li><strong>重要性采样方差指数爆炸</strong>：新旧策略分布严重脱节，概率比 $r_t(\theta)$ 极端分化（趋近 0 或膨胀到数万），理论无偏估计彻底失效；</li>
-            <li><strong>有效梯度几乎全灭（算力彻底空转）</strong>：
-              <ul>
-                <li><strong>旧好动作（$\hat{A}_t > 0$）</strong>：新策略变聪明了，该动作发生概率自然被拉高（$r_t > 1+\epsilon$），触发 Clip 上限截断，常数项导数归零；</li>
-                <li><strong>旧坏动作（$\hat{A}_t < 0$）</strong>：新策略学会了规避，该动作发生概率自然被大幅压低（$r_t < 1-\epsilon$）。此时带入公式取 $\min$，选中的依然是固定常数裁剪项 $(1-\epsilon)\hat{A}_t$，导数同样直接归零！</li>
-              </ul>
-              也就是说，只有在新策略发生逆向倒退（把好动作概率弄丢、或把坏动作概率拉高）的极少数违背常态的样本上才有纠偏梯度。绝大多数旧样本的梯度全部锁死在常数边界变成了 0，网络空转却学不到任何东西。
-            </li>
-          </ol>
-          <p>因此，这批数据在跑完设定的几个 Epoch（吃口热乎的）后必须彻底丢弃并重新与环境交互采矿，绝不能循环复用陈旧历史。</p>
-        </div></div>
-
-      <div class="qa" id="qa-bipedal-metrics">
-        <p class="qa-q">Q：在连续控制（如 BipedalWalker）训练中，Clip Fraction 飙升到 0.27、KL 散度飙升到 0.065 伴随奖励跳水，该如何调参排查？</p>
-        <div class="qa-a">
-          <p>这是典型的<strong>单步更新幅度过激、策略被推下悬崖</strong>的症状。超过 27% 的样本超出截断范围，新旧策略分布严重脱节（KL 突破 0.05 危险线），原有步态先验被摧毁。</p>
-          <p>工程调参优先顺序：</p>
-          <ol>
-            <li><strong>调小学习率 <code>learning_rate</code></strong>（最直接的刹车手段，如从 3e-4 降到 1e-4）；</li>
-            <li><strong>增大单次采样步数 <code>n_steps</code></strong>（例如增加并行环境数或步数，用更大量的轨迹平滑梯度估计方差）；</li>
-            <li><strong>调小更新轮数 <code>n_epochs</code> 或 <code>clip_range</code></strong>（如将 clip 从 0.2 收窄至 0.1，限制单次更新的最大偏离）。</li>
-          </ol>
-        </div></div>
-    </section>
-
-    <section class="note-sec" id="open">
-      <h2>还没搞懂</h2>
-      <p>（暂无。费曼三题检验完全收敛，核心概念闭环。）</p>
-    </section>
-
-    <section class="note-sec" id="relations">
-      <h2>关联</h2>
-      <ul>
-        <li><a href="2026-open-mopd.html">Open-MOPD</a> — Open-MOPD 揭示的 M-OPD 多教师蒸馏中第三层时序失衡（K 次更新内 Reward 陈旧发霉），其根本物理载体正是 PPO 的 Clip 机制：当学生策略能力在 K 次内大幅提升后仍用旧 Reward 评分，导致概率比 $r_t$ 过冲触发 Clip 锁死刹车，造成 75.8% 的 Token 预算被白白浪费。</li>
-        <li><a href="2026-u-opsd.html">U-OPSD</a> / <a href="2026-s2vopd.html">S²VOPD</a> — 强化学习稀疏标量 Reward 信号与 On-Policy 蒸馏逐 Token 稠密教师分布信号（KL 散度）的演进对比。</li>
-        <li><a href="2026-geoanchor.html">GeoAnchor</a> — GRPO（PPO 的组相对变体：组内均值当 baseline、去 value 网络）的下游应用锚点：Stage 4 用 GRPO + pattern reward 学「local-only vs local+global」推理模式的自适应选择，bandit 式奖励「用对模式」而非「答对」。</li>
-      </ul>
-    </section>
-
-    <footer class="note-foot">
+<div class="qa" id="qa-bipedal-metrics">
+  <p class="qa-q">Q：在连续控制（如 BipedalWalker）训练中，Clip Fraction 飙升到 0.27、KL 散度飙升到 0.065 伴随奖励跳水，该如何调参排查？</p>
+  <div class="qa-a">
+    <p>这是典型的<strong>单步更新幅度过激、策略被推下悬崖</strong>的症状。超过 27% 的样本超出截断范围，新旧策略分布严重脱节（KL 高于该案例此前的水平，不是突破一个通用危险线），原有步态先验被摧毁。</p>
+    <p>工程调参优先顺序：</p>
+    <ol>
+      <li><strong>调小学习率 <code>learning_rate</code></strong>（最直接的刹车手段，如从 3e-4 降到 1e-4）；</li>
+      <li><strong>增大单次采样步数 <code>n_steps</code></strong>（例如增加并行环境数或步数，用更大量的轨迹平滑梯度估计方差）；</li>
+      <li><strong>调小更新轮数 <code>n_epochs</code> 或 <code>clip_range</code></strong>（如将 clip 从 0.2 收窄至 0.1，减弱目标中继续推大的激励；仍不硬性保证最大偏离）。</li>
+    </ol>
+  </div></div></section>
+<section class="note-sec" id="open"><h2>还没搞懂</h2><p>（暂无。费曼三题检验完全收敛，核心概念闭环。）</p>
+</section>
+<section class="note-sec" id="relations"><h2>关联</h2><ul>
+<li><a href="2024-deepseekmath.html">DeepSeekMath</a> — GRPO（Group Relative Policy Optimization）的提出者：直接继承了 PPO-Clip 截断代理目标（clipping objective）以减弱过激更新的激励，但彻底丢弃了 Critic 价值模型与 GAE，改用组内采样输出的相对归一化打分估计优势，并将 token 级 KL 散度解耦至外层损失，大幅削减显存开销。</li>
+<li><a href="2025-dapo.html">DAPO</a> — 非对称裁剪与长思考链 RL：DAPO 针对 Long-CoT 中对称 Clip 导致的严重熵坍缩，打破了 PPO 的对称区间，提出非对称放宽裁剪上界（Clip-Higher, <span class="note-math">$\varepsilon_{low}=0.2, \varepsilon_{high}=0.28$</span>），减弱正优势方向的裁剪限制，释放低概率关键探索 token 的增长空间。</li>
+<li><a href="2026-open-mopd.html">Open-MOPD</a> — Open-MOPD 揭示的 M-OPD 多教师蒸馏中第三层时序失衡（K 次更新内 Reward 陈旧发霉），其根本物理载体正是 PPO 的 Clip 机制：当学生策略能力在 K 次内大幅提升后仍用旧 Reward 评分，导致概率比 <span class="note-math">$r_t$</span> 过冲增大 clip fraction；论文 K=4 报告约 75.8%，不能直接等同于全部网络梯度或算力被冻结。</li>
+<li><a href="2026-u-opsd.html">U-OPSD</a> / <a href="2026-s2vopd.html">S²VOPD</a> — 强化学习稀疏标量 Reward 信号与 On-Policy 蒸馏逐 Token 稠密教师分布信号（KL 散度）的演进对比。</li>
+<li><a href="2026-geoanchor.html">GeoAnchor</a> — GRPO（PPO 的组相对变体：组内均值当 baseline、去 value 网络）的下游应用锚点：Stage 4 用 GRPO + pattern reward 学「local-only vs local+global」推理模式的自适应选择，bandit 式奖励「用对模式」而非「答对」。</li>
+</ul>
+</section>
+<footer class="note-foot">
       <a href="../../papers/2017-ppo.html">← 返回速览页</a>
       <a href="../../../wiki/papers/2017-ppo.md">markdown 源文件（唯一真源）</a>
       <span>本页是完整笔记的静态投影，保留原话、限定与假说标记。</span>
     </footer>
   </main>
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

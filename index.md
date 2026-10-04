@@ -10,20 +10,20 @@ _暂无_
 
 ## 论文 Papers
 
-- [VideoChat3](wiki/papers/2026-videochat3.md) — 4B 全开源 Video MLLM；核心是用 I3D-ViT（把图像 ViT 撑成 3D）在视觉编码器里把视频 token 压掉 16×，再用「像人看直播」的状态机自适应分辨率处理流式视频。
-- [VST](wiki/papers/2026-vst.md) — 让 VideoLLM「边看边想」：把 CoT 推理切碎塞进视频流片段间的等待空档异步执行，写进 FIFO 文本长期记忆，用户提问时直接读笔记秒答（0.56s），推理算力分摊到播放期，零额外查询延迟。
-- [GenLIP](wiki/papers/2026-genlip.md) — 让 ViT 直接「说话」：单个 Transformer + 自回归语言建模直接训视觉编码器从图像 token 预测文本 token（Prefix-LM Attention），不用对比学习也不用独立解码器；8B 样本超 SigLIP2（40B），Gated Attention 防 attention sink。
-- [LaSt-ViT](wiki/papers/2026-last-vit.md) — 揭示 ViT「偷懒」根因（懒惰聚合：全局注意力+粗粒度监督下靠背景 patch 当 CLS 载体），用频域稳定性评分逼 CLS 只从前景 patch 聚合；跨标签/文本/自监督三种范式，12 基准一致提升，Register 只治标。
-- [Video-o3](wiki/papers/2026-video-o3.md) — 像侦探破案一样看视频：模型在单一共享上下文里多轮「找线索→裁剪放大→连逻辑→出答案」，工具调用由模型自己生成（原生交错）；TDAM 防 Fake Thinking，VTGR 控上下文效率；MLVU 72.1%、Video-Holmes 46.5%。
-- [TSPO](wiki/papers/2026-tspo.md) — 用答案奖励反过来训练轻量 temporal agent 选择 query 相关关键帧；联合选帧与生成，结合答案正确率和目标片段定位奖励，长视频基准最高提升 6.0%。
-- [GeoAnchor](wiki/papers/2026-geoanchor.md) — 3D 空间推理别把几何量写成文字：推理轨迹改成文本与连续潜变量交错，分解为 position（钉锚）/ direction（箭头）/ geometry（轮廓图）三类 latent 分别监督，soft coverage 对齐 VGGT 全局特征，四阶段训练（局部热身→联合推理→撤监督松弛→GRPO+pattern reward 学模式选择）；2B 底座 SPAR-Bench 68.4，但 in-domain 同源要打折，跨域 ViewSpatial +10.7 才是干净证据。
-- [U-OPSD](wiki/papers/2026-u-opsd.md) — 首个完全无外部监督的 on-policy 自蒸馏：模型自己做 8 遍题，多数投票伪解当教师特权上下文，只在答错 rollout 上逐 token 前向 KL 蒸馏"看过答案的自己"——去掉 OPSD 最后一层 GT 解依赖，非思考模式反而超过有 GT 的 OPSD（+3.2%/+2.3%）。
-- [Open-MOPD](wiki/papers/2026-open-mopd.md) — 多专家蒸不进一个学生的病根不是教师打架（证伪实验：conflict mask 全降分），而是 token 级优化预算三层错配：长度差 25× 吃掉短响应域的 token 份额（IF 占 20% prompt 只拿 0.99% 梯度）+ 收敛速度差导致预算漂移 + K 次内更新让 reward 陈旧；三个机制分别在三个时间尺度修复，回收率 35.6%→83.4%，refresh 零开销（学生项重算恰好免费，PPO 本来就算）。
-- [S²VOPD](wiki/papers/2026-s2vopd.md) — 零特权视觉 on-policy 自蒸馏：把学生的输入图故意降采样加噪弄坏，EMA 教师看原图，学生每步向"看得清的自己"对齐——不对称不必给教师加信息，可以从学生减信息；4B 涨到 77.44 超 235B 开源模型与 GPT-5.4，冻结教师只掉 0.4（增益来自那张图不是自我改进）。
-- [LocateAnything](wiki/papers/2026-locateanything.md) — VLM 检测别再把框拆成 token 流逐个蹦：把整个框当一个固定长块（`<box> x1 y1 x2 y2 </box>`）并行解码，训练用"接龙卷+填空卷"双格式、块内坐标联合监督；Hybrid 12.7 框/秒（Qwen3-VL 的 10×+）且贴边精度大涨（LVIS F1@0.95 31.1 vs 别家 ~20），另一半功劳靠 12M 图/138M 查询/785M 框数据引擎。
-- [PPO](wiki/papers/2017-ppo.md) — 用裁剪代理目标减弱把采样动作概率继续推远的激励，支持同批样本多轮小批量更新；一阶优化，实际概率比仍可越过裁剪区间。2026-10-04 补齐类比边界。
-- [DeepSeekMath](wiki/papers/2024-deepseekmath.md) — 丢弃 Critic 价值模型的极简大模型强化学习（GRPO）：通过组内多采样输出的相对归一化打分估计优势值，显存省半且在竞赛级 MATH 达 51.7%（Top-1）；揭示代码预训练对数学的强迁移与 RL 重塑采样分布而非扩充知识边界的本质。
-- [DAPO](wiki/papers/2025-dapo.md) — 针对 Long-CoT 极长推理强化学习的工业级升级：通过非对称 Clip-Higher 遏制熵坍缩、动态重采样剔除零梯度题、Token 级损失防长篇复读稀释、软截断消解假负例噪声，Qwen2.5-32B 仅用一半步数在 AIME 2024 达 50 分。
+- [VideoChat3](wiki/papers/2026-videochat3.md) — VideoChat3 先在视觉编码器里压缩时空 token，再用状态决定回复时机与下一窗口的分辨率。
+- [VST](wiki/papers/2026-vst.md) — VST 在视频片段之间先思考、写入有限文本记忆，查询到达后用已完成的记忆回答，以降低查询延迟。
+- [GenLIP](wiki/papers/2026-genlip.md) — GenLIP 让同一个 Transformer 看图并生成描述，用下一词预测训练视觉表示，之后取出它作为视觉编码器。
+- [LaSt-ViT](wiki/papers/2026-last-vit.md) — LaSt-ViT 按特征通道的频域稳定性选择 patch 来构成 CLS，减轻背景聚合造成的定位偏差。
+- [Video-o3](wiki/papers/2026-video-o3.md) — Video-o3 拿到问题后，在同一上下文里交替推理与裁剪视频，让新找到的证据继续参与回答。
+- [TSPO](wiki/papers/2026-tspo.md) — TSPO 根据问题从候选帧中选择一组关键帧，用冻结 MLLM 的回答奖励训练选帧策略。
+- [GeoAnchor](wiki/papers/2026-geoanchor.md) — GeoAnchor 在文本推理之间插入位置、方向和场景结构三类连续潜变量，用它们辅助回答 3D 空间问题。
+- [U-OPSD](wiki/papers/2026-u-opsd.md) — U-OPSD 用模型自己投票形成的完整解题轨迹给教师增加上下文，再沿学生的反对轨迹做分布蒸馏。
+- [Open-MOPD](wiki/papers/2026-open-mopd.md) — Open-MOPD 按 token 份额、奖励幅度和奖励新鲜度分配多教师蒸馏的训练预算，缓解各域优化失衡。
+- [S²VOPD](wiki/papers/2026-s2vopd.md) — S²VOPD 让教师看清晰图、学生看退化图，在学生自己生成的前缀上对齐分布，以视觉信息差提供自蒸馏信号。
+- [LocateAnything](wiki/papers/2026-locateanything.md) — LocateAnything 把一个框对齐成固定长 token 块，在框内并行生成坐标，必要时只对不可靠的块退回逐词解码。
+- [PPO](wiki/papers/2017-ppo.md) — PPO-Clip 修改策略更新的评分规则，减弱把采样动作概率继续推远的激励，让一批近期轨迹可以做有限轮更新。
+- [DeepSeekMath](wiki/papers/2024-deepseekmath.md) — DeepSeekMath 用数学数据预训练、监督微调和 GRPO 提升数学推理；GRPO 用同题多次作答的相对奖励代替独立 Critic。
+- [DAPO](wiki/papers/2025-dapo.md) — DAPO 用四项改动改善长推理 RL：保住探索、补充有区分的题、按 token 分配损失权重，并缓和接近长度上限时的惩罚。
 
 ## 代码 Code
 
@@ -31,11 +31,12 @@ _暂无_
 
 ## 综合 Syntheses
 
-- [专题：蒸馏与训练预算](wiki/syntheses/distillation.md) — 教师凭什么能教（信息差从哪来：U-OPSD 给教师加自投票轨迹、S²VOPD 从学生减清晰像素），多个教师又该怎样分配训练预算（Open-MOPD 三层预算错配）；含 7 条带依据锚点与指纹的关系记录、Mermaid 图稿、比较表与阅读顺序，PPO 为跨专题前置。导读页 [site/topics/distillation.html](site/topics/distillation.html)。专题级组织待首测。
-- [专题：视频理解与响应](wiki/syntheses/video-understanding.md) — 看多少（VideoChat3 感知成本）、何时想（VST 思考时机）、怎样找证据（Video-o3 证据获取）三条并列分支，不是已验证的组合系统；含 5 条关系记录、图稿、比较表与阅读顺序（与公开顺序相反），GenLIP 为跨专题引用。导读页 [site/topics/video-understanding.html](site/topics/video-understanding.html)。专题级组织待首测。
+- [专题：蒸馏与训练预算](wiki/syntheses/distillation.md) — 本专题把三篇论文分成两个问题：U-OPSD 与 S²VOPD 构造自蒸馏信息差，Open-MOPD 分配多教师训练预算。
+- [专题：视频理解与响应](wiki/syntheses/video-understanding.md) — 本专题按感知成本、思考时机和证据获取组织四篇视频论文，帮助比较它们各自解决的瓶颈。
 
 ## 维护文档
 
+- [历史文章学习入口优化验收](docs/reviews/history-learning-upgrade-2026-10-04.md) — 14 篇论文与 2 个专题统一短句机制讲解、预测与迁移练习；9 篇补取 24 张原图，三层投影与证据边界同步，保留历史复述和复测记录。
 - [理解输出形式的流程评估与试点方案](docs/specs/learning-output-formats.md) — 对照 Karpathy 的 STE、图解、网页与视频建议，评估现有费曼流程与阅读层；建议先试中文写作约束和围绕卡壳点的图/交互，含 VST、PPO、Open-MOPD 示例及延迟复测验收。首轮已落实规则、模板、命令与 VST 交互试点；静态图预览改用同源 PNG，学习效果待验证。
 - [专题导读首轮验收](docs/reviews/site-topic-hubs-review-2026-09-09.md) — 对 1e4eb79 验收：设计与基本阅读路径符合方案；发现内容条件、组合证据标签、原话保真及两类真源同步漏检，附临时副本反例与修复标准。
 - [站点专题导读与论文关系方案](docs/specs/site-topic-hubs.md) — 在主题筛选之上增加专题阅读页，以问题地图、方法分叉、Mermaid、比较表和阅读路径串联论文；包含首批专题示例、证据规则与实施验收标准。2026-09-09 已按阶段 A~C 实施首批两个专题（蒸馏、视频理解），阶段 D 待内容成熟。

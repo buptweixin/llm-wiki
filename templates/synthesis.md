@@ -22,7 +22,27 @@ updated: YYYY-MM-DD
 
 ## 专题本质
 
-<!-- 共同问题、范围、不覆盖什么；导读页全页只有一条最高级强调 -->
+<!-- 共同问题、范围、不覆盖什么；导读页全页只有一条最高级强调。
+     填入以下学习入口，三步按已有论文的瓶颈/分叉/边界组织；复制到导读页 map 章节，
+     保留导读固定七节，PAGE-ID 换为专题 id，不新增知识结论。 -->
+
+<div class="learning-guide" id="guide-PAGE-ID">
+  <p class="guide-problem">填入一个具体问题，说明旧方法卡在哪里。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>输入</h3><p>说明方法实际能拿到哪些输入。</p></li>
+    <li><h3>处理</h3><p>说明最关键的一步，术语首次出现要解释。</p></li>
+    <li><h3>输出</h3><p>说明产生什么，以及用在哪里。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：给出一个小例子，区分示意数字与实验结果。</p>
+  <p class="guide-boundary"><strong>边界</strong>：说明成立条件、失效情形与尚未验证的解释。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>改变一个条件，问机制会如何变化。</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>用已理解的机制逐步回答，不新增未经检验的结论。</p></details>
+    <p class="guide-transfer">关掉提示后，用一个不同例子重建机制。</p>
+  </div>
+  <p class="guide-status">YYYY-MM-DD：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
 
 ## 问题与方法地图
 

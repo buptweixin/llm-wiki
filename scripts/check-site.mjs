@@ -55,7 +55,9 @@ function frontMatter(markdown) {
 const fmList = raw => ((raw || "").match(/^\[([^\]]*)\]$/) || [, ""])[1].split(",").map(s => s.trim()).filter(Boolean);
 
 function markdownText(value) {
-  return value
+  return decodeHtml(value
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<\/?(?:div|p|strong|em|ol|ul|li|h[1-6]|details|summary|span|a|button|label|input|select|option|output|table|thead|tbody|tr|td|th|img|figure|figcaption|br|svg|g|rect|path|line|text)\b[^>]*>/gi, " ")
     .replace(/^```[^\n]*\n/gm, "")
     .replace(/^```\s*$/gm, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -69,13 +71,15 @@ function markdownText(value) {
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/__(.*?)__/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^#{1,6}\s+/gm, ""))
     .replace(/\s+/g, " ")
     .trim()
     .replace(/——|—|–/g, "：");
 }
 
 function paperSectionId(heading, state) {
+  if (heading === "五分钟重建") return "rebuild";
+  if (heading === "论文图解") return "figures";
   if (heading === "解决什么问题") return "problem";
   if (heading === "大白话讲解") return "intuition";
   if (heading === "关键机制") {
@@ -517,6 +521,50 @@ for (const rel of ["site/index.html", ...pages.flatMap(page => [speedPath(page),
     const file = path.resolve(root, path.dirname(rel), ref.split("?")[0]);
     check(fs.existsSync(file) && !/<\?xml-stylesheet\b/.test(fs.readFileSync(file, "utf8")),
       `${rel} 的 SVG 图片 ${ref} 不依赖图片上下文无法加载的外部样式`);
+  }
+}
+
+/* ---------- C16 历史页学习入口与原图投影 ---------- */
+
+section("C16 学习入口与论文原图");
+const guides = text => Array.from(text.matchAll(/<div class="learning-guide"[^>]*>[\s\S]*?<p class="guide-status">[^<]*<\/p>\s*<\/div>/g), m => m[0]);
+for (const page of pages) {
+  const markdown = read(sourcePath(page));
+  const source = guides(markdown);
+  const speed = guides(read(speedPath(page)));
+  const note = guides(read(notePath(page)));
+  check(source.length === 1 && speed.length === 1 && note.length === 1,
+    `${page.id} 有唯一的真源学习入口与两种静态出口`);
+  check(source.length === 1 && [speed[0], note[0]].every(block => block && normalizeDemo(block) === normalizeDemo(source[0])),
+    `${page.id} 学习入口逐字投影，不增加派生层结论`);
+  check(source[0]?.includes('<details class="guide-answer">') && source[0]?.includes('class="guide-transfer"') && source[0]?.includes('未进行理解检验'),
+    `${page.id} 保留无脚本预测练习、迁移问题与待试用状态`);
+  check(!/<details\b[^>]*\bopen(?:\s|=|>)/.test(source[0] || ''),
+    `${page.id} 预测练习默认收起答案`);
+  const guideEntries = page.entries.filter(entry => /五分钟重建/.test(entry.h));
+  check(guideEntries.length > 0 && guideEntries.every(entry => !/class="guide-|<\/?(?:div|p|li|ol|details|summary)\b/.test(entry.t)),
+    `${page.id} 学习入口搜索摘要不泄漏 HTML 标签`);
+}
+for (const page of papers) {
+  const source = read(sourcePath(page));
+  check((read(speedPath(page)).match(/class="takeaway"/g) || []).length === 1,
+    `${page.id} 速览只有一处最高级强调`);
+  const figures = Array.from(source.matchAll(/!\[([^\]]*)\]\((\.\.\/\.\.\/site\/assets\/figures\/[^)]+)\)\s*\n\*([^\n]+)\*/g));
+  check(figures.length >= 2 && figures.length <= 4, `${page.id} 含 2 至 4 张重点原图（${figures.length}）`);
+  for (const [, alt, ref, caption] of figures) {
+    const imageFile = path.resolve(root, path.dirname(sourcePath(page)), ref);
+    check(fs.existsSync(imageFile), `${page.id} 原图 ${path.basename(imageFile)} 存在`);
+    for (const rel of [speedPath(page), notePath(page)]) {
+      const blocks = Array.from(read(rel).matchAll(/<figure class="paper-fig">[\s\S]*?<\/figure>/g), m => m[0]);
+      const matches = blocks.filter(block => Array.from(block.matchAll(/src="([^\"]+)"/g), m => path.resolve(root, path.dirname(rel), m[1])).includes(imageFile));
+      const match = matches[0];
+      check(matches.length === 1 && visibleText(match?.match(/alt="([^\"]*)"/)?.[1] || '') === alt,
+        `${rel} 的 ${path.basename(imageFile)} 只嵌入一次且保留真源替代文字`);
+      const renderedCaption = match?.match(/<figcaption>([\s\S]*?)<\/figcaption>/)?.[1];
+      const expected = caption.replace(/\*\*/g, '').replace(/`/g, '').replace(/——|—|–/g, '：').replace(/\s+/g, ' ').trim();
+      check(!!match && visibleText(renderedCaption || '').replace(/——|—|–/g, '：') === expected,
+        `${rel} 的 ${path.basename(imageFile)} 图注与真源一致`);
+    }
   }
 }
 

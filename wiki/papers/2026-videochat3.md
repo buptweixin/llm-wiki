@@ -5,15 +5,49 @@ aliases: [VideoChat3, VideoChat-Flash, I3D-ViT]
 topic: video-understanding
 mechanisms: [video-mlm, token-compression, streaming-inference]
 goals: [improve-efficiency]
-updated: 2026-09-07
+updated: 2026-10-04
 ---
 
 # VideoChat3（全称：VideoChat3: Fully Open Video MLLM for Efficient and Generalist Video Understanding）
 
-> **一句话本质**：一个 4B 参数、**全开源**的视频多模态大模型（Video MLLM）——主张「视频的时空冗余应该在视觉编码器里就压掉，而不是把一堆帧的 token 全塞给 LLM」，用一个被「撑成 3D」的视觉编码器（I3D-ViT）把视觉 token 砍掉 16 倍，再用「像人看直播」的自适应分辨率机制处理流式视频。
+> **一句话本质**：VideoChat3 先在视觉编码器里压缩时空 token，再用状态决定回复时机与下一窗口的分辨率。
 >
 > 作者/机构：南京大学 + 上海 AI Lab + NTU + 北大（Li et al.）｜ 年份：2026 ｜ 原文：Zotero 锚点（见下行） ｜ 入库：2026-07-27
 > Zotero：[citekey](zotero://select/items/@liVideoChat3FullyOpen2026a) `liVideoChat3FullyOpen2026a` ｜ [itemKey](zotero://select/items/E5RZINH5) `E5RZINH5` ｜ [DOI](https://doi.org/10.48550/arXiv.2607.14935) `10.48550/arXiv.2607.14935`
+
+## 五分钟重建
+
+<div class="learning-guide" id="guide-2026-videochat3">
+  <p class="guide-problem">把每帧独立编码后直接交给 LLM，会留下大量时空重复 token。VideoChat3 在视觉编码器里先处理局部时空信息，再控制进入 LLM 的 token 与分辨率。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>一组帧共同编码</h3><p>I3D-ViT 把图像 ViT 扩展到时空注意力，让同一 chunk 的帧先交互。</p></li>
+    <li><h3>先压缩再进 LLM</h3><p>默认 4 帧做时间聚合，空间做 2×2 pixel shuffle，总 token 数约为逐帧表示的 1/16。</p></li>
+    <li><h3>状态控制下一窗口</h3><p>Silence、Standby、Response 决定是否回应，并控制下一窗口的像素预算。训练保留切换点并采样保持点。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：4 帧，每帧 16 个 patch，共 64 个。时间聚合成 16 个位置，再把 2×2 空间位置组合成 4 个 token。64→4 解释的是 token 计数，不是整条模型计算量必定缩小 16 倍。</p>
+  <p class="guide-boundary"><strong>边界</strong>：压缩会丢信息，低分辨率也可能漏掉小目标。当前状态决定下一窗口预算，不能让已经以低分辨率看过的当前证据自动变清楚。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>若只训练状态切换点、不训练保持点，模型是否学会了完整的“何时继续保持状态”决策？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>没有。论文同时采样保持点，让模型比较当前视觉证据与先前状态。只看切换点会缺少维持状态的监督。</p></details>
+    <p class="guide-transfer">关掉提示后解释：减少视觉 token、提高分辨率、决定回复时机，分别在解决什么问题？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+
+## 论文图解
+
+![I3D-ViT 在进入 LLM 前压缩视频](../../site/assets/figures/2026-videochat3/fig2.png)
+
+*图 2 费曼图解（论文 Figure 2）：从下往上读：多帧在时空编码器内交互，默认四帧时间聚合，再做 2×2 空间组合，经 projector 进入 LLM。16 倍是视觉 token 数量比，不是整个系统的固定加速倍率。*
+
+![状态控制下一窗口的分辨率](../../site/assets/figures/2026-videochat3/fig3.png)
+
+*图 3 费曼图解（论文 Figure 3）：下方是视频流，上方是 Silence、Standby、Response 状态。当前状态决定下一窗口的像素预算；Standby 提高后续观察分辨率，Response 触发回答。先前低分辨率下漏掉的细节不会因此自动补回。*
+
+![状态切换与保持点的监督](../../site/assets/figures/2026-videochat3/fig9.png)
+
+*图 9 费曼图解（论文 Figure 9）：所有 Transform 切换点都训练，Keep 保持点随机抽取同样数量。既教模型何时改变状态，也教它何时维持状态，避免只按上一状态走捷径。*
 
 ## 解决什么问题
 
@@ -143,7 +177,7 @@ A：
 ## 关联
 
 - [VST](2026-vst.md) — **思路正交、可互补**。VideoChat3 管「视觉编码器里压 token + 状态机自适应分辨率/响应时机」=**感知效率**；VST 管「推理时机前移 + 文本长期记忆」=**认知时机**。VST 的文本记忆「与视觉记忆机制正交」（VST 论文 limitation 自述），组合是未来方向。
-- [GenLIP](2026-genlip.md) — **正交**。VideoChat3 的 I3D-ViT 是把图像 ViT「撑成 3D」处理视频，但没讨论 ViT 本身怎么预训练；GenLIP 回答的正是「这个 ViT 怎么训」——让 ViT 直接做生成式预训练（Prefix-LM + Gated Attention）。GenLIP 训出来的 ViT 可被 VideoChat3 inflate 成 3D 用。
+- [GenLIP](2026-genlip.md) — **正交**。VideoChat3 的 I3D-ViT 是把图像 ViT「撑成 3D」处理视频，但没讨论 ViT 本身怎么预训练；GenLIP 回答的正是「这个 ViT 怎么训」——让 ViT 直接做生成式预训练（Prefix-LM + Gated Attention）。将 GenLIP 的 ViT 接入 I3D-ViT 是组合设想（待验证），本库没有该替换实验。
 - 待建概念页：`visual tokenizer` / `ViT` / `self-attention`（二次方开销） / `Video MLLM` / `streaming video understanding` / `inflate（2D→3D，致敬 I3D CNN）`
 - 同领域可对比的 Video MLLM：Qwen3-VL-4B、Molmo2-4B、VideoChat-Flash-7B、InternVideo2.5-8B（均为此文主要 baseline）
 - 同系列前作：VideoChat-Flash（层级压缩）、VideoChat-R1（RL 微调）

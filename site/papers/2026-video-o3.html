@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Video-o3 · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -27,7 +27,7 @@
         <p class="cover-eyebrow">PAPER · ICML 2026</p>
         <h1>Video-o3</h1>
         <p class="cover-full">Video-o3: Native Interleaved Clue Seeking for Long Video Multi-Hop Reasoning</p>
-        <p class="cover-essence">像侦探破案一样看视频：先粗扫全片，发现疑点主动「放大」某段细看，看完再决定继续找还是收网作答。找线索和答题在同一个共享上下文里交替进行，模型自己决定何时调工具、调哪里、用多少分辨率、何时停。</p>
+        <p class="cover-essence">Video-o3 拿到问题后，在同一上下文里交替推理与裁剪视频，让新找到的证据继续参与回答。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>南京大学 + 上海 AI Lab（Zeng, Zhang et al.）</dd>
           <dt>入库</dt><dd>2026-08-17</dd>
@@ -37,7 +37,33 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-video-o3">
+  <p class="guide-problem">长视频中的关键证据可能只出现几秒。均匀抽帧会漏掉它，把找线索与回答拆成两套流程又会丢上下文。Video-o3 把工具调用、证据与推理写在同一个上下文里。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>先看全局概览</h3><p>拿到问题后读低分辨率全局视频，判断缺少什么证据。</p></li>
+    <li><h3>按需调用 VideoCrop</h3><p>生成时间范围与视觉预算，裁剪结果加入当前上下文。模型再决定继续找还是回答。</p></li>
+    <li><h3>训练分工与效率</h3><p>SFT 对 10% 工具数据施加 TDAM；RL 用答案奖励、线索得分与轮数衰减约束轨迹。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：问“谁先拿起钥匙”。概览只看到两人走动，模型可请求查看桌边那几秒，再结合新证据回答。若裁剪仍没显示关键动作，可以继续调用，但受轮数与上下文预算限制。</p>
+  <p class="guide-boundary"><strong>边界</strong>：TDAM 是训练期分工：工具规划阶段遮局部裁剪，回答阶段遮全局。它只用于部分数据，不是要求推理时永远禁看全局。找到线索也不保证推理正确。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>删除轮数衰减，是否只会得到更好的答案？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>论文消融中工具调用更多，准确率反而下降。更多探索会增加成本，也可能使上下文碎片化。这个观察不表示每个问题都应只调用一次。</p></details>
+    <p class="guide-transfer">关掉提示后解释：共享上下文为什么既能帮助联合证据，也会产生注意力分散和 Fake Thinking？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="read-figures" data-section="figures"><div class="slide-inner"><div class="slide-head"><h2>论文图解</h2></div>
+<figure class="paper-fig"><img src="../assets/figures/2026-video-o3/fig2.png" alt="直接回答分离搜索与交错搜索的比较" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：左侧直接从初始视频答；中间把找线索与回答拆开；右侧把思考、调工具和回答放在同一条上下文中。本文采用右侧，让后续搜索能利用已有推理与证据。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-video-o3/fig3.png" alt="Video-o3 多轮裁剪与共享上下文" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 3）：下方的全局与局部视频被编码，上方的推理决定下一次时间范围和视觉预算。裁剪结果加入历史，再选择继续调用或作答。多轮搜索受工具轮数与上下文上限约束。</figcaption></figure>
+<figure class="paper-fig"><img src="../assets/figures/2026-video-o3/fig4.png" alt="TDAM 训练期的阶段可见性" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 4）：每行是当前 token，每列是可读取的历史信息。工具规划与回答阶段被分工：前者遮局部裁剪，后者遮全局概览。该掩码只用于部分 SFT 数据，不是所有推理步骤永久使用的规则。</figcaption></figure>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head">
           <h2>一页看懂</h2>
@@ -57,7 +83,7 @@
             <p>MLVU 72.1%、Video-Holmes 46.5% 均 SOTA；推理 10.2s 比解耦方法快 46%（共享上下文吃 KV Cache 增量计算红利）。代价：8 轮上限、工具单一。</p>
           </div>
         </div>
-        <p class="takeaway">「原生」的意思：工具调用不是外部脚本触发，而是模型自己生成的文本。模型必须自己学会何时调、调哪里、用多少分辨率、何时停。</p>
+        <p class="takeaway">Video-o3 拿到问题后，在同一上下文里交替推理与裁剪视频，让新找到的证据继续参与回答。</p>
       </div>
     </section>
 
@@ -149,18 +175,12 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-two-problems">
-            <p class="qa-q">共享上下文带来的两个核心问题分别是什么？各对应什么解法？</p>
-            <div class="qa-a"><p>(1) 注意力分散（全局/局部混杂 + Fake Thinking）→ TDAM 的 10% 硬掩码。(2) 上下文效率（token 膨胀 + 不知何时停）→ VTGR（Clue Score 奖裁得准、Turn Decay 惩轮数多）。<strong>两个问题两个解法是配对的</strong>。</p></div>
-          </div>
-          <div class="qa" id="qa-timing">
-            <p class="qa-q">VST 和 Video-o3 的推理时机分别放在哪里？</p>
-            <div class="qa-a"><p>VST 在<strong>查询前</strong>（播放期边看边写笔记，查询到了读笔记秒答）；Video-o3 在<strong>查询后</strong>（拿到问题才在单一上下文里多轮调工具找线索）。一句话：VST 是「先把笔记做好，问就秒答」，Video-o3 是「拿到问题才去翻监控放大看」。</p></div>
-          </div>
-          <div class="qa" id="qa-combine">
-            <p class="qa-q">两者组合后除了证据冲突，还会引入什么结构性问题？</p>
-            <div class="qa-a"><p>「查询即答」和「多轮探索后才答」在<strong>响应时机</strong>上逻辑冲突，需要设计统一调度（何时秒答、何时探索），和 VideoChat3 + VST 组合时遇到的是同一类问题。</p></div>
-          </div>
+          <div class="qa" id="qa-two-problems"><p class="qa-q">Q：共享上下文带来的两个核心问题分别是什么？各对应什么解法？（Q1 漏掉的半问）</p><div class="qa-a"><p>(1) <strong>注意力分散</strong>（全局/局部混杂 + Fake Thinking）→ TDAM（10% 掩码）。(2) <strong>上下文效率</strong>（每调一次工具 token 膨胀 + 不知何时停）→ VTGR（$S_{clue}$ 奖励裁得准 + $\gamma$ 惩罚轮数多）。两个问题两个解法是配对的。</p>
+</div></div>
+          <div class="qa" id="qa-timing"><p class="qa-q">Q：VST 和 Video-o3 的推理时机分别放在哪里？（Q3 漏掉的半问）</p><div class="qa-a"><p>VST = <strong>查询前</strong>（播放期边看边想写笔记，查询到直接读笔记秒答）；Video-o3 = <strong>查询后</strong>（拿到问题后在单一上下文里多轮调工具找线索，每轮裁剪+推理交替）。一句话：<strong>VST 是&quot;先把笔记做好，问就秒答&quot;；Video-o3 是&quot;拿到问题才去翻监控放大看&quot;。</strong></p>
+</div></div>
+          <div class="qa" id="qa-combine"><p class="qa-q">Q：两者组合后除了证据冲突还会引入什么结构性问题？（Q3 漏掉的半问）</p><div class="qa-a"><p>VST 的&quot;查询即答&quot;和 Video-o3 的&quot;多轮探索后才答&quot;在<strong>响应时机</strong>上逻辑冲突：需要设计新的统一调度（何时秒答、何时探索），和 VideoChat3+VST 组合时的问题一样。</p>
+</div></div>
         </div>
       </div>
     </section>
@@ -172,21 +192,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group">
-            <h3>RELATED</h3>
-            <div class="link-item">
-              <span class="link-rel">同域不同路线</span>
-              <span><a href="2026-vst.html">VST</a>：推理前置（0.56s 秒答，实时性）vs 推理时主动检索（10.2s 多跳精度）；文本记忆 + 工具裁剪可组合，但响应时机冲突需统一调度</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">视觉策略互补</span>
-              <span><a href="2026-videochat3.html">VideoChat3</a>：它靠编码器压缩 + 状态机决定「看多少像素」（感知效率），Video-o3 靠推理时工具调用决定「看哪里」（检索精度）</span>
-            </div>
-            <div class="link-item">
-              <span class="link-rel">baseline</span>
-              <span>Qwen2.5-VL / Video-R1（文本 CoT）/ VideoChat-R1.5 / Video-RTS（解耦迭代）/ VideoZoomer / LOVE-R1</span>
-            </div>
-          </div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-vst.html">VST：查询后工具检索与查询前文本记忆的时机不同；实时响应和补取证据的代价需要分别评估。</a></div><div class="link-item"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-videochat3.html">VideoChat3：编码器控制感知成本；工具调用选择证据位置。环节不同，不能据此断言组合增益。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -208,7 +214,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

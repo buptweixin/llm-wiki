@@ -5,15 +5,39 @@ aliases: [DeepSeekMath, GRPO, Group Relative Policy Optimization]
 topic: reinforcement-learning
 mechanisms: [group-rl, policy-gradient, clipped-surrogate, cot-reasoning]
 goals: [improve-reasoning, improve-training-efficiency]
-updated: 2026-09-18
+updated: 2026-10-04
 ---
 
 # DeepSeekMath（全称：DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models）
 
-> **一句话本质**：不要昂贵的「独立裁判（Critic 价值模型）」，让同一个问题的一组采样解题路径（$G$ 个 rollout）在组内进行相对打分与优势归一化，以省去近半显存的极简架构实现超越传统 PPO 的大模型在线数学强化学习。
+> **一句话本质**：DeepSeekMath 用数学数据预训练、监督微调和 GRPO 提升数学推理；GRPO 用同题多次作答的相对奖励代替独立 Critic。
 >
 > 作者/机构：Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song 等 ｜ DeepSeek-AI, 清华大学, 北京大学 ｜ 年份：2024 ｜ 原文：Zotero 锚点（见下行）或 [arXiv:2402.03300](http://arxiv.org/abs/2402.03300) ｜ 入库：2026-09-18
 > Zotero：[shaoDeepSeekMathPushingLimits2024](zotero://select/items/@shaoDeepSeekMathPushingLimits2024) `shaoDeepSeekMathPushingLimits2024` ｜ [XQHXBPT7](zotero://select/items/XQHXBPT7) `XQHXBPT7` ｜ [DOI](https://doi.org/10.48550/arXiv.2402.03300) `10.48550/arXiv.2402.03300`
+
+
+
+## 五分钟重建
+
+<div class="learning-guide" id="guide-2024-deepseekmath">
+  <p class="guide-problem">PPO 通常用 Critic 估计价值基线。大语言模型再配一套价值网络，会增加显存和训练成本。GRPO 改用同一道题的一组回答作为比较基线。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>同题多次作答</h3><p>从旧策略采样一组回答，给每条回答打奖励分。</p></li>
+    <li><h3>组内比较</h3><p>用奖励减去组均值，再按组标准差归一化，得到相对优势。GRPO 因此省去独立 Critic。</p></li>
+    <li><h3>更新生成概率</h3><p>优势进入裁剪策略目标。参考模型的 KL 正则单独保留。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：同题四个回答的奖励是 [1,1,0,0]。均值为 0.5，标准差为 0.5。忽略稳定除数后，优势是 [+1,+1,-1,-1]。这里比较的是奖励差，不只是名次。</p>
+  <p class="guide-boundary"><strong>边界</strong>：省掉 Critic 不等于总显存必定减半。论文中 Pass@K 的观察也只支持其特定实验下的概率重分配解释，不能证明所有 RL 都无法扩展解题能力。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>四条回答全得 1 分时，组相对优势是什么？是不是整个训练目标都没有梯度？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>组相对优势全为零，策略 surrogate 部分没有这组回答的区分信号。KL 正则仍可能产生梯度，所以不能把两者混为一谈。</p></details>
+    <p class="guide-transfer">关掉提示后解释：GRPO 去掉了哪个模型？如果奖励模型还在，为什么这不矛盾？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+
+## 论文图解
 
 ![开源模型在竞赛级 MATH 基准上的 Top-1 准确率](../../site/assets/figures/2024-deepseekmath/fig1.png)
 *图 1 费曼图解（论文 Figure 1）：无需外部工具与复杂投票，DeepSeekMath 7B 仅凭模型自身推理在竞赛级 MATH 上达到 51.7%，一举逼近闭源的 Gemini-Ultra 和 GPT-4，大幅拉开与以往开源模型的差距。*
@@ -40,10 +64,10 @@ updated: 2026-09-18
   - 做完后，判卷人（规则或奖励模型）给每份草稿评一个最终分数。
   - 计算这 64 份草稿的**平均分**与**标准差**；
   - 高于平均分的草稿算「优秀变体」，赋予正优势值（向此轨迹学习）；低于平均分的草稿算「劣质变体」，赋予负优势值（抑制该推导路径）；
-  - 用组内相对排名代替绝对打分，既砍掉了名师的一半显存，又完全消除了绝对分数的校准偏差。
+  - 用组内相对排名代替绝对打分，省去独立 Critic 的成本，并以组内相对奖励减少对绝对价值基线的依赖；总体显存收益取决于实现，奖励噪声仍会保留。
 
 ![PPO 与 GRPO 架构对比](../../site/assets/figures/2024-deepseekmath/fig4.png)
-*图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 $G$ 个候选回答，利用组内平均与标准差归一化直接得到相对优势，显存节省近半。*
+*图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 $G$ 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。*
 
 ## 关键机制
 
@@ -99,11 +123,11 @@ $$\nabla_\theta \mathcal{J}(\theta) = \mathbb{E}_{(q, o) \sim \mathcal{D}} \left
 - **中文数学泛化**：CMATH 达到 88.8%，大幅领先同期开源模型。
 
 ![Maj@K 与 Pass@K 对比](../../site/assets/figures/2024-deepseekmath/fig7.png)
-*图 4 费曼图解（论文 Figure 7）：核心洞察——经过 GRPO 强化学习后，Maj@K（多数投票准确率）随着 K 显著上移；但 Pass@K（覆盖上限）曲线几乎与 SFT 模型完全重叠。这证实了强化学习的本质在于重塑采样分布、搬运概率质量，而非拓展知识边界。*
+*图 4 费曼图解（论文 Figure 7）：核心洞察——经过 GRPO 强化学习后，Maj@K（多数投票准确率）随着 K 显著上移；但 Pass@K（覆盖上限）曲线几乎与 SFT 模型完全重叠。该实验支持 GRPO 在这里主要重塑采样分布、提高已有正确解的采样概率；不是所有 RL 的普遍边界。*
 
 ### 2. 强化学习的真相：Pass@K vs Maj@K 的深层启示
 论文在第 5.2.2 节给出了极为深刻的实验发现：
-- **Pass@K 几乎没变**：这意味着基座模型能够探索到的解空间上限并没有被 RL 凭空扩充；如果 SFT 阶段采 64 遍完全不可能答对的题，RL 后依然答不对；
+- **Pass@K 几乎没变**：这是论文特定模型、数据与有限 K 下的观察。有限次未采到正确解，不等于其概率严格为零，也不能推出所有题在 RL 后仍必然答不对；
 - **Maj@K 和 Top-1 大幅提升**：RL 将原本隐藏在采样分布长尾里的 1% 正确解法，通过正负相对优势的梯度引导，集中搬运到了 Top 区域，显著收窄了输出方差，消除了逻辑幻觉。
 
 ### 3. 代价与局限性
@@ -129,7 +153,7 @@ Zotero AI Butler 预读笔记 `8CYDI7ER`（AI 总结）与 `RK4Y6U8L`（文献�
 
 ### Q1：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？
 - **解答**：
-  1. **显存层面**：LLM 的强化学习中，Critic 网络通常需要拥有与策略模型（Actor）相同的参数量与嵌入维度才能准确表征上下文价值，丢弃 Critic 直接削减了一半的显存开销与反向传播图；
+  1. **显存层面**：LLM 的强化学习中，Critic 网络通常需要拥有与策略模型（Actor）相同的参数量与嵌入维度才能准确表征上下文价值，丢弃独立 Critic 可省去其参数、优化器与反向图成本；总显存节省比例取决于训练栈，不必定为一半；
   2. **建模稳定性**：在数学等长链推理中，奖励通常是延迟到结尾的稀疏二值信号（对/错）。Critic 强行去预测每个 token 的绝对长期价值 $V(s_t)$，噪声极高且极易过拟合；
   3. **契合 RM 训练范式**：主流奖励模型（Reward Model）是通过成对比较数据（Pairwise Preference，如 Bradley-Terry 目标）训练出来的。它天生擅长的是**在同一个 Prompt 下给不同候选回答排序**（相对大小），而不是输出具有绝对物理意义的校准标量。GRPO 的组内均值中心化与方差标准化，恰好顺应了奖励模型的比较本质。
 
@@ -140,9 +164,8 @@ Zotero AI Butler 预读笔记 `8CYDI7ER`（AI 总结）与 `RK4Y6U8L`（文献�
 
 ### Q3：如何看待「Pass@K 几乎没变，Maj@K 大幅跃升」这一现象？
 - **解答**：
-  这一发现揭示了强化学习在大语言模型上的真实机理：
-  1. **知识与潜力的边界由预训练与 SFT 划定**：强化学习并没有凭空为模型注入它未曾见过的数学公理或逻辑模式（如果基座在采样 $K$ 次内做出的概率为 0，RL 并不能凭空无中生有）；
-  2. **RL 的核心是「概率质量搬运（Probability Mass Re-allocation）」**：在 SFT 模型中，正确的解题路径可能混杂在大量充满逻辑瑕疵的采样中（例如仅占 5% 的概率密度）。GRPO 的正负相对优势就像一把筛子，通过对优质路径的强化和劣质路径的抑制，把散落在长尾中的正确推理模式搬运到了概率分布的主峰，使得贪婪搜索或少量采样（Top-1 / Maj@K）能稳定击中正解。
+  先按论文 Figure 7 的范围读：其模型、数据与有限采样 K 下，Maj@K 提高而 Pass@K 变化较小。它支持该实验主要提高已有正确解的采样概率。有限 K 次没采到，不等于正确解的概率严格为零，也不能证明任意 RL 都无法形成新能力。
+  教学类比：若正确路径原本占较小概率，GRPO 可以让它更容易被采到；“搬运概率质量”说明这一种改进方式，不是一条覆盖所有 RL 的定律。
 
 ## 还没搞懂
 
@@ -153,5 +176,5 @@ Zotero AI Butler 预读笔记 `8CYDI7ER`（AI 总结）与 `RK4Y6U8L`（文献�
 - [DAPO](2025-dapo.md) — GRPO 在长思维链（Long-CoT）下的直接工业级演进：针对朴素 GRPO 在长逻辑场景下暴露的四大病根（对称裁剪导致的熵坍缩、全对/全错样本造成的有效批次萎缩、样本级平均导致的长度被稀释、超长硬截断噪声），提出非对称 Clip-Higher、动态重采样、Token-level 损失与软惩罚，将 Qwen2.5-32B 在 AIME 2024 上拉升至 50 分。
 - [PPO](2017-ppo.md) — GRPO 的直接理论前身：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略过激更新，但 GRPO 彻底剪除了 Critic 模型与 GAE，改用组内相对优势估计，并将 KL 惩罚从奖励解耦到外层损失。
 - [GeoAnchor](2026-geoanchor.md) — 空间推理下游应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化模型对不同空间潜变量模式的选择策略。
-- [U-OPSD](2026-u-opsd.md) — 自生成监督的另一演进路线：U-OPSD 是在推理阶段通过采样 8 遍做多数投票构建伪解教师进行前向 KL 蒸馏，而 GRPO 是直接在在线采样组内用相对奖励计算优势进行策略梯度强化。
+- [U-OPSD](2026-u-opsd.md) — 自生成监督的另一演进路线：U-OPSD 是在自蒸馏训练阶段通过采样 8 遍做多数投票构建伪解教师进行前向 KL 蒸馏，而 GRPO 是直接在在线采样组内用相对奖励计算优势进行策略梯度强化。
 - [S²VOPD](2026-s2vopd.md) — 零特权自对齐：探讨在无外部高阶标注的前提下，如何通过模型自身的多视角/多采样构建不对称信息差进行能力对齐。

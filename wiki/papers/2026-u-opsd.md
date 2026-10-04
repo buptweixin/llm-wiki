@@ -5,16 +5,46 @@ aliases: [U-OPSD, On-Policy Self-Distillation without Any Supervision, OPD]
 topic: distillation
 mechanisms: [on-policy-distillation, self-distillation]
 goals: [reduce-supervision]
-updated: 2026-09-07
+updated: 2026-10-04
 ---
 
 # U-OPSD（全称：On-Policy Self-Distillation without Any Supervision）
 
-> **一句话本质**：让模型给自己的答错题"开小灶"——它自己把一道无答案的题做 8 遍，多数票当标准答案，专门拿答错的那几版去对照"看过答案的自己"逐 token 纠正，全程不需要任何外部答案。
+> **一句话本质**：U-OPSD 用模型自己投票形成的完整解题轨迹给教师增加上下文，再沿学生的反对轨迹做分布蒸馏。
 
 > 作者/机构：Yijiang Li, Bingyang Wang, Yijun Liang, Yunjie Tian, Di Fu, Nuno Vasconcelos ｜ UC San Diego / Georgia Tech / UMD / ByteDance ｜ 原文：Zotero 锚点（见下行）或 URL ｜ 入库：2026-08-19
 
 > Zotero：[Li2026](zotero://select/items/@Li2026) `Li2026` ｜ [JD4RZABE](zotero://select/items/JD4RZABE) `JD4RZABE` ｜ [DOI](https://doi.org/10.48550/arXiv.2608.06296) `10.48550/arXiv.2608.06296`
+
+## 五分钟重建
+
+<div class="learning-guide" id="guide-2026-u-opsd">
+  <p class="guide-problem">普通自蒸馏仍可能给教师提供真实解题轨迹。U-OPSD 用模型自己的多次作答形成共识，选一条完整共识轨迹作为教师的额外上下文。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>采样与投票</h3><p>同题生成 8 条轨迹，规范化最终答案后投票。共识置信度用获胜票数除以全部 8 条，包含无效轨迹。</p></li>
+    <li><h3>门控并选参考</h3><p>置信度达到阈值、且存在不同答案的轨迹时才训练。y+ 是通向共识答案的一整条轨迹，不只是答案值。</p></li>
+    <li><h3>在学生前缀上蒸馏</h3><p>教师看题目、完整 y+ 和 y⁻ 前缀；学生只看题目与同一个 y⁻ 前缀。逐 token 用 forward KL 对齐完整分布。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：8 条中，5 条答案为 42、1 条为 17、2 条无效。共识置信度是 5/8，不是 5/6。教师多看的，是一条答案为 42 的完整推理；训练目标不是把一个“42”复制给学生。</p>
+  <p class="guide-boundary"><strong>边界</strong>：高共识可能一致答错。论文所测伪标签错误率为 13.3%，这是监督噪声风险，不是最终准确率的数学硬上界。散度消融只说明该设置里 forward KL 更稳。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>如果 8 条有效回答全是同一个答案，这道题是否还提供反对轨迹供本方法训练？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>不提供。没有与共识不同的 y⁻，会跳过。共识只描述模型之间的一致性，不证明答案是真值。</p></details>
+    <p class="guide-transfer">关掉提示后写出师生输入各包含什么，并解释为什么给学生也加入 y+ 会改变学习信号。</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+
+## 论文图解
+
+![依赖外部监督与无监督自蒸馏的差别](../../site/assets/figures/2026-u-opsd/fig1.png)
+
+*图 1 费曼图解（论文 Figure 1）：左侧给教师真实解或示例，中间给环境反馈，右侧用模型自己的投票结果。比较的是额外信息从哪里来；无外部答案监督不等于没有预训练知识或没有输入题目。*
+
+![U-OPSD 投票参考与逐 token 蒸馏](../../site/assets/figures/2026-u-opsd/fig2.png)
+
+*图 2 费曼图解（论文 Figure 2）：学生先生成多条轨迹，投票选共识，并取一条完整获胜轨迹给教师。教师与学生在反对轨迹的相同前缀上预测下一 token，再对齐分布。答案值只用于分组，不代替完整参考轨迹。*
 
 ## 解决什么问题
 
@@ -82,7 +112,7 @@ L_U-OPSD(θ) = E_x E_{y(g)~π̄}
 **Instruct 模型**：30B-A3B-Instruct 75.77→77.46，配方免调优迁移到 MoE 大模型。
 
 **代价/局限**：
-- **伪标签 13.3% 是错的**——性能硬上界，会强化多数错误；未测故意污染投票的训练动态。
+- **伪标签 13.3% 是错的**——监督噪声风险，可能强化多数错误；不是最终准确率的数学硬上界；未测故意污染投票的训练动态。
 - 只在**可抽取、可规范化最终答案**的任务（竞赛数学）上验证；开放式生成需把精确匹配换软共识（如 embedding 相似度投票）。
 - 增益**依赖基座能力**：太弱投票乱、太强没 headroom，中等偏强最典型。
 - 缺 seed 重复误差棒。
@@ -90,7 +120,7 @@ L_U-OPSD(θ) = E_x E_{y(g)~π̄}
 
 **三个关键设计取舍（消融）**：
 1. **教师必须看完整推理轨迹，不能只看 boxed 答案**——label-only 掉 10.3–15.8%，甚至低于基座（光知道"答案是 42"无法引导中间步骤）。
-2. **必须 forward KL，不能 reverse KL / JSD**——reverse KL 训练崩了（生成长度 2.7k→99k 字符爆炸，boxed 率 99%→33%，丧失终止能力，无限重复短语直到预算耗尽）；JSD 掉 13.8% 回到基座。forward KL 有 mode-covering 倾向，reverse KL 是 mode-seeking 会塌缩。
+2. **必须 forward KL，不能 reverse KL / JSD**——reverse KL 训练崩了（生成长度 2.7k→99k 字符爆炸，boxed 率 99%→33%，丧失终止能力，无限重复短语直到预算耗尽）；JSD 掉 13.8% 回到基座。forward KL 有 mode-covering 倾向，reverse KL 有 mode-seeking 倾向；塌缩是本文实验结果，不是该散度必然的结局。
 3. **必须全词表分布蒸馏，不能 sampled-token**——student-token-only 掉 13.7%；且该差距在伪标签下比 GT 下更大（AIME25 领先 17.8% vs 2.0%）。好消息：top-100 截断反而最好（59.01），实用降本。
 
 ## AI 预读备注
@@ -99,7 +129,7 @@ Zotero AI Butler 两份子笔记（task=summary/table，zhipu/glm-5.3 生成，2
 
 AI-Butler 摘要笔记 itemKey：`2ZRTZGPX`（task=summary），provider/model：zhipu/glm-5.3
 
-glm-5.3 的复现级摘要笔记质量很高，已覆盖方法 pipeline 全八步、消融全表、failure case、伪代码与常见坑，与原文交叉核对一致。本文讲解在其基础上做了三点提炼：(a) 把"为什么只蒸馏 disagreeing rollout 而非模仿 agreeing"讲清（SFT teacher-forcing vs on-policy 条件蒸馏的本质区别）；(b) 把 13.3% 错标签的净正收益机制补全（门控+课程+稠密信号三重设计抬高天花板）；(c) 明确"全词表蒸馏在伪标签下比 GT 下更重要"（noise 放大效应）。
+glm-5.3 的复现级摘要笔记质量很高，已覆盖方法 pipeline 全八步、消融全表、failure case、伪代码与常见坑，与原文交叉核对一致。本文讲解在其基础上做了三点提炼：(a) 把"为什么只蒸馏 disagreeing rollout 而非模仿 agreeing"讲清（SFT teacher-forcing vs on-policy 条件蒸馏的本质区别）；(b) 梳理含 13.3% 错标签时仍有净收益的设计；这些设计不构成抗噪保证；(c) 明确"全词表蒸馏在伪标签下比 GT 下更重要"（noise 放大效应）。
 
 ## 我的复述
 
@@ -113,7 +143,7 @@ glm-5.3 的复现级摘要笔记质量很高，已覆盖方法 pipeline 全八�
 A：纠正后——教师 `x + y+ + y⁻<t`（看 y+），学生 `x + y⁻<t`（**不看 y+**）。两者共享 `x + y⁻<t`，教师多出的只有 y+。学生若也看 y+，则教师=学生 KL 恒 0 无信号；学习信号正是从"教师知答案、学生不知"的差里长出来。后确认是手误打反（原意为学生见 y⁻）。
 
 **Q：13.3% 的错标签为什么没把模型带偏？**
-A：会被强化（真实风险），但有四重设计抬高净收益：① 门控 `c(x)<τ` 先拦截大部分瞎猜题——13.3% 是**过门后**的错误率；② 自发课程聚焦"能力边界"（大多数时候对的题上 y+ 大概率对）；③ 前向 KL+全词表是稠密信号（一条 rollout 数百个纠正点），少数错 y+ 的负梯度被对 y+ 正梯度盖过；④ 教师不需要 y+ 完美，只需多数方向对，少数噪声 token 被平均。结论：13.3% 是真实天花板，但门控+课程+稠密信号把它抬到比有 GT 的 OPSD 还高。
+A：错共识仍会提供误导监督。论文抽查中，过门后的伪标签有 13.3% 错误；实验总体仍提升，说明这份噪声没有抵消该设置的全部收益。门控、自发课程和稠密分布信号是方法设计，但原文没有证明「正确梯度必然盖过错误梯度」或「噪声 token 必然被平均掉」。13.3% 也不是最终准确率的硬上界。稳定地多数答错仍是失败情形。
 
 **Q：Q3"共识被用作上下文"不确定对不对。**
 A：对，就是这一句话。TTRL/RENT/Intuitor 把多数投票/置信度当**标量奖励**（整条 rollout 一个数，稀疏，信息被压成 scalar）；U-OPSD 把共识当**教师的特权上下文**（y+ 拼进教师输入，每个 token 都有教师完整下一 token 分布，稠密）。同样 rollout 预算领先 7–11 个点的本质原因。
@@ -122,13 +152,11 @@ A：对，就是这一句话。TTRL/RENT/Intuitor 把多数投票/置信度当**
 A：三层原因（原文均给出）：① 基座已强（74.9/76.1）headroom 小；② thinking rollout 太长，同 token 预算下完成投票少；③ 长 rollout 截断多，截断是无效 rollout 拉低 c(x)（分母是 G 不是有效数）。
 
 **Q：为什么必须前向 KL，反向 KL 会崩？（散度方向的直觉）**
-A：一句话——**前向 KL 是"学生全面模仿老师"（老师会的都得会），反向 KL 是"学生只学老师最拿手的几招、别的宁可不碰"**。用厨师比喻：老师会做 100 道菜（5 道招牌+95 道偶尔做）。前向 KL `KL(老师‖学生)`：凡是老师做的学生都得会，学生漏掉任何一道（哪怕老师低概率的菜）就被罚无穷大 → 学生**覆盖**（mode-covering）老师所有可能，变成全面厨师。反向 KL `KL(学生‖老师)`：凡是学生做的老师必须也会，学生敢做老师菜单外的菜就被罚无穷大 → 学生**追逐**（mode-seeking）老师概率最高的那座峰，死死抱住招牌菜、其余全放弃（因为窝在招牌菜里才安全）。
+A：先区分公式方向。forward KL 是 `KL(教师‖学生)`，按教师概率加权，学生漏掉教师有概率的项会付出代价；reverse KL 是 `KL(学生‖教师)`，按学生概率加权，学生把概率放在教师不支持的项上会付出代价。常说的 mode-covering 与 mode-seeking 是拟合受限时的倾向，不是每次必然覆盖全部峰或只留一座峰。若能精确匹配教师，两种 KL 都在分布相同时取零。
 
-数学判据（不用记公式）：老师分布有多个峰时，前向 KL 的学生试图同时覆盖所有峰（谷底也填一点），反向 KL 的学生只选一座峰抱死、其他峰看不见。
+本文消融的事实：reverse KL 出现复读塌缩（长度 2.7k→99k 字符、boxed 率 99%→33%），JSD 掉 13.8 个点，forward KL 更稳。这个结果支持本设置采用 forward KL，不构成所有逐 token 蒸馏的普适定律。
 
-> （2026-08-24 复测暴露）易记偏两处：① 反向 KL 罚的是**学生**做老师菜单外的菜（不是"要求老师会徒弟的菜"）；② 反向 KL 的实测失败模式是**复读塌缩**（长度 2.7k→99k 爆炸、无限重复、丧失终止能力），不是幻觉。
-
-在 U-OPSD 里：教师（看过伪解 y+）沿答错 rollout 每个 token 给出下一 token 分布，概率集中在少数"正确方向"token 上但也给别的留小概率。前向 KL → 学生覆盖教师所有给过概率的 token，稳收敛，变成"每个 token 上都更接近知答案的自己"。反向 KL → 学生只敢追逐教师概率最高的一个 token、别的全放弃 → 塌缩成只会反复输出那几个 token 的复读机。论文实测正是这套塌缩：生成长度 2.7k→99k 字符爆炸、boxed 答案率 99%→33%、丧失终止能力（无限重复某短语/LaTeX 命令/括号直到预算耗尽，不是在推理）。JSD（对称，β=0.5）掉 13.8% 回基座水平——对称散度不偏向覆盖也不偏向追逐，长序列生成里两头不讨好。结论：逐 token 分布蒸馏必须前向 KL，反向 KL 从机制上就鼓励学生走极端。
+> 2026-08-24 的历史复测提醒保留：反向 KL 按学生分布加权；本文实测失败是复读和丧失终止能力。2026-10-04 收紧了「必然单峰塌缩」的解释，未进行新的复测。
 
 **Q：y+ 是单个 token 还是多个 token？`<t` 为什么只在 y⁻ 上不在 y+ 上？**
 A：**y+ 是多个 token——一整条完整的解题轨迹，不是单个 token，也不是单个答案值。** 把符号对齐：
@@ -159,7 +187,7 @@ _无_——检验题全部补齐，无残留漏洞。
 
 ## 关联
 
-- [S²VOPD](2026-s2vopd.md) — 兑现本文预留的 on-policy distillation 钩子（视觉域）。同作者线（Yijiang Li 一作 + Vasconcelos 组）的域互补：本文教师多看"伪解 y+"（文本特权上下文），S²VOPD 教师多看"清晰像素"（把学生的输入图退化来构造不对称，方向倒转：不减教师加的信息，而减学生的信息）。**散度冲突注记（重要）**：本文必须 forward KL（reverse 复读塌缩、JSD 掉 13.8），S²VOPD 却是 JSD 最好 > reverse KL > forward KL 最差，排序完全颠倒——用"教师多出的信息可否恢复"统一解释：本文的解题思路学生原则上能自己推出来（可恢复→全面模仿对），S²VOPD 的清晰像素永远拿不回来（不可恢复→模仿不可及细节有害）。两篇合看才看清散度选择不是普适规则，是信息类型的函数。
-- [Open-MOPD](2026-open-mopd.md) — 兑现本文预留的 on-policy distillation 钩子。OPD 家族两个**正交切片**：本文管"单教师的信号从哪来"（无 GT 自蒸馏），Open-MOPD 管"多教师信号之间怎么分账"（token 数量/reward 幅度/新鲜度三层预算失衡，35.6%→83.4% 回收率）。组合方案成立：多个自蒸馏伪教师 + Open-MOPD 三机制。散度注记：本文前向 KL 直接当 loss（reverse 会复读塌缩）；Open-MOPD 的 reverse-KL 式 dense reward 是 PPO 的 reward 信号（sg 停梯度 + clip 兜底）而非直接损失——同方向不同框架，不矛盾。
+- [S²VOPD](2026-s2vopd.md) — 兑现本文预留的 on-policy distillation 钩子（视觉域）。同作者线（Yijiang Li 一作 + Vasconcelos 组）的域互补：本文教师多看"伪解 y+"（文本特权上下文），S²VOPD 教师多看"清晰像素"（把学生的输入图退化来构造不对称，方向倒转：不减教师加的信息，而减学生的信息）。**散度冲突注记（重要）**：本文实验中 forward KL 更稳（reverse 复读塌缩、JSD 掉 13.8），S²VOPD 却是 JSD 最好 > reverse KL > forward KL 最差，排序完全颠倒——一种统一解释（待验证）是"教师多出的信息可否恢复"：本文的解题思路学生原则上能自己推出来（可恢复→全面模仿对），S²VOPD 的清晰像素永远拿不回来（不可恢复→模仿不可及细节有害）。两组结果不能推出普适散度规则；是否由信息类型解释仍待验证。
+- [Open-MOPD](2026-open-mopd.md) — 兑现本文预留的 on-policy distillation 钩子。OPD 家族两个**正交切片**：本文管"单教师的信号从哪来"（无 GT 自蒸馏），Open-MOPD 管"多教师信号之间怎么分账"（token 数量/reward 幅度/新鲜度三层预算失衡，35.6%→83.4% 回收率）。组合设想（待验证）：多个自蒸馏伪教师 + Open-MOPD 三机制；本库没有联合实验。散度注记：本文前向 KL 直接当 loss（本文 reverse KL 实验出现复读塌缩）；Open-MOPD 的 reverse-KL 式 dense reward 是 PPO 的 reward 信号（sg 停梯度 + PPO 裁剪目标）而非直接损失——同方向不同框架，不矛盾。
 
 未来入库钩子：若 ingest on-policy distillation（DistiLLM 系列）、self-consistency（Wang et al. 2023）、推理路由/预算控制（Thinkless、BudgetThinker）相关论文，应回链本页——U-OPSD 把无监督蒸馏三条线交汇成一个方法。

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>视频理解与响应 · 专题笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -16,44 +16,274 @@
       <p class="cover-eyebrow">FULL NOTE · 专题综合</p>
       <h1>视频理解与响应</h1>
       <p class="note-full">看多少、何时想、怎样找证据？</p>
-      <p class="note-essence"><strong>一句话本质</strong>：长视频与流式视频的三个瓶颈被四篇论文分头处理：进入 LLM 的视觉 token 太多、深度推理与实时响应冲突、稀疏关键证据被均匀采样淹没；TSPO 和 Video-o3 是证据获取的两条不同路线，整个专题不是一个已验证的组合系统。</p>
+      <p class="note-essence"><strong>一句话本质</strong>：本专题按感知成本、思考时机和证据获取组织四篇视频论文，帮助比较它们各自解决的瓶颈。</p>
       <dl class="cover-meta"><dt>主线论文</dt><dd>4 篇：VideoChat3、VST、TSPO、Video-o3</dd><dt>跨专题引用</dt><dd>GenLIP，主归属仍是视觉编码器</dd><dt>更新</dt><dd>2026-09-14</dd><dt>状态</dt><dd>四篇论文页已通过首轮费曼检验，专题组织已完成一次复测</dd></dl>
       <div class="tagrow"><a class="tag" href="../../index.html?tag=video-mlm">视频 MLLM</a><a class="tag" href="../../index.html?tag=token-compression">token 压缩</a><a class="tag" href="../../index.html?tag=temporal-sampling">时序采样</a><a class="tag" href="../../index.html?tag=group-rl">GRPO</a><a class="tag" href="../../index.html?tag=improve-grounding">提高定位精度</a></div>
     </header>
     <nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#essence">专题本质</a><a href="#map">问题与方法地图</a><a href="#relations">关系记录</a><a href="#evolution">分叉与演进</a><a href="#compare">关键维度比较</a><a href="#path">带着问题读论文</a><a href="#pitfalls">跨篇卡壳点</a><a href="#boundaries">证据边界与来源</a></nav>
+<section class="note-sec" id="essence"><h2>专题本质</h2><h3>用问题重建专题</h3>
+<div class="learning-guide" id="guide-video-understanding">
+  <p class="guide-problem">读这组论文先问三件事：进入 LLM 的画面信息有多少，思考发生在什么时候，回答所需证据从哪里来。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>感知成本</h3><p>VideoChat3 在编码器里压 token，并控制下一窗口的分辨率。</p></li>
+    <li><h3>思考时机</h3><p>VST 在查询前积累文本记忆；Video-o3 在查询后找证据、推理。</p></li>
+    <li><h3>证据获取</h3><p>TSPO 先一次性选候选帧；Video-o3 可多轮裁剪回看。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子</strong>：阅读对照：一个短事件若没进入 TSPO 候选，选帧器无从选择；VST 还要遵守未来不可见与固定记忆限制；Video-o3 的裁剪访问条件另有前提。比较前先写清可见范围。</p>
+  <p class="guide-boundary"><strong>边界</strong>：压缩倍率不是整条系统的加速倍率。VST 的查询延迟不包含全部播放期思考成本。这组方法的组合尚无库内验证。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>能否用 VST 的 0.56 秒与 Video-o3 的 10.2 秒，直接判断哪一个系统对同一任务更高效？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>不能。前者把思考分摊到查询前，后者查询后搜索；任务、访问范围与统计口径也不同。需要同一条件下计入总成本再比较。</p></details>
+    <p class="guide-transfer">关掉提示后给四篇各写一个主要瓶颈，再指出组合时要重新设计的响应时机或证据预算。</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
 
-    <section class="note-sec" id="essence"><h2>专题本质</h2><p>视频进入多模态大模型后有三笔账要算。第一笔是感知成本：帧率和分辨率一上去视觉 token 爆炸，LLM 注意力随序列长度二次方增长，长视频和实时流几乎跑不动，VideoChat3 在视觉编码器内压缩它。第二笔是思考时机：显式链式推理能提高多跳精度，但查询后再想会增加实时延迟，VST 把思考挪到查询前的播放空档。第三笔是证据获取：关键 2 秒藏在 10 分钟里，均匀采样会淹没证据；TSPO 训练 query-aware temporal agent 一次性选帧，Video-o3 查询后多轮裁剪搜索。</p><p>专题范围不覆盖视觉编码器本身的预训练，也不覆盖检测定位侧的 LocateAnything。这里的关系记录只组织四篇已入库论文，不把组合设想写成实验结论。</p></section>
-
-    <section class="note-sec" id="map"><h2>问题与方法地图</h2><p>三条分支并列，不表示先后。证据获取分成两条路线：TSPO 用离线训练后的 selector 在回答前选帧，Video-o3 在查询后使用共享上下文和工具循环搜索。</p><pre class="note-pre">视频理解
-├── 感知成本 → VideoChat3：编码器内压缩与自适应分辨率
-├── 思考时机 → VST：边看边想与 FIFO 文本记忆
-└── 证据获取
-    ├── TSPO：训练 temporal agent 选择 query 相关关键帧
-    └── Video-o3：共享上下文内多轮裁剪找线索并作答</pre><p>静态图稿：<a href="../../assets/diagrams/video-understanding-map.svg">assets/diagrams/video-understanding-map.svg</a>。图下关系表是唯一可读的关系入口，图不是唯一入口。</p><table class="dtable"><thead><tr><th>边</th><th>说明</th><th>证据状态</th></tr></thead><tbody><tr><td>视频理解 → 感知成本</td><td>视觉编码器开销近似线性，LLM 注意力二次方，压缩越早越划算</td><td>reported</td></tr><tr><td>视频理解 → 思考时机</td><td>查询后推理延迟 8.8s，不推理 0.54s</td><td>reported</td></tr><tr><td>证据获取 → TSPO</td><td>答案正确率和目标片段内选帧比例共同训练关键帧选择</td><td>reported</td></tr><tr><td>证据获取 → Video-o3</td><td>模型生成工具调用，多轮裁剪放大后在同一上下文里作答</td><td>reported</td></tr></tbody></table></section>
-
-    <section class="note-sec" id="relations"><h2>关系记录</h2><p>规范记录。导读页的关系表、静态图和搜索条目都是本节的投影。</p><table class="dtable"><thead><tr><th>关系 ID</th><th>起点</th><th>类型</th><th>终点</th><th>一句主张</th><th>证据状态</th><th>依据锚点</th><th>指纹</th></tr></thead><tbody>
-      <tr><td class="num">rel-video-perception-vs-timing</td><td>2026-videochat3</td><td class="num">complement</td><td>2026-vst</td><td>VideoChat3 管感知效率，VST 管认知时机，思路正交可互补</td><td class="num">reported</td><td><a href="../papers/2026-videochat3.html#relations">videochat3#relations</a> <a href="../papers/2026-vst.html#relations">vst#relations</a></td><td class="num">4e0e4225</td></tr>
-      <tr><td class="num">rel-video-timing-before-vs-after</td><td>2026-vst</td><td class="num">compare</td><td>2026-video-o3</td><td>VST 查询前边看边想，Video-o3 查询后多轮裁剪，一个解决实时性，一个解决多跳精度</td><td class="num">synthesis</td><td><a href="../papers/2026-video-o3.html#qa-timing">video-o3#qa-timing</a> <a href="../papers/2026-vst.html#relations">vst#relations</a></td><td class="num">85af28c3</td></tr>
-      <tr><td class="num">rel-video-how-much-vs-where</td><td>2026-videochat3</td><td class="num">complement</td><td>2026-video-o3</td><td>VideoChat3 决定看多少像素，Video-o3 决定看哪里</td><td class="num">synthesis</td><td><a href="../papers/2026-video-o3.html#relations">video-o3#relations</a></td><td class="num">d0574842</td></tr>
-      <tr><td class="num">rel-video-tspo-vs-video-o3</td><td>2026-tspo</td><td class="num">compare</td><td>2026-video-o3</td><td>TSPO 回答前一次性选帧，Video-o3 查询后多轮搜索，前者路径短，后者 test-time 搜索更灵活</td><td class="num">synthesis</td><td><a href="../papers/2026-tspo.html#relations">tspo#relations</a></td><td class="num">00000000</td></tr>
-      <tr><td class="num">rel-video-combine-feasible</td><td>2026-vst</td><td class="num">possible-combination</td><td>2026-video-o3</td><td>VST 文本记忆与 Video-o3 工具裁剪可能互补实时性和多跳精度</td><td class="num">hypothesis</td><td><a href="../papers/2026-video-o3.html#qa-combine">video-o3#qa-combine</a> <a href="../papers/2026-vst.html#relations">vst#relations</a></td><td class="num">aaa025f0</td></tr>
-      <tr><td class="num">rel-video-combine-timing-conflict</td><td>2026-vst</td><td class="num">tension</td><td>2026-video-o3</td><td>查询即答与多轮探索后答在响应时机上冲突，需要统一调度</td><td class="num">synthesis</td><td><a href="../papers/2026-video-o3.html#qa-combine">video-o3#qa-combine</a> <a href="../papers/2026-vst.html#relations">vst#relations</a></td><td class="num">aaa025f0</td></tr>
-      <tr><td class="num">rel-video-encoder-pretraining</td><td>2026-genlip</td><td class="num">complement</td><td>2026-videochat3</td><td>GenLIP 回答 VideoChat3 所用图像 ViT 的预训练问题</td><td class="num">synthesis</td><td><a href="../papers/2026-videochat3.html#relations">videochat3#relations</a></td><td class="num">b8df1d10</td></tr>
-    </tbody></table></section>
-
-    <section class="note-sec" id="evolution"><h2>分叉与演进</h2><ul><li><strong>VideoChat3</strong>：在编码器内消化时空冗余，留下短视频收益有限、小尺度证据可能看不见。</li><li><strong>VST</strong>：把推理从查询后挪到播放期，留下 FIFO 有损和额外后台 token。</li><li><strong>TSPO</strong>：把离散选帧与语言回答放进联合策略，用答案奖励和目标片段比例训练 selector，留下冻结 MLLM 依赖、1 FPS 候选限制和整体理解收益较小。</li><li><strong>Video-o3</strong>：在共享上下文内交错工具调用与推理，留下轮数、上下文和工具种类上限。</li></ul><p>未核实四篇之间存在方法继承关系，图中不画继承箭头。</p><table class="dtable"><thead><tr><th>论文</th><th>首次公开</th><th>入库</th></tr></thead><tbody><tr><td>TSPO</td><td class="num">2025-08</td><td class="num">2026-09-14</td></tr><tr><td>Video-o3</td><td class="num">2026-01</td><td class="num">2026-08-17</td></tr><tr><td>VST</td><td class="num">2026-03</td><td class="num">2026-08-17</td></tr><tr><td>VideoChat3</td><td class="num">2026-07</td><td class="num">2026-07-27</td></tr></tbody></table></section>
-
-    <section class="note-sec" id="compare"><h2>关键维度比较</h2><p>四篇论文分别控制感知成本、思考时机、训练后的选帧策略和查询后的主动搜索。延迟数字不能脱离访问条件直接比较。</p><table class="dtable"><thead><tr><th>维度</th><th>VideoChat3</th><th>VST</th><th>TSPO</th><th>Video-o3</th></tr></thead><tbody><tr><td>重点</td><td>编码器内压 token</td><td>播放期写文本记忆</td><td>训练 selector 选关键帧</td><td>查询后多轮找证据</td></tr><tr><td>推理时机</td><td>窗口结束决定状态</td><td>查询前</td><td>查询后一次性选帧</td><td>查询后循环探索</td></tr><tr><td>主要边界</td><td>压缩不等于文本记忆</td><td>FIFO 会丢旧证据</td><td>依赖强 MLLM，R_T 粗粒度</td><td>轮数和视觉上下文有限</td></tr><tr><td>带着什么问题读</td><td>为什么压缩要尽早？</td><td>低查询延迟为何不等于无思考成本？</td><td>答对为何不等于每帧有用？</td><td>找到线索为何仍可能答错？</td></tr></tbody></table></section>
-
-    <section class="note-sec" id="path"><h2>带着问题读论文</h2><p>建议顺序：VideoChat3 → VST → TSPO → Video-o3。先建立视觉 token 成本直觉，再比较查询前后的思考时机，然后理解 selector 如何从回答奖励中学习，最后看 test-time 多轮搜索。</p><ol><li id="paper-2026-videochat3"><a href="../papers/2026-videochat3.html">VideoChat3</a>：为什么压缩要放在视觉编码器里？</li><li id="paper-2026-vst"><a href="../papers/2026-vst.html">VST</a>：边看边想凭什么不增加查询延迟？</li><li id="paper-2026-tspo"><a href="../papers/2026-tspo.html">TSPO</a>：R_A 和 R_T 分别监督什么？为什么 R_T 不是 IoU？</li><li id="paper-2026-video-o3"><a href="../papers/2026-video-o3.html">Video-o3</a>：共享上下文为何会产生 Fake Thinking？</li><li id="paper-2026-genlip"><a href="../papers/2026-genlip.html">GenLIP</a>：VideoChat3 所用 ViT 如何预训练？</li></ol></section>
-
-    <section class="note-sec" id="pitfalls"><h2>跨篇卡壳点</h2><div class="qa" id="qa-video-timing"><p class="qa-q">VST 和 Video-o3 的推理时机分别放在哪里？</p><div class="qa-a"><p>VST 在查询前边看边想，Video-o3 在查询后多轮调工具找线索。两个延迟数字的前提不同，不能直接比大小。</p></div></div><div class="qa" id="qa-video-compress-vs-memory"><p class="qa-q">VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？</p><div class="qa-a"><p>不是。前者管视觉感知效率，后者管推理时机和文本记忆。</p></div></div><div class="qa" id="qa-video-combine-conflict"><p class="qa-q">VST 与 Video-o3 组合除了证据冲突还会引入什么问题？</p><div class="qa-a"><p>查询即答与多轮探索后答在响应时机上冲突，需要统一调度。</p></div></div><div class="qa" id="qa-video-tspo-signal"><p class="qa-q">TSPO 中答对的一组帧是否意味着每一帧都真正有用？R_T 是 IoU 吗？</p><div class="qa-a"><p>不意味着。R_A 只说明整组帧足以答对，R_T 是目标片段内选帧比例，更接近 precision，而不是完整 IoU。Video-MME 只是收益较小，不是完全失效。</p></div></div><div class="qa" id="qa-video-two-masks"><p class="qa-q">VST 的流式注意力掩码与 Video-o3 的 TDAM 是否解决同一类问题？</p><div class="qa-a"><p><span class="evidence is-synthesis">库内对照</span> VST 掩码把训练可见性对齐到流式推理，TDAM 按任务阶段限制全局与局部证据的可见性，不能直接归为同一种机制。</p></div></div></section>
-
-    <section class="note-sec" id="boundaries"><h2>证据边界与来源</h2><ul><li><strong>原文报告</strong>：四篇的机制和数字来自各自论文页；TSPO 在 MLVU +6.0%、Video-MME +1.1%，Video-o3 的 MLVU 为 72.1%、推理约 10.2s。</li><li><strong>库内对照</strong>：三笔账的问题分解、四篇阅读顺序和 TSPO 与 Video-o3 的路线对照是本库组织方式，不是论文声称的继承关系。</li><li><strong>待验证</strong>：TSPO 与 Video-o3、VideoChat3 组合后的调度与计算预算；两种训练期掩码是否可归纳成共同原理。</li><li><strong>成员与来源</strong>：<a href="../papers/2026-videochat3.html">VideoChat3</a>（E5RZINH5）、<a href="../papers/2026-vst.html">VST</a>（6XPHGT5T）、<a href="../papers/2026-video-o3.html">Video-o3</a>（FG746LWN）、<a href="../papers/2026-tspo.html">TSPO</a>（QXMPGWGR）；跨专题引用 <a href="../papers/2026-genlip.html">GenLIP</a>（EAKWJXT8）。本页整理日期 2026-09-14。</li></ul></section>
-
-    <footer class="note-foot"><a href="../../topics/video-understanding.html">← 返回导读页</a><a href="../../../wiki/syntheses/video-understanding.md">markdown 源文件（唯一真源）</a><span>本页是完整专题笔记的静态投影，保留关系记录规范表、证据状态与假说标记。</span></footer>
+<p>视频进入多模态大模型后有三笔账要算。第一笔是感知成本：帧率和分辨率一上去视觉 token 爆炸，LLM 注意力随序列长度二次方增长，长视频和实时流几乎跑不动（<a href="../papers/2026-videochat3.html#problem">VideoChat3 解决什么问题</a>）。第二笔是思考时机：显式链式推理能提高多跳精度，但离线式「查询到达后再想」让延迟从 0.54s 涨到 8.8s，实时场景不可用（<a href="../papers/2026-vst.html#problem">VST 解决什么问题</a>）。第三笔是证据获取：关键 2 秒藏在 10 分钟里，均匀采样把它淹没在冗余中。TSPO 训练 query-aware temporal agent，一次性选出关键帧；Video-o3 则拿到问题后多轮裁剪找证据（<a href="../papers/2026-tspo.html#problem">TSPO 解决什么问题</a>、<a href="../papers/2026-video-o3.html#problem">Video-o3 解决什么问题</a>）。</p>
+<p>四篇分别处理三笔账：VideoChat3 在视觉编码器里把 token 压掉 16 倍并用状态机自适应分辨率；VST 把推理挪到查询前的播放空档，写进 FIFO 文本记忆；TSPO 在回答前学习选择 query 相关帧；Video-o3 拿到问题后在共享上下文里多轮裁剪放大找证据。它们对「何时响应」和「看多少」有不同机制，组合时首先要调和响应时机、候选预算与证据控制流。</p>
+<p>范围说明：本专题不覆盖视觉编码器本身怎么预训练（GenLIP、LaSt-ViT 属视觉编码器专题，只以跨专题引用出现），也不覆盖检测定位侧的 LocateAnything。</p>
+</section>
+<section class="note-sec" id="map"><h2>问题与方法地图</h2><p>图稿依据四篇论文页组织，连线「对应方法」表示「这篇处理此问题」。三条分支并列，不表示先后；证据获取下的 TSPO 与 Video-o3 是两条不同路线。</p>
+<pre><code class="language-mermaid">flowchart TB
+    root[&quot;视频理解：感知、思考与证据获取&quot;]
+    cost[&quot;感知成本：减少进入 LLM 的视觉 token&quot;]
+    timing[&quot;思考时机：查询前积累文本记忆&quot;]
+    evidence[&quot;证据获取：围绕问题主动裁剪细看&quot;]
+    vc[&quot;VideoChat3：编码器内压缩与自适应分辨率&quot;]
+    vst[&quot;VST：边看边想与 FIFO 文本记忆&quot;]
+    tspo[&quot;TSPO：训练 temporal agent 选择关键帧&quot;]
+    vo[&quot;Video-o3：共享上下文内找线索并作答&quot;]
+    root --&gt;|问题分解| cost
+    root --&gt;|问题分解| timing
+    root --&gt;|问题分解| evidence
+    cost --&gt;|对应方法| vc
+    timing --&gt;|对应方法| vst
+    evidence --&gt;|对应方法| tspo
+    evidence --&gt;|对应方法| vo
+</code></pre>
+<table class="dtable">
+<thead>
+<tr>
+<th>边</th>
+<th>说明</th>
+<th>证据状态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>视频理解 → 感知成本</td>
+<td>视觉编码器开销近似线性、LLM 注意力二次方，压缩越早越划算</td>
+<td>原文报告（VideoChat3 大白话讲解）</td>
+</tr>
+<tr>
+<td>视频理解 → 思考时机</td>
+<td>显式推理与实时响应冲突：查询后推理延迟 8.8s，不推理 0.54s</td>
+<td>原文报告（VST 解决什么问题）</td>
+</tr>
+<tr>
+<td>视频理解 → 证据获取</td>
+<td>稀疏证据被均匀采样淹没；找线索与答题割裂则多线索无法联合</td>
+<td>原文报告（Video-o3 解决什么问题）</td>
+</tr>
+<tr>
+<td>感知成本 → VideoChat3</td>
+<td>I3D-ViT 在编码器里做 16× 时空压缩，状态 token 兼管响应时机与下一窗口像素预算</td>
+<td>原文报告</td>
+</tr>
+<tr>
+<td>思考时机 → VST</td>
+<td>推理挪到 clip 之间的空档，写入 FIFO 文本记忆，查询时直接读笔记（0.56s）</td>
+<td>原文报告</td>
+</tr>
+<tr>
+<td>证据获取 → Video-o3</td>
+<td>模型自己生成工具调用，多轮裁剪放大后在同一上下文里作答（上限 8 轮）</td>
+<td>原文报告</td>
+</tr>
+<tr>
+<td>证据获取 → TSPO</td>
+<td>temporal agent 根据 query 概率化选关键帧，答案奖励与目标片段比例共同训练选帧策略</td>
+<td>原文报告</td>
+</tr>
+</tbody></table>
+</section>
+<section class="note-sec" id="relations"><h2>关系记录</h2><p>规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。</p>
+<table class="dtable">
+<thead>
+<tr>
+<th>关系 ID</th>
+<th>起点</th>
+<th>类型</th>
+<th>终点</th>
+<th>一句主张</th>
+<th>证据状态</th>
+<th>依据锚点</th>
+<th>指纹</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>rel-video-perception-vs-timing</td>
+<td>2026-videochat3</td>
+<td>complement</td>
+<td>2026-vst</td>
+<td>VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交</td>
+<td>reported</td>
+<td>notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations</td>
+<td>1146b31b</td>
+</tr>
+<tr>
+<td>rel-video-timing-before-vs-after</td>
+<td>2026-vst</td>
+<td>compare</td>
+<td>2026-video-o3</td>
+<td>推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度</td>
+<td>synthesis</td>
+<td>notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations</td>
+<td>b3219999</td>
+</tr>
+<tr>
+<td>rel-video-how-much-vs-where</td>
+<td>2026-videochat3</td>
+<td>complement</td>
+<td>2026-video-o3</td>
+<td>VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度）</td>
+<td>synthesis</td>
+<td>notes/papers/2026-video-o3.html#relations</td>
+<td>5b28a654</td>
+</tr>
+<tr>
+<td>rel-video-tspo-vs-video-o3</td>
+<td>2026-tspo</td>
+<td>compare</td>
+<td>2026-video-o3</td>
+<td>两者都针对稀疏证据，但 TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活，延迟与适应性取舍不同</td>
+<td>synthesis</td>
+<td>notes/papers/2026-tspo.html#relations</td>
+<td>3bd90554</td>
+</tr>
+<tr>
+<td>rel-video-combine-feasible</td>
+<td>2026-vst</td>
+<td>possible-combination</td>
+<td>2026-video-o3</td>
+<td>组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度</td>
+<td>hypothesis</td>
+<td>notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations</td>
+<td>5f9d0a5a</td>
+</tr>
+<tr>
+<td>rel-video-combine-timing-conflict</td>
+<td>2026-vst</td>
+<td>tension</td>
+<td>2026-video-o3</td>
+<td>组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题</td>
+<td>synthesis</td>
+<td>notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations</td>
+<td>5f9d0a5a</td>
+</tr>
+<tr>
+<td>rel-video-encoder-pretraining</td>
+<td>2026-genlip</td>
+<td>possible-combination</td>
+<td>2026-videochat3</td>
+<td>GenLIP 讨论视觉编码器的预训练，VideoChat3 讨论时空编码；将 GenLIP 接入 I3D-ViT 是组合设想，本库没有该替换实验</td>
+<td>hypothesis</td>
+<td>notes/papers/2026-videochat3.html#relations</td>
+<td>8abdd1b0</td>
+</tr>
+</tbody></table>
+</section>
+<section class="note-sec" id="evolution"><h2>分叉与演进</h2><p>每篇的「原先假设或瓶颈 → 本文改变 → 仍留下什么」：</p>
+<ul>
+<li><strong>VideoChat3</strong>：瓶颈是视觉 token 爆炸与稀疏抽帧丢信息，旧做法把每帧当独立图片喂进 LLM → 把时空冗余在视觉编码器里消化（I3D-ViT 16× 压缩），流式场景用状态机按需切换分辨率，状态 token 一身兼响应时机与像素预算两职 → 留下：短视频（256 帧）反而略慢，优势要视频够长才显现；224² 下小尺度证据可能看不见；论文未消融状态 token 合并与拆分（<a href="../papers/2026-videochat3.html#evidence">结果与代价</a>）。</li>
+<li><strong>VST</strong>：瓶颈是显式推理与实时响应冲突，且离线 CoT 数据带全局 hindsight 信息、直接训会学成作弊 → 推理时机从查询后挪到查询前，自造 100K 严格因果 CoT，流式注意力掩码让训练可见性照推理来 → 留下：FIFO 文本记忆有损（早期证据被淘汰）；思考烧额外后台 token；思考若慢于 clip 间隔只能回退到上一份记忆（<a href="../papers/2026-vst.html#evidence">结果与代价</a>）。</li>
+<li><strong>Video-o3</strong>：瓶颈是均匀采样淹没稀疏证据，找线索与答题两阶段割裂 → 工具调用由模型自己生成、与推理交替写在同一共享上下文里，TDAM 防注意力分散与 Fake Thinking，VTGR 控效率 → 留下：8 轮与 32k 视觉上下文上限；只有 VideoCrop 一个工具；Fake Thinking 未根治（<a href="../papers/2026-video-o3.html#evidence">结果与代价</a>）。</li>
+<li><strong>TSPO</strong>：瓶颈是均匀采样和不可微的离散选帧 → 用冻结 CLIP 的事件感知 temporal agent 生成概率化关键帧，把选帧与冻结 MLLM 的回答放进联合策略，用答案正确率和目标片段内选帧比例做 GRPO 式优化 → 留下：依赖足够强的冻结 MLLM，1 FPS 候选之外的遗漏无法挽回，整体理解型问题收益较小（<a href="../papers/2026-tspo.html#evidence">结果与代价</a>）。</li>
+</ul>
+<p><strong>方法继承</strong>：未核实三篇之间存在借鉴、替换或扩展关系，图中不画继承箭头；三条分支不是一个已验证的组合系统。</p>
+<p><strong>首次公开时间（出处：arXiv 编号即首次提交年月）</strong>：TSPO 2025-08（2508.04369）；Video-o3 2026-01（2601.23224）；VST 2026-03（2603.12262）；GenLIP 2026-05（2605.00809）；VideoChat3 2026-07（2607.14935）。注意本页建议的学习顺序按「先重建成本直觉，再比较思考时机，最后比较证据获取」排，不是时间线。</p>
+</section>
+<section class="note-sec" id="compare"><h2>关键维度比较</h2><p>每格的依据在括号里，落到对应论文页的完整笔记段落。</p>
+<table class="dtable">
+<thead>
+<tr>
+<th>比较维度</th>
+<th>VideoChat3</th>
+<th>VST</th>
+<th>TSPO</th>
+<th>Video-o3</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>本页重点</td>
+<td>感知压缩与流式响应控制（大白话讲解）</td>
+<td>把思考分摊到播放期（大白话讲解）</td>
+<td>query-aware 关键帧选择（大白话讲解）</td>
+<td>问题驱动的多轮证据获取（大白话讲解）</td>
+</tr>
+<tr>
+<td>关键保留或使用的信息</td>
+<td>压缩后的视频 token 与每窗口一个状态 token（关键机制）</td>
+<td>最近 L 个视觉 token 的短期缓冲，加固定容量的 FIFO 文本记忆（关键机制）</td>
+<td>1 FPS 候选帧中按 query 选出的关键帧与冻结 MLLM 回答（关键机制）</td>
+<td>全局低分辨率视野、局部高分辨率裁剪与推理历史共享一个上下文（关键机制）</td>
+</tr>
+<tr>
+<td>推理发生在何时</td>
+<td>每个时间窗口处理完即决定 Silence / Standby / Response（关键机制）</td>
+<td>查询前：每来一个 clip 就在空档里写想法，查询时直接读笔记（关键机制）</td>
+<td>查询到达后先一次性选帧，再交给 MLLM 回答（关键机制）</td>
+<td>查询后：思考、调工具、拼回结果循环，证据够了再收网（关键机制）</td>
+</tr>
+<tr>
+<td>训练期的掩码或策略在管什么</td>
+<td>state-transition mask：切换点全保留、保持点均匀采样，防学成永远闭嘴或走捷径（关键机制）</td>
+<td>流式注意力掩码：视觉只看最近 L 个、文本全可见，既防泄露又防训练-推理漂移（卡壳点 qa-mask）</td>
+<td>Gumbel 探索 + 组相对奖励：让答案监督选帧策略，R_T 偏好目标片段内更集中的帧（关键机制）</td>
+<td>TDAM：调工具时禁看局部、答题时禁看全局，只对 10% 数据加，防注意力分散与 Fake Thinking（关键机制）</td>
+</tr>
+<tr>
+<td>最应记住的边界</td>
+<td>感知压缩不等同于文本推理记忆；256 帧反而略慢（结果与代价）</td>
+<td>文本记忆有损；思考速度须适配流式节奏（卡壳点 qa-fifo）</td>
+<td>依赖足够强的冻结 MLLM；Video-MME 只提升 1.1%（结果与代价）</td>
+<td>依赖视频裁剪工具；轮数与上下文有限（结果与代价）</td>
+</tr>
+<tr>
+<td>带着什么问题读</td>
+<td>为什么压缩要尽早发生？（卡壳点 qa-where-compress）</td>
+<td>为何低查询延迟不等于没有思考成本？（大白话讲解）</td>
+<td>为什么答对不等于每帧都有用？R_T 到底补了什么？（卡壳点）</td>
+<td>为何找到正确线索仍可能答错？（关键机制 Fake Thinking）</td>
+</tr>
+</tbody></table>
+</section>
+<section class="note-sec" id="path"><h2>带着问题读论文</h2><p>建议顺序：<strong>VideoChat3 → VST → TSPO → Video-o3</strong>。理由：先重建「视觉 token 进 LLM 有多贵」的成本直觉，再比较「思考放在查询前还是查询后」，然后理解「训练一个 selector 让回答奖励教会选帧」，最后看「为什么还要在 test time 主动多轮找证据」。这是学习路径；VST 的在线因果约束、TSPO 的 1 FPS 候选限制与 Video-o3 的视频裁剪访问条件必须对照着读，否则容易把三者的「延迟」数字直接比大小。</p>
+<ul>
+<li><strong>VideoChat3</strong>：为什么压缩要放在视觉编码器里而不是让 LLM 长上下文兜底？状态 token 合二为一有什么隐患？（<a href="../papers/2026-videochat3.html">VideoChat3</a>）</li>
+<li><strong>VST</strong>：边看边想凭什么不增加延迟？离线 CoT 为什么不能直接训？流式掩码除了防泄露还解决什么？（<a href="../papers/2026-vst.html">VST</a>）</li>
+<li><strong>Video-o3</strong>：共享上下文带来的两个核心问题分别是什么？为什么只对 10% 数据加 TDAM？（<a href="../papers/2026-video-o3.html">Video-o3</a>）</li>
+<li><strong>TSPO</strong>：为什么答案正确率只能提供组级弱监督？<code>R_T</code> 如何区分同样答对但冗余不同的采样？（<a href="../papers/2026-tspo.html">TSPO</a>）</li>
+<li><strong>GenLIP（跨专题引用）</strong>：VideoChat3 把图像 ViT 撑成 3D，那个 ViT 本身怎么训出来的？（<a href="../papers/2026-genlip.html">GenLIP</a>）</li>
+</ul>
+</section>
+<section class="note-sec" id="pitfalls"><h2>跨篇卡壳点</h2><p>前三条复用论文页的历史问答（保留当时日期），TSPO 条目来自本次入库检验，最后一条是本专题仍待讨论的问题。</p>
+<div class="qa" id="qa-video-timing"><p class="qa-q">Q：VST 和 Video-o3 的推理时机分别放在哪里？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测首答焊死）</p><div class="qa-a"><p>VST 在查询前：播放期边看边想写笔记，查询到直接读笔记秒答（0.56s）。Video-o3 在查询后：拿到问题后在单一上下文里多轮调工具找线索，每轮裁剪与推理交替（MLVU 10.2s）。一句话：VST 是先把笔记做好、问就秒答；Video-o3 是拿到问题才去翻监控放大看。两个延迟数字的前提不同（VST 的思考成本被分摊到播放期），不能直接比大小。</p>
+</div></div><div class="qa" id="qa-video-compress-vs-memory"><p class="qa-q">Q：VideoChat3 的 token 压缩和 VST 的文本记忆是同一件事吗？（VST 页 2026-08-17 首验 Q3）</p><div class="qa-a"><p>不是。VideoChat3 在视觉编码器里压 token、用状态机决定看多少像素，管的是感知效率；VST 用文本记录前序片段、把推理挪到查询前，管的是认知时机。用户当时的原话（<a href="../papers/2026-vst.html#restatement">VST 我的复述</a>）：「VST 用文本记录流式输入的前序所有片段+前序少数视频帧信息汇总合成回答，而 VideoChat 通过压缩视频帧的token数记更多上下文。两者可以同时进行。」组合后的真实问题是 VideoChat3 的状态 token 与 VST 的「查询即答」在响应时机上要统一调度，双轨记忆冲突时要决定信谁。</p>
+</div></div><div class="qa" id="qa-video-combine-conflict"><p class="qa-q">Q：VST 与 Video-o3 组合后除了证据冲突还会引入什么结构性问题？（Video-o3 页 2026-08-17 首验漏答半问，09-07 复测通过）</p><div class="qa-a"><p>「查询即答」和「多轮探索后才答」在响应时机上逻辑冲突，需要新的统一调度决定何时秒答、何时探索；这和 VideoChat3 加 VST 组合时的问题是同一个。证据冲突（文本笔记与局部裁剪片段互相排斥时采信谁）是第二层问题。</p>
+</div></div><div class="qa" id="qa-video-tspo-signal"><p class="qa-q">Q：TSPO 中答对的一组帧是否意味着每一帧都真正有用？<code>R_T</code> 是 IoU 吗？（TSPO 页 2026-09-14 首测）</p><div class="qa-a"><p>不意味着。<code>R_A</code> 只说明整组帧足以让冻结 MLLM 答对，不能把功劳精确分给某一帧；<code>R_T</code> 用目标片段内选帧数除以总选帧数，偏好更集中的采样，更接近 precision，而不是完整 IoU。Video-MME 提升较小也不是完全失效，而是整体理解问题较多，局部 query 定位优势较弱。</p>
+</div></div><div class="qa" id="qa-video-two-masks"><p class="qa-q">Q（待讨论，2026-09-09 本专题新提）：VST 的流式注意力掩码与 Video-o3 的 TDAM 都是训练期掩码，它们解决的是同一类问题吗？</p><div class="qa-a"><p>库内只能对照，不能下结论。两页各自的事实：VST 的掩码让训练可见性照推理来（视觉只看最近 L 个、文本全可见），同时堵住未来信息泄露与训练-推理分布漂移；TDAM 是分工掩码，调工具时禁看局部裁剪、答题时禁看全局视频，只对 10% 数据施加，防注意力分散与 Fake Thinking。可对照的差别是：前者把「能看到什么」钉在推理架构上，后者把「该看什么」钉在任务阶段上。是否能归纳成一条共同原理，等复测时讨论。</p>
+</div></div></section>
+<section class="note-sec" id="boundaries"><h2>证据边界与来源</h2><ul>
+<li><strong>原文报告</strong>：四篇的机制描述与数字（16× 压缩、2048 帧 20.4s vs 44.4s；StreamingBench 79.5%、QA 延迟 0.56s vs 8.8s；TSPO 在 MLVU +6.0%、Video-MME +1.1%；Video-o3 MLVU 72.1%、推理 10.2s、8 轮上限）均来自论文页「结果与代价」，可按上表括号回查。</li>
+<li><strong>库内对照</strong>：把四篇分成感知成本、思考时机、证据获取三个子问题，以及建议阅读顺序，都是本库的组织方式；TSPO 与 Video-o3 的「一次性选帧 vs 查询后多轮搜索」是库内对照，不是论文声称的继承关系。</li>
+<li><strong>待验证 / 待讨论</strong>：TSPO 与 Video-o3、VideoChat3 组合后的调度与预算是否可行；两种训练期掩码是否同一类问题（本页新提，待讨论）；VideoChat3 状态 token 合并与拆分的利弊（论文未消融，论文页卡壳点已标「论文未讨论」）。</li>
+<li><strong>成员与来源</strong>：<a href="../papers/2026-videochat3.html">VideoChat3</a>（Zotero itemKey E5RZINH5，入库 2026-07-27）、<a href="../papers/2026-vst.html">VST</a>（6XPHGT5T，2026-08-17）、<a href="../papers/2026-video-o3.html">Video-o3</a>（FG746LWN，2026-08-17）、<a href="../papers/2026-tspo.html">TSPO</a>（QXMPGWGR，2026-09-14）；跨专题引用 <a href="../papers/2026-genlip.html">GenLIP</a>（EAKWJXT8，2026-08-17）。本页整理日期 2026-09-14。</li>
+</ul>
+</section>
+<footer class="note-foot"><a href="../../topics/video-understanding.html">← 返回导读页</a><a href="../../../wiki/syntheses/video-understanding.md">markdown 源文件（唯一真源）</a><span>本页是完整专题笔记的静态投影，保留关系记录规范表、证据状态与假说标记。</span></footer>
   </main>
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>

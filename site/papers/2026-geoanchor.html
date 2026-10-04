@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoAnchor · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-3">
 </head>
 <body>
 <div class="page">
@@ -24,7 +24,7 @@
         <p class="cover-eyebrow">PAPER · 2026</p>
         <h1>GeoAnchor</h1>
         <p class="cover-full">Collaborative Reasoning via Latent Decomposition for 3D Spatial Understanding</p>
-        <p class="cover-essence">与其逼模型把「物体在 (1.2, 0.5, 3.4)」写成文字再自己读回来，不如允许它推理中途「闭嘴想一想」：把 3D 信息存成 position（钉锚）/ direction（箭头）/ geometry（轮廓图）三类连续潜变量，文本与潜变量交错推理，最后再开口给答案。</p>
+        <p class="cover-essence">GeoAnchor 在文本推理之间插入位置、方向和场景结构三类连续潜变量，用它们辅助回答 3D 空间问题。</p>
         <dl class="cover-meta">
           <dt>作者</dt><dd>Anonymous（ACM MM'26 双盲投稿，Submission Id: 807）</dd>
           <dt>入库</dt><dd>2026-09-14</dd>
@@ -34,7 +34,27 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-2" data-section="overview">
+    <section class="slide" id="read-rebuild" data-section="rebuild"><div class="slide-inner"><div class="slide-head"><h2>五分钟重建</h2></div>
+<div class="learning-guide" id="guide-2026-geoanchor">
+  <p class="guide-problem">把几何中间量反复写成离散文本，可能损失细节，也可能让推理依赖语言线索。GeoAnchor 让文本规划与连续潜变量交替，分别表示位置、方向和场景结构。</p>
+  <ol class="guide-path" aria-label="机制路径">
+    <li><h3>局部与全局分工</h3><p>position latent 表示物体位置，direction latent 表示方向，geometry latent 表示整体结构。</p></li>
+    <li><h3>用几何教师热身</h3><p>局部潜变量接受坐标与方向监督。少量全局 token 用 soft coverage 对齐较多 VGGT 特征，再经 projector 回到输入空间。</p></li>
+    <li><h3>松弛后选择模式</h3><p>S3 撤掉显式几何损失、保留文本损失；S4 用 GRPO 和 pattern reward 学 local-only 或 local+global 的选择。</p></li>
+  </ol>
+  <p class="guide-example"><strong>具体例子（教学假设）</strong>：问“相框相对雕塑朝哪边”，需要两个位置锚和一条方向箭头。问更依赖房间布局的问题时，整体 geometry 提供另一类条件。这个例子说明分工，不保证模型每次都选对模式。</p>
+  <p class="guide-boundary"><strong>边界</strong>：latent 仍是有限精度向量，不是无损的真实 3D 场景。撤掉几何监督后的性能提升是消融观察；t-SNE 和注意力图不能单独证明所有几何信息都被完整保留。</p>
+  <div class="guide-check">
+    <h3>先预测，再展开答案</h3>
+    <p>让 8 个 geometry token 对齐大量 VGGT 网格特征，为什么不必一格配一个 token？</p>
+    <details class="guide-answer"><summary>查看机制解释</summary><p>soft coverage 要求网格特征得到覆盖，而不要求固定一一对应。平衡项抑制所有网格挤向少数 token，避免浪费其余容量。</p></details>
+    <p class="guide-transfer">关掉提示后解释：projector 在连接哪两个向量空间？它为什么与三类潜变量的分工是不同问题？</p>
+  </div>
+  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+</div>
+</div></section>
+
+<section class="slide" id="slide-2" data-section="overview">
       <div class="slide-inner">
         <div class="slide-head"><h2>一页看懂</h2><span class="slide-no">02</span></div>
         <div class="flow">
@@ -42,11 +62,8 @@
           <div class="flow-step" data-hi><h3>方法</h3><p>推理轨迹改成文本段与潜变量段交错：position / direction 两类局部 token 由 3D 坐标和方向显式监督，geometry 全局 token 用 soft coverage 对齐 VGGT 特征；四阶段训练从局部热身到 GRPO 模式自适应。</p></div>
           <div class="flow-step"><h3>结果</h3><p>Qwen3-VL-2B 底座：SPAR-Bench 68.4、SPBench 69.7、跨域 ViewSpatial 47.0 全场第一；但前两个基准与训练数据同源，+36.0 的头条数字要打折。</p></div>
         </div>
-<figure class="paper-fig">
-          <img src="../assets/figures/2026-geoanchor/fig1.png" alt="三种推理范式对比" loading="lazy">
-          <figcaption><span class="fig-title">图 1 费曼图解（论文 Figure 1）</span>(a) text-only 推理把连续几何说成文字，模型在「植物…沙发…」间摇摆；(b) 单 latent 只有一个黑盒向量，缺可解释线索；(c) GeoAnchor 分解为局部 position/direction（钉锚与箭头）加全局 geometry（轮廓图），每个因子可单独追溯。</figcaption>
-        </figure>
-               <p class="takeaway">分解本身比「用不用 latent」贡献更大：text CoT 到单 latent 只 +2.3，单 latent 到三类分解再 +5.1（SPAR）。</p>
+<figure class="paper-fig"><img src="../assets/figures/2026-geoanchor/fig1.png" alt="三种推理范式对比" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：(a) text-only 推理把连续几何说成文字，模型在「植物…沙发…」间摇摆；(b) 单 latent 只有一个黑盒向量，缺可解释线索；(c) GeoAnchor 分解为局部 position/direction（钉锚与箭头）加全局 geometry（轮廓图），每个因子可单独追溯。</figcaption></figure>
+               <p class="takeaway">GeoAnchor 在文本推理之间插入位置、方向和场景结构三类连续潜变量，用它们辅助回答 3D 空间问题。</p>
       </div>
     </section>
 
@@ -62,10 +79,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-4"<figure class="paper-fig">
-          <img src="../assets/figures/2026-geoanchor/fig2.png" alt="GeoAnchor 方法总览" loading="lazy">
-          <figcaption><span class="fig-title">图 2 费曼图解（论文 Figure 2）</span>GeoAnchor 总览。文本段做语义规划；局部 token 编码物体位置与相互方向；全局 geometry token 经 soft coverage 对齐 VGGT 场景结构（每个全局 token 只认领与自己最相似的特征，8 个 token 合起来覆盖整张特征网格）。</figcaption>
-        </figure>
+    <section class="slide" id="slide-4"<figure class="paper-fig"><img src="../assets/figures/2026-geoanchor/fig2.png" alt="GeoAnchor 方法总览" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：GeoAnchor 总览。文本段做语义规划；局部 token 编码物体位置与相互方向；全局 geometry token 经 soft coverage 对齐 VGGT 场景结构（每个全局 token 只认领与自己最相似的特征，8 个 token 合起来覆盖整张特征网格）。</figcaption></figure>
         data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head"><h2>关键机制: soft coverage 与四阶段训练</h2><span class="slide-no">04</span></div>
@@ -74,10 +88,7 @@
       </div>
     </section>
 
-    <section class="slide" id="slide-5"<figure class="paper-fig">
-          <img src="../assets/figures/2026-geoanchor/fig3.png" alt="四阶段协同训练" loading="lazy">
-          <figcaption><span class="fig-title">图 3 费曼图解（论文 Figure 3）</span>四阶段协同训练。S1 局部 grounding 热身，S2 联合局部加全局推理，S3 撤掉全部显式监督只留文本 loss（latent 弹回语言流形），S4 GRPO 加 pattern reward 按两种模式各自的历史准确率学会「够用的局部就别拉全局」。</figcaption>
-        </figure>
+    <section class="slide" id="slide-5"<figure class="paper-fig"><img src="../assets/figures/2026-geoanchor/fig3.png" alt="四阶段协同训练" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 3）：四阶段协同训练。S1 局部 grounding 热身 → S2 联合局部+全局推理 → S3 撤掉全部显式监督只留文本 loss（latent 弹回语言流形）→ S4 GRPO + pattern reward，按两种模式各自的历史准确率学会「够用的局部就别拉全局」。</figcaption></figure>
         data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head"><h2>证据与边界</h2><span class="slide-no">05</span></div>
@@ -90,10 +101,14 @@
       <div class="slide-inner">
         <div class="slide-head"><h2>卡壳点</h2><span class="slide-no">06</span></div>
         <div class="qa-list">
-          <div class="qa" id="qa-verbalization"><p class="qa-q">坐标写成文字除了丢精度、稀释注意力权重，还损失了什么？</p><div class="qa-a"><p>语言先验主导：推理全程在文本里走，模型用语言直觉代替几何证据答题。表格证据是 text CoT SFT 不稳定优于 vanilla SFT（三基准平均 51.7 vs 51.8 略降）。</p></div></div>
-          <div class="qa" id="qa-collapse"><p class="qa-q">去掉 soft coverage 平衡项的极端形态是什么？</p><div class="qa-a"><p>不是「有的多有的少」的一般不均衡，而是表示坍缩：所有 VGGT 特征挤着认领同一个 geometry token，其余 7 个闲置，8 个 token 的容量退化成 1 个。平衡项本质是分配均匀度的正则。</p></div></div>
-          <div class="qa" id="qa-stage3"><p class="qa-q">Stage 3 撤掉全部几何监督，为什么不会把几何忘光？</p><div class="qa-a"><p>几何已在权重里；文本 loss 只淘汰对答题无用的 latent 内容（留着不降 loss、梯度不保留），有用的部分因贡献文本 loss 被梯度留下。证据：Fig. 4 显示 S3 收益远超「把 S2 多训一轮」的对照；Fig. 7 的 t-SNE 上 global token 恰落在 VGGT 与 text 之间，两头都沾。</p></div></div>
-          <div class="qa" id="qa-tools-vs-latent"><p class="qa-q">和 Video-o3 的工具式推理相比，更深一层的分叉是什么？</p><div class="qa-a"><p>工具演化成本：Video-o3 的工具可插拔（换更好的裁剪或生成工具不用重训模型），GeoAnchor 的「工具」（VGGT、Depth Anything）是训练时烧进权重的，换几何教师等于重训。GeoAnchor 自己列的适用边界（静态图像、室内场景）也支持动态场景选工具路线。</p></div></div>
+          <div class="qa" id="qa-verbalization"><p class="qa-q">Q：verbalization 除了丢精度、稀释注意力权重，还损失了什么？（Q1 补齐）</p><div class="qa-a"><p><strong>语言先验主导</strong>：推理全程在文本里走，模型用语言直觉代替几何证据答题。表格证据：text CoT SFT 不稳定优于 vanilla SFT（三基准平均 51.7 vs 51.8 略降）。</p>
+</div></div>
+          <div class="qa" id="qa-collapse"><p class="qa-q">Q：去掉 soft coverage 平衡项的极端形态是什么？（Q2 点透）</p><div class="qa-a"><p>不是「有的多有的少」的一般不均衡，而是<strong>表示坍缩</strong>：所有 VGGT 特征挤着认领同一个 geometry token，其余 7 个闲置，8 个 token 的容量退化成 1 个。平衡项（本质是分配均匀度的正则）防的就是这个病。</p>
+</div></div>
+          <div class="qa" id="qa-stage3"><p class="qa-q">Q：Stage 3 为什么不会把几何「忘光」？机制层怎么讲？（Q3 补齐）</p><div class="qa-a"><p>几何监督已经影响了权重，文本目标可继续利用其中有用的表示。这是机制解释，不是完整保留几何信息的证明。证据双件套：Fig. 4（S3 远超「多训一轮 S2」对照）+ Fig. 7（t-SNE 上 global token 落在 VGGT 与 text 之间）。</p>
+</div></div>
+          <div class="qa" id="qa-tools-vs-latent"><p class="qa-q">Q：Video-o3 vs GeoAnchor 还有一层更深的分叉是什么？（Q4 加深）</p><div class="qa-a"><p><strong>工具演化成本</strong>：Video-o3 的工具是可插拔的（兼容调用接口下可尝试替换工具；新接口与使用策略是否需要再训练，仍须验证），GeoAnchor 的「工具」（VGGT、Depth Anything）是训练时烧进权重的，换几何教师等于重训。GeoAnchor 论文自己列的适用边界（静态图像、室内场景）也支持动态场景选 Video-o3 路线。</p>
+</div></div>
         </div>
       </div>
     </section>
@@ -102,14 +117,14 @@
       <div class="slide-inner">
         <div class="slide-head"><h2>关联与来源</h2><span class="slide-no">07</span></div>
         <div class="link-groups">
-          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">对立路线</span><span><a href="2026-video-o3.html">Video-o3</a>：同打破纯文本 CoT，o3 把中间推理外化成工具调用（可见可审计、工具可插拔），本文内化成连续潜变量（保几何保真度、教师烧进权重）。动态场景选工具路线，静态图连续几何精度选 latent 路线。</span></div><div class="link-item"><span class="link-rel">家族下游</span><span><a href="2017-ppo.html">PPO</a>：Stage 4 的 GRPO 是 PPO 的组相对变体（组内均值当 baseline、去 value 网络），pattern reward 奖励「用对模式」而非「答对」。</span></div><div class="link-item"><span class="link-rel">同一问题另一面</span><span><a href="2026-locateanything.html">LocateAnything</a>：坐标该不该言语化。它仍把框写成离散 token 块（整块并行换效率），本文让几何量干脆不经过词表（换保真度）。</span></div></div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-video-o3.html">Video-o3：连续潜变量与可见工具调用是两种中间表示；可审计性、教师依赖和工具依赖不同。</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-locateanything.html">LocateAnything：GeoAnchor 将几何量写入连续潜空间；LocateAnything 保留离散坐标 token，用块内并行减少解码步数。</a></div><div class="link-item"><span class="link-rel">prerequisite · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2017-ppo.html">PPO：Stage 4 使用 GRPO 选择推理模式；它沿用 PPO 家族裁剪目标，改用组相对优势而去掉 value 网络。</a></div></div>
           <div class="link-group"><h3>SOURCE</h3><div class="link-item"><span class="link-rel">完整笔记</span><span><a href="../notes/papers/2026-geoanchor.html">notes/papers/2026-geoanchor.html</a>（markdown 的完整静态投影）</span></div><div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/papers/2026-geoanchor.md">wiki/papers/2026-geoanchor.md</a></span></div><div class="link-item"><span class="link-rel">原文</span><span><a href="zotero://select/items/GENIEJ93">Zotero</a>（itemKey GENIEJ93；双盲投稿无 DOI，citekey 无效如实登记）</span></div></div>
         </div>
       </div>
     </section>
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-2"></script>
-<script src="../assets/wiki-slides.js?v=20261004-2"></script>
+<script src="../assets/wiki-index.js?v=20261004-3"></script>
+<script src="../assets/wiki-slides.js?v=20261004-3"></script>
 </body>
 </html>
