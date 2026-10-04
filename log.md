@@ -431,3 +431,27 @@
 - 从 Zotero 条目 `QUHVNNHR`（citekey `yuDAPOOpenSourceLLM2025`，DOI `10.48550/arXiv.2503.14476`）取全文、元数据与 AI Butler 预读（笔记 `NXVAD9J7`）；完成 Phase 0 定位、费曼讲解与三题检验。用户深刻理解了非对称 Clip-Higher 抑制熵坍缩、Token-level 损失防长篇复读稀释，以及动态采样剔除零梯度题加速收敛的核心机制。
 - 用 `scripts/extract-paper-figure.py` 提取四张重点图像（Fig 1/2/4/5），涵盖 AIME 表现收敛曲线、Clip-Higher 熵改善、Token-level 损失长度控制及超长截断过滤平稳作用，嵌入三层结构。
 - 新增 `wiki/papers/2025-dapo.md`，互链 `[DeepSeekMath](wiki/papers/2024-deepseekmath.md)`、`[PPO](wiki/papers/2017-ppo.md)`、`[Open-MOPD](wiki/papers/2026-open-mopd.md)`；同步 `index.md`、`review.md`（排入复测 2026-09-22）。
+
+## [2026-09-19] review | Open-MOPD 第二次复测收敛通过
+
+- 用户重讲完整精准：彻底理清教师冲突论的三组证伪实验、三层失衡对应的时间尺度、以及三个正交机制逻辑；机制三的白嫖机制与消融阶梯完整闭环。
+- 两道深层机制检验题满分通过：精准说明未刷新轨迹的状态分布陈旧依赖 PPO ratio+clip 兜底；算透过采样会挤压长链推理多样性而必须坚持 Loss 端加权。
+- `review.md` 递推排入第三轮复测（+1月，2026-10-19）；同步静态索引投影。
+
+## [2026-09-19] review | S²VOPD 第二次复测收敛通过
+
+- 用户重讲三条增强律、不对称构造与 Crop 破坏任务一致性机制极为透彻。
+- 两道深层机制检验题全满分通过：深度阐述了文本域（逻辑可恢复、Forward KL mode-covering）与视觉域（高频像素不可恢复、强推 Forward KL 拟合虚无噪音、JSD 平衡折中）散度选择颠倒的物理本质；准确还原冷冻基座教师仍得 93% 增益（仅掉 0.40 分）对教师进化直觉的有力证伪。
+- `review.md` 递推排入第三轮复测（+1月，2026-10-19）；同步静态索引投影。
+
+## [2026-10-04] query | Karpathy 输出形式建议与 vault 流程适配
+
+- 对照当前 schema、模板、阅读层代码与 VST/PPO/Open-MOPD 复测材料，评估 STE、图解、HTML 与视频在讲解、检验和复测中的作用；核对官方 STE 说明及 PPO 原论文，保留中文适配与类比边界。
+- 新增维护方案 `docs/specs/learning-output-formats.md` 并同步 `index.md`；建议先试中文写作约束与卡壳点图/交互。未修改 schema、知识页、复测状态或站点，未实施或部署。
+
+
+## [2026-10-04] query | 执行讲解输出与补漏洞流程优化
+
+- 按用户授权更新 schema、入库/复测命令、四类笔记和阅读层模板；落实中文写作约束、按难点选形式、关闭提示后的迁移检验与练习不计复测。
+- VST 增加真源规则表、同源静态图及四场景可见性练习；修正 PPO 的硬限位器类比，同步两层 HTML、搜索索引与全站缓存版本。review.md 与用户原话保持原样。
+- 站点检查含 C14 全通过，HTTP 浏览器完成场景/边界/回忆/手机/无脚本验证；file:// 因浏览器安全策略未实测，静态路径已核对。部署脚本改为范围内提交。

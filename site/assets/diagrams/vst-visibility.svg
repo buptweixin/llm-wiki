@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="../wiki-slides.css?v=20261004-1" type="text/css"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" role="img" aria-labelledby="vst-title vst-desc">
+<title id="vst-title">VST 视觉可见范围：t=6，L=3</title>
+<desc id="vst-desc">训练和窗口部署都只看 token 4、5、6。token 1、2、3 已出窗口，7、8 是未来。文本记忆不在图中。</desc>
+<rect class="demo-svg-background" width="700" height="260"/>
+<text class="demo-svg-title" x="18" y="32">同一可见范围：t = 6，L = 3</text>
+<text class="demo-svg-label" x="18" y="101">训练</text>
+<rect class="demo-svg-token" x="90" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="124" y="91" text-anchor="middle">1</text>
+<text class="demo-svg-state" x="124" y="116" text-anchor="middle">已出窗口</text>
+<rect class="demo-svg-token" x="164" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="198" y="91" text-anchor="middle">2</text>
+<text class="demo-svg-state" x="198" y="116" text-anchor="middle">已出窗口</text>
+<rect class="demo-svg-token" x="238" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="272" y="91" text-anchor="middle">3</text>
+<text class="demo-svg-state" x="272" y="116" text-anchor="middle">已出窗口</text>
+<rect class="demo-svg-token is-visible" x="312" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="346" y="91" text-anchor="middle">4</text>
+<text class="demo-svg-state" x="346" y="116" text-anchor="middle">可见</text>
+<rect class="demo-svg-token is-visible" x="386" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="420" y="91" text-anchor="middle">5</text>
+<text class="demo-svg-state" x="420" y="116" text-anchor="middle">可见</text>
+<rect class="demo-svg-token is-visible is-current" x="460" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="494" y="91" text-anchor="middle">6</text>
+<text class="demo-svg-state" x="494" y="116" text-anchor="middle">可见</text>
+<rect class="demo-svg-token" x="534" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="568" y="91" text-anchor="middle">7</text>
+<text class="demo-svg-state" x="568" y="116" text-anchor="middle">未来</text>
+<rect class="demo-svg-token" x="608" y="65" width="68" height="66"/>
+<text class="demo-svg-number" x="642" y="91" text-anchor="middle">8</text>
+<text class="demo-svg-state" x="642" y="116" text-anchor="middle">未来</text>
+<text class="demo-svg-label" x="18" y="181">部署</text>
+<rect class="demo-svg-token" x="90" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="124" y="171" text-anchor="middle">1</text>
+<text class="demo-svg-state" x="124" y="196" text-anchor="middle">已出窗口</text>
+<rect class="demo-svg-token" x="164" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="198" y="171" text-anchor="middle">2</text>
+<text class="demo-svg-state" x="198" y="196" text-anchor="middle">已出窗口</text>
+<rect class="demo-svg-token" x="238" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="272" y="171" text-anchor="middle">3</text>
+<text class="demo-svg-state" x="272" y="196" text-anchor="middle">已出窗口</text>
+<rect class="demo-svg-token is-visible" x="312" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="346" y="171" text-anchor="middle">4</text>
+<text class="demo-svg-state" x="346" y="196" text-anchor="middle">可见</text>
+<rect class="demo-svg-token is-visible" x="386" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="420" y="171" text-anchor="middle">5</text>
+<text class="demo-svg-state" x="420" y="196" text-anchor="middle">可见</text>
+<rect class="demo-svg-token is-visible is-current" x="460" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="494" y="171" text-anchor="middle">6</text>
+<text class="demo-svg-state" x="494" y="196" text-anchor="middle">可见</text>
+<rect class="demo-svg-token" x="534" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="568" y="171" text-anchor="middle">7</text>
+<text class="demo-svg-state" x="568" y="196" text-anchor="middle">未来</text>
+<rect class="demo-svg-token" x="608" y="145" width="68" height="66"/>
+<text class="demo-svg-number" x="642" y="171" text-anchor="middle">8</text>
+<text class="demo-svg-state" x="642" y="196" text-anchor="middle">未来</text>
+<text class="demo-svg-label" x="18" y="246">每格一个视觉 token；未来始终不可见；文本记忆另有规则。</text>
+</svg>

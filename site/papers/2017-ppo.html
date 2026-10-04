@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PPO · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20260913-1">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-1">
 </head>
 <body>
 <div class="page">
@@ -28,7 +28,7 @@
         <p class="cover-eyebrow">PAPER · 2017</p>
         <h1>PPO</h1>
         <p class="cover-full">Proximal Policy Optimization Algorithms</p>
-        <p class="cover-essence">用「剪刀（Clip 悲观下界裁剪）」代替「紧箍咒（TRPO 二阶约束优化）」的 Actor-Critic 算法：通过在重要性采样概率比 r_t(θ) 上施加悲观裁剪限制策略偏离幅度，安全地在同一批交互样本上跑多轮 Minibatch 随机梯度更新，以极简的一阶优化兼顾样本效率与防策略崩溃的鲁棒性。</p>
+        <p class="cover-essence">PPO-Clip 用裁剪后的代理目标减弱把采样动作概率继续推远的激励，支持在同一批交互样本上进行多轮小批量更新；它只需一阶优化，实际概率比仍可能越过裁剪区间。</p>
         <dl class="cover-meta">
           <dt>机构</dt><dd>OpenAI（John Schulman 等）</dd>
           <dt>入库</dt><dd>2026-09-09</dd>
@@ -52,14 +52,15 @@
           </div>
           <div class="flow-step" data-hi>
             <h3>方法</h3>
-            <p>重要性采样比率 + 悲观裁剪下界 L_CLIP：当优势为正时截断上限防探索过热，当优势为负且动作更坏时用外层 min 保留未裁剪真实重罚与负梯度，安全开启多轮 Epoch 复用。</p>
+            <p>重要性采样比率 + 悲观裁剪下界 L_CLIP：当优势为正时截断上限防探索过热，当优势为负且动作更坏时用外层 min 保留未裁剪真实重罚与负梯度，配合小步更新复用同一批样本。</p>
           </div>
           <div class="flow-step">
             <h3>结果</h3>
             <p>MuJoCo 7 项连续控制基准归一化得分 0.82 领跑全场（无裁剪为 -0.39 崩溃）；在 3D 人形机器人与 Atari 49 款游戏中均以极简一阶架构超越或打平高度复杂算法。</p>
           </div>
         </div>
-        <p class="takeaway">PPO 的核心是一阶机械限位器：把车把转角锁死在安全区，放手让同一个 Batch 跑多轮小批量随机梯度更新。</p>
+        <p class="takeaway">Clip 改的是代理目标中的激励。实际概率比仍可能越过裁剪区间。</p>
+        <p class="fig-note">类比边界：裁剪改变评分规则，实际概率比仍可能越过区间；多个样本共享网络参数，仍需结合更新轮数、学习率与 KL 监控判断步幅。</p>
       </div>
     </section>
 
@@ -238,7 +239,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20260913-1"></script>
-<script src="../assets/wiki-slides.js?v=20260913-1"></script>
+<script src="../assets/wiki-index.js?v=20261004-1"></script>
+<script src="../assets/wiki-slides.js?v=20261004-1"></script>
 </body>
 </html>

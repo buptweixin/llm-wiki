@@ -465,6 +465,49 @@ for (const hub of hubs) {
   }
 }
 
+/* ---------- C14 机制交互真源与静态投影 ---------- */
+
+section("C14 机制交互规则与静态出口");
+const demoBlocks = text => Array.from(text.matchAll(/<div class="mechanism-demo"[^>]*>[\s\S]*?<\/div>/g), match => match[0]);
+const demoAttribute = (block, name) => (block.match(new RegExp(`\\b${name}="([^"]+)"`)) || [])[1];
+const normalizeDemo = block => block.replace(/\s+/g, " ").trim();
+for (const page of papers) {
+  const markdown = read(sourcePath(page));
+  const sourceDemos = demoBlocks(markdown);
+  const speedDemos = demoBlocks(read(speedPath(page)));
+  const noteDemos = demoBlocks(read(notePath(page)));
+  check(sourceDemos.length === speedDemos.length && sourceDemos.length === noteDemos.length,
+    `${page.id} 机制交互数量与真源一致（${sourceDemos.length}/${speedDemos.length}/${noteDemos.length}）`);
+  for (const source of sourceDemos) {
+    const id = demoAttribute(source, "id");
+    check(/^demo-[a-z0-9-]+$/.test(id || ""), `${page.id} 机制交互 ID 合法（${id}）`);
+    for (const [label, blocks] of [["速览", speedDemos], ["完整笔记", noteDemos]]) {
+      const projections = blocks.filter(block => demoAttribute(block, "id") === id);
+      check(projections.length === 1 && normalizeDemo(projections[0]) === normalizeDemo(source),
+        `${page.id} ${label}交互 ${id} 的参数、场景规则和文字逐字投影`);
+    }
+    check(demoAttribute(source, "data-demo") === "visibility", `${id} 使用已支持的交互类型`);
+    const total = Number(demoAttribute(source, "data-total"));
+    const time = Number(demoAttribute(source, "data-time"));
+    const capacity = Number(demoAttribute(source, "data-window"));
+    check([total, time, capacity].every(Number.isInteger) && total >= 1 && total <= 32 && time >= 1 && time <= total && capacity >= 1 && capacity <= total,
+      `${id} 默认参数在支持范围内`);
+    const rules = Array.from(source.matchAll(/<tr data-train="([^"]+)" data-infer="([^"]+)">/g));
+    check(rules.length > 0 && rules.every(rule => [rule[1], rule[2]].every(value => value === "window" || value === "prefix")),
+      `${id} 场景规则有效，未来不在任何可见规则内`);
+    check(source.includes('class="dtable demo-scenarios"') && source.includes('class="demo-transfer"'),
+      `${id} 保留无脚本规则表与关闭提示后的迁移问题`);
+  }
+  for (const match of markdown.matchAll(/!\[[^\]]*\]\((\.\.\/\.\.\/site\/assets\/diagrams\/[^)]+)\)/g)) {
+    const file = path.resolve(root, path.dirname(sourcePath(page)), match[1]);
+    check(fs.existsSync(file), `${page.id} 机制静态图 ${path.basename(file)} 存在`);
+    for (const rel of [speedPath(page), notePath(page)]) {
+      const srcs = Array.from(read(rel).matchAll(/<img[^>]*src="([^"]+)"/g), item => path.resolve(root, path.dirname(rel), item[1]));
+      check(srcs.includes(file), `${rel} 与真源引用同一机制静态图`);
+    }
+  }
+}
+
 /* ---------- 汇总 ---------- */
 
 console.log("");
