@@ -136,3 +136,4 @@ VST 静态图依赖 `xml-stylesheet` 加载共享 CSS，但以 `<img>` 嵌入的
 - Markdown、速览页与完整笔记的图片引用同步到同一 PNG。SVG 或图解样式修改后，重跑 `node scripts/render-mechanism-diagram.mjs site/assets/diagrams/vst-visibility.svg`；维护环境可用 `--modules <node_modules 目录>` 指定已有 sharp。站点阅读不需要这些工具。
 - 新增 C15，拒绝把依赖 `xml-stylesheet` 的 SVG 作为 `<img>` 发布；用原失败引用验证检查确实拒绝，再恢复 PNG 引用。
 - 本地速览页、完整笔记和无脚本 HTTP 页面已验证 PNG 加载；目视核对文字、边界与强调色正常。全站资源版本同步为 `20261004-2`。知识结论、用户原话与复测状态不变。
+- 线上核验：提交 a8e6f48 已同步到 VPS。重载线上速览页后确认 PNG、版本 20261004-2 及图中文字和强调色正常。
