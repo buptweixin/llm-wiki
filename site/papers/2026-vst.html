@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VST · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-1">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-2">
 </head>
 <body>
 <div class="page">
@@ -98,7 +98,7 @@
           </div>
           <p class="fig-note">掩码既堵未来（防信息泄露），又堵漂移（训练可见性 = 推理可见性，否则训练看全片、推理看一段，分布不一致导致掉点）。</p>
         </div>
-<h3>图解：训练与部署能看哪些视觉 token</h3><p>未来画面尚未到达，所以训练和部署都不能看它们。窗口部署只保留最近 L 个视觉 token，训练也要采用同样的可见范围。若部署改成保留所有已到达的视觉 token，训练规则也应同步改变；遮住未来的规则仍然保留。</p><figure class="paper-fig"><a href="../assets/diagrams/vst-visibility.svg"><img src="../assets/diagrams/vst-visibility.svg" alt="VST 可见性示意：t=6、L=3 时，训练和窗口部署都能看视觉 token 4、5、6，1、2、3 已出窗口，7、8 尚未到达" loading="lazy" width="700" height="260"></a><figcaption>机制图解：示例有 8 个视觉 token，当前已到达 token 6，窗口容量 L=3。训练与窗口部署都只看 token 4、5、6；早期画面已出窗口，未来画面尚未到达。每格是一个视觉 token，不是一帧或一秒；文本记忆另有规则，本图不画文本记忆。</figcaption></figure><div class="mechanism-demo" id="demo-vst-mask" data-demo="visibility" data-total="8" data-time="6" data-window="3">
+<h3>图解：训练与部署能看哪些视觉 token</h3><p>未来画面尚未到达，所以训练和部署都不能看它们。窗口部署只保留最近 L 个视觉 token，训练也要采用同样的可见范围。若部署改成保留所有已到达的视觉 token，训练规则也应同步改变；遮住未来的规则仍然保留。</p><figure class="paper-fig"><a href="../assets/diagrams/vst-visibility.png"><img src="../assets/diagrams/vst-visibility.png" alt="VST 可见性示意：t=6、L=3 时，训练和窗口部署都能看视觉 token 4、5、6，1、2、3 已出窗口，7、8 尚未到达" loading="lazy" width="700" height="260"></a><figcaption>机制图解：示例有 8 个视觉 token，当前已到达 token 6，窗口容量 L=3。训练与窗口部署都只看 token 4、5、6；早期画面已出窗口，未来画面尚未到达。每格是一个视觉 token，不是一帧或一秒；文本记忆另有规则，本图不画文本记忆。</figcaption></figure><div class="mechanism-demo" id="demo-vst-mask" data-demo="visibility" data-total="8" data-time="6" data-window="3">
   <h3>改变条件：先预测，再查看可见范围</h3>
   <p class="demo-intro">t 是最新已到达的视觉 token 索引，L 是视觉窗口容量，均可在 1 到 8 之间改变。窗口规则可见 max(1, t-L+1) 到 t；前缀规则可见 1 到 t。所有场景都遮住 t 之后的未来。每格一个视觉 token，本演示不处理文本记忆，也不预测性能。</p>
   <table class="dtable demo-scenarios">
@@ -225,7 +225,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-1"></script>
-<script src="../assets/wiki-slides.js?v=20261004-1"></script>
+<script src="../assets/wiki-index.js?v=20261004-2"></script>
+<script src="../assets/wiki-slides.js?v=20261004-2"></script>
 </body>
 </html>

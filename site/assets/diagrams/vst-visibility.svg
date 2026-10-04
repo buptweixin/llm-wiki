@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet href="../wiki-slides.css?v=20261004-1" type="text/css"?>
+<?xml-stylesheet href="../wiki-slides.css?v=20261004-2" type="text/css"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" role="img" aria-labelledby="vst-title vst-desc">
 <title id="vst-title">VST 视觉可见范围：t=6，L=3</title>
 <desc id="vst-desc">训练和窗口部署都只看 token 4、5、6。token 1、2、3 已出窗口，7、8 是未来。文本记忆不在图中。</desc>

@@ -127,3 +127,12 @@ Open-MOPD 的控件数值应标为教学示意，并说明固定了哪些因素�
 交互结果验证截图：
 
 ![VST 可见性练习：训练能看 token 1 到 6，窗口部署只能看 token 4 到 6](../reviews/assets/learning-output-formats-demo.jpg)
+
+## 2026-10-04 静态图黑块修复
+
+VST 静态图依赖 `xml-stylesheet` 加载共享 CSS，但以 `<img>` 嵌入的 SVG 不能加载外部样式。背景矩形和文字都回退到默认黑色，导致整个图像区显示为黑块。此限制见 [MDN：SVG as an image](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image#restrictions)。上轮只核对图片节点与资源路径，未目视检查静态图，因而漏报。
+
+- 保留 class-only 的 SVG 图稿和共享样式源，用 `scripts/render-mechanism-diagram.mjs` 导出 1400 × 520 PNG；样式直接取共享 CSS 的浅色 token 与 `.demo-svg-*` 规则，无需浏览器额外请求样式。
+- Markdown、速览页与完整笔记的图片引用同步到同一 PNG。SVG 或图解样式修改后，重跑 `node scripts/render-mechanism-diagram.mjs site/assets/diagrams/vst-visibility.svg`；维护环境可用 `--modules <node_modules 目录>` 指定已有 sharp。站点阅读不需要这些工具。
+- 新增 C15，拒绝把依赖 `xml-stylesheet` 的 SVG 作为 `<img>` 发布；用原失败引用验证检查确实拒绝，再恢复 PNG 引用。
+- 本地速览页、完整笔记和无脚本 HTTP 页面已验证 PNG 加载；目视核对文字、边界与强调色正常。全站资源版本同步为 `20261004-2`。知识结论、用户原话与复测状态不变。

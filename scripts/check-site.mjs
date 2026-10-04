@@ -508,6 +508,18 @@ for (const page of papers) {
   }
 }
 
+/* ---------- C15 SVG 图片上下文不可依赖外部样式 ---------- */
+
+section("C15 静态 SVG 图片的样式依赖");
+for (const rel of ["site/index.html", ...pages.flatMap(page => [speedPath(page), notePath(page)])]) {
+  const refs = Array.from(read(rel).matchAll(/<img[^>]*src="([^"]+\.svg(?:\?[^\"]*)?)"/g), match => match[1]);
+  for (const ref of refs) {
+    const file = path.resolve(root, path.dirname(rel), ref.split("?")[0]);
+    check(fs.existsSync(file) && !/<\?xml-stylesheet\b/.test(fs.readFileSync(file, "utf8")),
+      `${rel} 的 SVG 图片 ${ref} 不依赖图片上下文无法加载的外部样式`);
+  }
+}
+
 /* ---------- 汇总 ---------- */
 
 console.log("");
