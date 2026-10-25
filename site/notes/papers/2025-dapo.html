@@ -58,19 +58,19 @@
     <p class="guide-explanation">不是。对正优势样本，目标沿提高概率的方向更晚变平。负优势样本概率错误增大时，min 仍可选择未裁剪项。实际概率也会受其他样本和损失影响。</p>
   </div>
   <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：动态采样与 token 平均分别解决哪种浪费？为什么不能用其中一个代替另一个？</p></aside>
-  <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+  <p class="guide-status">2026-10-04：当日未进行理解检验。2026-10-25：实际复测中用长短回答权重表和正负优势变式补讲；补讲后复验收敛，仍需下次独立重建权重与裁剪机制。</p>
 </div></section>
 <section class="note-sec" id="figures"><h2>论文图解</h2><figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig1.png" alt="DAPO 在 AIME 2024 上相比 DeepSeek-R1-Zero 的性能与收敛曲线" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：在 Qwen2.5-32B 基座上，DAPO 仅用 50% 的梯度更新步数就从 0 分跃升至 50 分（avg@32），不仅大幅超越朴素 GRPO 基线的 30 分，亦超越了闭源报告的 DeepSeek-R1-Zero-Qwen-32B（47 分）。</figcaption></figure>
 </section>
 <section class="note-sec" id="problem"><h2>解决什么问题</h2><p>在 OpenAI o1 与 DeepSeek-R1 引爆推理时间缩放（Test-time Scaling）革命后，开源社区在复现长思考链强化学习（Long-CoT RL）时普遍遭遇断崖式挫败：直接在 Qwen2.5-32B 基座上跑朴素 <a href="2024-deepseekmath.html">GRPO</a> 仅能取得 30 分，远落后于官方报告的 47 分。深层原因在于开源报告隐藏了关键工程细节，导致大规模长推理 RL 训练深陷四大暗礁：</p>
 <ol>
 <li><strong>探索动力快速衰竭：熵坍缩（Entropy Collapse）</strong>：<ul>
-<li>传统 PPO/GRPO 使用对称的裁剪区间（<span class="note-math">$\epsilon = 0.2$</span>，即 <span class="note-math">$r_t \in [0.8, 1.2]$</span>）；</li>
-<li>在长思维链探索中，关键的推导转折与创新解法在训练初期概率极低，理应成倍放大其发生概率；但上限锁死在 1.2 严重压制了低概率正确 token 的增长，而下界 0.8 却在不断抑制错误 token，导致策略熵呈断崖式下跌。模型迅速丧失探索新解法的勇气，陷入保守僵化。</li>
+<li>传统 PPO/GRPO 的 clip 项使用对称阈值（<span class="note-math">$\epsilon = 0.2$</span>，上下阈值为 0.8 与 1.2），实际概率比不被硬性限定在该区间；</li>
+<li>在长思维链探索中，关键的推导转折与创新解法在训练初期概率极低，理应成倍放大其发生概率；但正优势样本的目标在概率比超过上侧阈值后变平，减弱进一步提高低概率有用 token 概率的激励。论文在其训练设置下观察到策略熵快速下降；裁剪阈值不是实际概率的硬边界，也不保证任意设置都出现相同熵变化。</li>
 </ul>
 </li>
 <li><strong>有效梯度大幅稀释：全对/全错零优势题目吞噬有效 Batch Size</strong>：<ul>
-<li><a href="2024-deepseekmath.html">GRPO</a> 依赖同题组内均值计算优势，若一组 16 个采样回答全部做对或全部做错，组内优势 <span class="note-math">$\hat{A}_{i,t} \equiv 0$</span>，该题产生的梯度为零；</li>
+<li><a href="2024-deepseekmath.html">GRPO</a> 依赖同题组内均值计算优势，若一组 16 个采样回答全部做对或全部做错，组内优势 <span class="note-math">$\hat{A}_{i,t} \equiv 0$</span>，该题的任务奖励 surrogate 没有梯度；DAPO 去掉了参考模型 KL 项，而原版 GRPO 仍可能有 KL 梯度；</li>
 <li>随着模型变聪明，全对题目的比例从 10% 飙升到 60% 以上。固定 Batch 内绝大多数题目沦为放空炮的“僵尸样本”，有效批次大小急剧缩水，梯度方差与噪声激增。</li>
 </ul>
 </li>
@@ -86,11 +86,11 @@
 </li>
 </ol>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：给重装长跑选手打上四块「护手霜」</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：给长跑选手配上四项护具</h3>
 <p>在只有几百字的短问答里，<a href="2024-deepseekmath.html">GRPO</a> 就像穿轻便跑鞋在操场慢跑，小修小补就能跑通；但当任务变成 20,000 字竞赛级高强度长跑（Long-CoT 极长推导）时，旧机制的关节就会全部卡死。DAPO 为选手装上了四块关键护具：</p>
 <ul>
 <li><strong>护具一：向上放开剪刀口（Clip-Higher）</strong>：<ul>
-<li>对正优势样本，目标在 r 超过 1.2 后原本就不再增加分数；提高上侧阈值到 1.28，让该方向更晚变平。下侧阈值仍为 0.8。实际概率比没有被硬锁在这些边界内。这样模型才敢尝试原本想都不敢想的新思路，策略熵不会快速枯竭。</li>
+<li>对正优势样本，目标在 r 超过 1.2 后原本就不再增加分数；提高上侧阈值到 1.28，让该方向更晚变平。下侧阈值仍为 0.8。实际概率比没有被硬锁在这些边界内。论文在该设置下观察到更高的策略熵和更多样的采样，不保证任意任务都获得相同收益。</li>
 </ul>
 </li>
 <li><strong>护具二：扔掉没区分度的试卷并动态补齐（Dynamic Sampling）</strong>：<ul>
@@ -98,17 +98,17 @@
 </ul>
 </li>
 <li><strong>护具三：按字算账，取消字数大锅饭（Token-level Loss）</strong>：<ul>
-<li>以前一篇文章算一份工钱，长文章除以字数后每个字变得极度廉价；短文章每个字极度值钱。现在改成字数统筹：不管写在长篇大作还是简短回答里，每一个好字给相同的正分，每一个废话字给相同的扣分。写得长且严谨就拿大奖，胡言乱语注水就按字重罚。</li>
+<li>以前一篇文章算一份工钱，长文章除以字数后每个字变得极度廉价；短文章每个字极度值钱。现在将所有有效 token 合起来平均，每个 token 使用相同的归一化系数。实际更新还取决于优势、概率比和梯度；算法不会单独判断每个字是推理还是废话，长回答的总归一化份额也会随长度增加。</li>
 </ul>
 </li>
 <li><strong>护具四：终点线前设缓冲带（Soft Overlong Punishment）</strong>：<ul>
-<li>以前到 16,000 字没写完立马当场枪毙（打 -1 判负）。现在在 16K 到 20K 之间铺设一条软垫子，超时越多扣分线性递增，只有冲过 20K 极限才彻底判负，给正规论证的收尾留足喘息时间。</li>
+<li>以前到 16,000 字没写完立马当场枪毙（打 -1 判负）。现在在 16K 到 20K 之间铺设一条软垫子，超时越多扣分线性递增，到硬上限时长度扣分达到 -1。长度分与正确性分相加，即使最终答对，也可能因进入缓冲区而被扣长度分；这不等于中间推理被判错。</li>
 </ul>
 </li>
 </ul>
 </section>
 <section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>1. 非对称解耦裁剪（Clip-Higher）：抑制熵坍缩</h3>
-<p>DAPO 打破了强化学习数年来的对称裁剪传统，将上界与下界解耦：</p>
+<p>DAPO 去掉参考模型 KL 项，并将概率比 clip 项的上侧与下侧阈值解耦。裁剪的是目标函数中的比率项，不是直接裁剪参数梯度：</p>
 <pre class="note-pre">$$\text{clip}(r_t(\theta), 1 - \varepsilon_{low}, 1 + \varepsilon_{high})$$</pre>
 <p>其中将下界保持为 <span class="note-math">$\varepsilon_{low} = 0.2$</span>（保留下侧裁剪阈值，不代表概率被硬性锁在边界内），而将上界放宽至 <span class="note-math">$\varepsilon_{high} = 0.28$</span>。</p>
 <figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig2.png" alt="Clip-Higher 对 AIME 准确率与策略熵的改善" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：(a) AIME 准确率随训练显著提升；(b) 策略模型生成熵对比——无 Clip-Higher 时熵在 1000 步内急剧暴跌（熵坍缩），而引入 Clip-Higher 后策略熵平稳保持在健康区间，模型探索活力得以持续维系。</figcaption></figure>
@@ -117,7 +117,7 @@
 <pre class="note-pre">$$0 &lt; \sum_{i=1}^G \mathbb{I}(\text{is\_equivalent}(a, o_i)) &lt; G$$</pre>
 <ul>
 <li><strong>机制逻辑</strong>：若准确率为 0（全错）或 1（全对），在相对优势公式 <span class="note-math">$\hat{A}_{i,t} = \frac{R_i - \text{mean}(\mathbf{R})}{\text{std}(\mathbf{R})}$</span> 中分子或标准差归零，整道题产生零有效梯度。</li>
-<li><strong>动态补满</strong>：系统持续异步采样，直到批次完全由具备正负对比信号的有效题目填满后才执行参数更新。虽然采样量增加，但由于并行 rollout 耗时通常被最长长尾样本阻塞，且每个更新步均为 <span class="note-math">$100\%$</span> 高质量信息更新，总收敛步数减少一半，论文报告整体训练更高效；额外采样仍有成本，更新步数的减少不能单独保证所有机器的墙钟时间更短。</li>
+<li><strong>动态补满</strong>：系统持续异步采样，直到批次完全由具备正负对比信号的有效题目填满后才执行参数更新。虽然采样量增加，但由于并行 rollout 耗时通常被最长长尾样本阻塞，且有效批次补满后再更新，论文报告该实验收敛更快；DAPO 全套系统的更新步数差异不能单独归因于动态采样；额外采样仍有成本，更新步数的减少不能单独保证所有机器的墙钟时间更短。</li>
 </ul>
 <h3>3. 逐 Token 策略梯度损失（Token-Level Policy Gradient Loss）</h3>
 <p>重构多样本与多步骤的累加归约顺序：</p>
@@ -134,8 +134,8 @@
 \frac{(L_{max} - L_{cache}) - |y|}{L_{cache}}, &amp; L_{max} - L_{cache} &lt; |y| \le L_{max} \\
 -1, &amp; L_{max} &lt; |y|
 \end{cases}$$</pre>
-<p>最终奖励由正确性奖励与长度软惩罚相加：<span class="note-math">$R = R_{rule} + R_{length}$</span>。平滑过渡带消除了截断假负例噪声对高质量长思考的无端打击。</p>
-<figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig5.png" alt="超长样本过滤对 AIME 性能与熵的稳定作用" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 5）：对比超长直接打 -1 带来的训练剧烈震荡，过滤/软化截断样本使 AIME 2024 得分稳步拉升至 35%+，彻底消除了假负例噪声引发的认知混乱。</figcaption></figure>
+<p>最终奖励由正确性奖励与长度软惩罚相加：<span class="note-math">$R = R_{rule} + R_{length}$</span>。长度扣分提示模型控制过长输出，不是对中间步骤正确性的逐步判定。论文还验证了 Overlong Filtering：屏蔽截断样本的损失，减少将未完成推导直接当错误处理的奖励噪声；不能保证任何情况下都消除噪声。</p>
+<figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig5.png" alt="超长样本过滤对 AIME 性能与熵的稳定作用" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 5）：论文 Figure 5 比较截断样本默认惩罚与 Overlong Filtering。屏蔽截断样本损失后，该实验的准确率与熵曲线更稳定，支持减少截断奖励噪声；软长度惩罚是进一步的长度控制机制，不能把过滤消融等同于软惩罚的独立效果。</figcaption></figure>
 <h3>5. 整数标准化数据集：DAPO-Math-17K</h3>
 <p>数学答案的形式多样（如分数、根号、代数式 <span class="note-math">$a+\frac{\sqrt{b}}{c}$</span>）极易导致规则判卷器出现解析误判（Reward Hacking 或假错判）。DAPO 启发自 AIME 竞赛规范，通过 CoT 提示词指导 LLM 将题目重新改写为要求输出整数（例如将求 <span class="note-math">$a+\frac{\sqrt{b}}{c}$</span> 改写为求 <span class="note-math">$a+b+c$</span>），构建了包含 17K 题目且完全由纯整数答案验证的 <code>DAPO-Math-17K</code>，减少答案解析歧义；规则验证仍依赖题目改写与答案标注正确。</p>
 </section>
@@ -203,7 +203,7 @@
 </section>
 <section class="note-sec" id="ai-notes"><h2>AI 预读备注</h2><p>Zotero AI Butler 预读笔记 <code>NXVAD9J7</code> 提取了长篇目录和分段概述。经费曼校验，对 AI 预读提炼并补齐三处核心技术深度：</p>
 <ol>
-<li><strong>明确 Dynamic Sampling 的收敛效率反直觉因果</strong>：AI 笔记仅描述了动态采样的流程，遗漏了“为什么额外采样了样本，整体训练反而因梯度方差减小而收敛更快（墙钟时间更短）”的系统级深层因果；</li>
+<li><strong>明确 Dynamic Sampling 的收敛效率反直觉因果</strong>：AI 笔记仅描述了动态采样的流程，遗漏了“为什么过滤后补满有效批次可能减少无效更新”的机制；总体耗时仍取决于额外 rollout 成本与系统并行情况；</li>
 <li><strong>公式维度的损失归约重构</strong>：将 Sample-level 与 Token-level Loss 的分母位置改变（将除以 <span class="note-math">$|o_i|$</span> 移至外层除以总 token 数 <span class="note-math">$\sum |o_i|$</span>）彻底公式化呈现；</li>
 <li><strong>Clip-Higher 解决熵坍缩的非对称机制</strong>：清晰梳理为何只抬高上界（<span class="note-math">$\epsilon_{high}=0.28$</span>）而不放松下界（保持 <span class="note-math">$\epsilon_{low}=0.2$</span>）的保护逻辑。</li>
 </ol>
@@ -216,28 +216,73 @@
 <li>因为移除的是不带来优势的样本加入训练也没有梯度对模型来说是没有意义的，移除之后每次的样本都是有效的，代价只是增加一点 rollout 时间甚至不增加，因为并行 rollout 本身就会被最长的那条阻塞。</li>
 </ol>
 </blockquote>
+<h3>2026-10-25 首轮复测原话</h3>
+<p>首次独立重讲：</p>
+<blockquote class="note-quote">
+<p>主要是对 GRPO 的优化。优化点主要是对 GRPO 梯度 clip 的上下界进行了非平衡的切割，将上界提高，这样能够给模型更大的探索空间。其他的我记不太清楚了。</p>
+</blockquote>
+<p>补讲后的长短权重、补满批次与平台边界复验：</p>
+<blockquote class="note-quote">
+<ol>
+<li>更短的回答惩罚基数更大，如果改成全批 token 平均后，惩罚一样大。2. 过滤后继续补满，才能保证每一批采样的 N 样本数是固定的，它不一定能保证训练时间更短。3. 该 token 的目标不属于平台区，实际的概率比可以超过 1.28，只是会被截断。</li>
+</ol>
+</blockquote>
+<p>继续澄清「clip 项截断不等于实际概率比被截断」后的正负优势与长度奖励复验：</p>
+<blockquote class="note-quote">
+<ol>
+<li>Clip 之后的 ratio 变小了，但是由于优势是负的，所以选项会选 R，a 目标会继续惩罚，快动作概率升高。2. 即使最终答对了，还是会被扣长度分，这个扣分和中间推理被判错无关。</li>
+</ol>
+</blockquote>
+<p>核对限定：「惩罚一样大」指归一化系数相同，实际梯度未必相同；固定的是过滤后用于训练的有效题目数。最后一轮第一句按题意核对为 min 选未裁剪的 <span class="note-math">$rA$</span>，继续惩罚坏动作概率升高。原话保留，不润色转写。</p>
 </section>
-<section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><div class="qa" id="qa-clip-higher"><p class="qa-q">Q1：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？</p><div class="qa-a"><ul>
-<li><strong>解答</strong>：
-对正优势 token，r 超过上侧阈值后，该样本目标不再奖励进一步提高概率。低概率但有用的 token 需要较大的相对增幅，因此放宽上侧阈值可延后目标平台。负优势与 min 的作用不同，不能把上下界解释成所有概率的硬限位。论文消融观察到 Clip-Higher 保住更多策略熵；这支持本设置的设计，不保证任意任务都会发生相同熵变化。</li>
+<section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><p>2026-10-25 复测记录：首次独立重讲只想起 Clip-Higher，误称为梯度裁剪；其他机制遗忘。场景首答把样本级平均的长短权重方向说反，动态采样与长度约束能按直觉重建。用 2/6 token 权重表补讲，再换 3/9 token 的负优势条件复验，权重方向答对；过滤补满和时间不保证也答对。随后纠正「实际概率比被截断」的表述，负优势 min 分支与答对仍扣长度分的变式复验均通过。本次记为补讲后收敛，下一轮优先独立重建 token 权重和裁剪平台边界。</p>
+<div class="qa" id="qa-clip-higher"><p class="qa-q">Q1：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？</p><div class="qa-a"><ul>
+<li><strong>正优势的目标平台</strong>：对正优势 token，概率比超过上侧阈值后，该样本目标不再奖励继续提高概率。低概率但有用的 token 需要更大的相对增幅，放宽上侧阈值可延后平台。论文消融支持本设置下保住更多策略熵，不保证任意任务都出现相同变化。</li>
+<li><strong>实际概率不被硬截断</strong>：clip 只改变目标中一个候选项，再由外层 min 选较小者。给定 <span class="note-math">$A=1,r=1.25$</span>，上阈值从 1.2 提到 1.28 后，未裁剪项为 1.25，目标不再处于上侧平台；实际比率仍可超过 1.28。</li>
+<li><strong>改变优势符号的反例（教学假设）</strong>：令 <span class="note-math">$A=-1,r=1.4$</span>，clip 区间为 [0.8,1.28]。未裁剪项 <span class="note-math">$rA=-1.4$</span>，裁剪项为 -1.28，min 选 -1.4。坏动作概率升高时，目标继续提供惩罚，不会因为超过上阈值就变平。</li>
+<li><strong>2026-10-25 补讲与表现</strong>：首次记得提高上界，但混称梯度裁剪。补讲概率比与目标平台后，正优势变式答对；进一步澄清实际概率不被硬截断后，负优势变式正确选未裁剪项。</li>
 </ul>
 </div></div><div class="qa" id="qa-token-loss"><p class="qa-q">Q2：样本级平均（Sample-level）与 Token 级平均（Token-level）在长思考链下的根本分歧是什么？</p><div class="qa-a"><ul>
-<li><strong>解答</strong>：<ol>
-<li><strong>样本级平均的病态</strong>：将每个样本内部除以 <span class="note-math">$|o_i|$</span>，本质上是假设“每个完整回答的整体价值权重是等同的”。但在 16K 的长推理中，一个包含丰富中间反思的长解法被除以了 16,000，其关键证明 token 的梯度权重被极其严重地稀释；反之，当模型陷入死循环复读时，单 token 的负惩罚被除以了巨额长度，惩罚软弱无力，反而纵容了复读；</li>
-<li><strong>Token 级平均的拨乱反正</strong>：将归一化分母提取到最外层（除以当前批次的所有有效 token 总数 <span class="note-math">$\sum |o_i|$</span>）。从单个 token 视角看，不论它身处短回答还是长回答中，只要产生了正优势，它获得的奖励提升权重完全相同；只要产生了负优势，复读或废话越多，累积的反向惩罚梯度总量就越大，减轻了逐回答平均造成的长度权重偏差；不保证所有冗长内容都被单独识别和惩罚。</li>
-</ol>
-</li>
+<li><strong>先分清两个层次</strong>：样本级平均使每条回答的总归一化份额相同。长回答把这一份摊给更多 token，所以每个 token 的系数更小，不是长回答总权重更大。</li>
+<li><strong>具体例子（教学假设）</strong>：两条回答分别有 2 和 6 个有效 token。只看归一化系数，暂不考虑优势、概率比与梯度差异：</li>
+</ul>
+<table class="dtable">
+<thead>
+<tr>
+<th>归约方式</th>
+<th>短回答每个 token</th>
+<th>长回答每个 token</th>
+<th>短/长回答的总归一化份额</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>每条先平均，再对回答平均</td>
+<td>1/4</td>
+<td>1/12</td>
+<td>1/2、1/2</td>
+</tr>
+<tr>
+<td>全部有效 token 合起来平均</td>
+<td>1/8</td>
+<td>1/8</td>
+<td>1/4、3/4</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>DAPO 的改动</strong>：分母为全批有效 token 总数。每个 token 的归一化系数一致，长回答因 token 更多而得到更大总份额。实际梯度仍取决于优势、概率比、裁剪状态与各 token 的参数梯度，不能把系数相同说成更新量完全相同。</li>
+<li><strong>负优势同理</strong>：样本级平均也会稀释长回答中每个 token 的负向系数，不利于纠正低质量重复模式。Token 级平均减少这种长度造成的权重差异，不会自动识别每个重复 token，也不保证梯度向量相加后大小必随长度增长。</li>
+<li><strong>2026-10-25 补讲与表现</strong>：首答将长短权重方向说反。用上表补讲后，换成 3/9 token 且都带负优势，正确指出短回答的逐 token 惩罚系数更大，改为全批 token 平均后系数相同。</li>
 </ul>
 </div></div><div class="qa" id="qa-dynamic-sampling-speed"><p class="qa-q">Q3：动态采样额外生成了数据，为什么整体训练时间反而减少？</p><div class="qa-a"><ul>
-<li><strong>解答</strong>：<ol>
-<li><strong>无效梯度的隐形杀手</strong>：在朴素批次中，随着模型变聪明，全对题目的比例高达 60% 以上。这些题目在 GRPO 中优势恒为零，占用显存和反向传播算力却贡献零梯度，导致实际“有效 Batch Size”萎缩了 60% 以上，参数更新在极小样本集上剧烈震荡、收敛极慢；</li>
-<li><strong>高信噪比更新驱动快速收敛</strong>：动态采样确保送入反向传播的每一个题目都具备绝对的对比度，每个题目都有组内奖励对比，不保证每个 token 都是高质量监督，梯度更新步数直接削减了 50%；</li>
-<li><strong>并行推理的木桶效应</strong>：在大规模分布式 RL 系统中，单批次 Rollout 的等待时间本身就是由极少数生成最慢的长尾样本决定的。在等待长尾样本生成的空档中，该实现可把部分额外采样与等待重叠；额外生成仍有成本，收益取决于并行度与长尾分布。</li>
-</ol>
-</li>
+<li><strong>先过滤，再补满</strong>：同题一组回答全对或全错时，组相对优势为零。过滤的是这样的题目组，随后继续采样，直到有效题目数达到批次目标。只过滤不补满，仍会使有效批次随模型状态缩小。</li>
+<li><strong>梯度限定</strong>：零优势意味着任务奖励 surrogate 没有梯度。原版 GRPO 另有 KL 项；DAPO 已去掉参考模型 KL 项。保留下来的题具有组内奖励差异，不代表每个 token 都是高质量监督。</li>
+<li><strong>效率与成本分开看</strong>：补满有效题目可能减少无效更新，论文报告该实验收敛更快。额外 rollout 仍有成本，整体耗时取决于过滤率、并行度与长尾生成等待；不能保证所有机器都更快，也不能把 DAPO 全套系统的 50% 更新步数差异全部归因于动态采样。</li>
+<li><strong>软长度惩罚的补充边界</strong>：正确性奖励与长度扣分相加。即使最终答对，进入软长度缓冲区后也可能扣分；这是长度控制信号，不能据此判定中间步骤错误。Overlong Filtering 则屏蔽截断样本损失，用于减少未完成回答带来的奖励噪声。</li>
+<li><strong>2026-10-25 补讲与表现</strong>：场景首答重建了保留有对有错组的条件，补讲后进一步答出补满有效批次和总时间不保证。最后变式正确指出答对也可扣长度分，且与中间推理正误不同。</li>
 </ul>
+<p>依据：<a href="https://arxiv.org/html/2503.14476v2">DAPO §2.3、§3.1–3.4</a>。</p>
 </div></div></section>
-<section class="note-sec" id="open"><h2>还没搞懂</h2><p><em>费曼检验三题已全部闭环，无残留疑问。</em></p>
+<section class="note-sec" id="open"><h2>还没搞懂</h2><p><em>2026-10-25：本轮经补讲后的变式复验已收敛，无需新增开放问题。下次仍需在无提示下重建 token 权重方向、正负优势裁剪平台与动态采样成本，不把本次提示后答对记为首次独立掌握。</em></p>
 </section>
 <section class="note-sec" id="relations"><h2>关联</h2><ul>
 <li><a href="2024-deepseekmath.html">DeepSeekMath</a> — 理论演进与痛点定向修复：DeepSeekMath 首创了丢弃 Critic 的 GRPO 算法，但在长思维链（Long-CoT，上万 token）场景下暴露了四大暗礁（熵坍缩、策略代理目标无区分的题占比升高、长度被稀释、超长假负例）；DAPO 则是针对 GRPO 在大规模长推理落地时的直接升级演进版。</li>
