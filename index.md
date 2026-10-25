@@ -22,7 +22,7 @@ _暂无_
 - [S²VOPD](wiki/papers/2026-s2vopd.md) — S²VOPD 让教师看清晰图、学生看退化图，在学生自己生成的前缀上对齐分布，以视觉信息差提供自蒸馏信号。
 - [LocateAnything](wiki/papers/2026-locateanything.md) — LocateAnything 把一个框对齐成固定长 token 块，在框内并行生成坐标，必要时只对不可靠的块退回逐词解码。
 - [PPO](wiki/papers/2017-ppo.md) — PPO-Clip 修改策略更新的评分规则，减弱把采样动作概率继续推远的激励，让一批近期轨迹可以做有限轮更新。
-- [DeepSeekMath](wiki/papers/2024-deepseekmath.md) — DeepSeekMath 用数学数据预训练、监督微调和 GRPO 提升数学推理；GRPO 用同题多次作答的相对奖励代替独立 Critic。
+- [DeepSeekMath](wiki/papers/2024-deepseekmath.md) — DeepSeekMath 用数学数据预训练、监督微调和 GRPO 提升数学推理；GRPO 用同题多次作答的相对奖励代替独立 Critic。2026-10-25 复测补充评分/价值分工、KL 与 PPO 边界及有限采样的证据限定。
 - [DAPO](wiki/papers/2025-dapo.md) — DAPO 用四项改动改善长推理 RL：保住探索、补充有区分的题、按 token 分配损失权重，并缓和接近长度上限时的惩罚。
 
 ## 代码 Code
