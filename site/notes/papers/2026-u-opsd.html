@@ -60,7 +60,7 @@
 <li><strong>SFT</strong>：要标好的答案，且 teacher-forcing 导致训练-推理失配（train-inference mismatch）+ 灾难性遗忘（catastrophic forgetting）。</li>
 <li><strong>GRPO</strong>：要 GT 答案做可验证奖励；奖励稀疏——一整条 rollout 一个 0/1 序列级 advantage，组内全对/全错梯度归零。</li>
 <li><strong>OPD</strong>：要一个<strong>外部更强教师</strong>的逐 token 分布；依赖外部模型。</li>
-<li><strong>OPSD</strong>：参数自共享（同模型当教师和学生），但教师比学生多看 <strong>GT 解 y*</strong>——让教师更强的信息<strong>仍来自模型之外</strong>。论文原话：这是&quot;只在参数共享意义上的 self，信息仍外部&quot;。</li>
+<li><strong>OPSD</strong>：参数自共享（同模型当教师和学生），但教师比学生多看 <strong>GT 解 y*<strong>——让教师更强的信息</strong>仍来自模型之外</strong>。论文原话：这是&quot;只在参数共享意义上的 self，信息仍外部&quot;。</li>
 </ul>
 <p>U-OPSD 把最后这层 GT 解也去掉，用模型自己投票出来的&quot;伪解 y+&quot;替代 y*，是<strong>首个完全无外部监督的 on-policy 自蒸馏</strong>。痛点：GT 标注的成本与稀缺是 RLVR/OPSD 规模化的瓶颈；许多领域监督昂贵/不可靠/不可得。</p>
 </section>
@@ -135,7 +135,7 @@
 <p>训练 step：1. 学生模型 rollout G 条轨迹；2. 统计 G 条轨迹共识最大的那条占总轨迹数比例是否大于 τ，如果小于则扔掉，如果大于则留下，全对全错的情形则这条样本直接丢掉；3. 然后取共识轨迹作为 y+，与共识轨迹相反结论的一条轨迹为 y⁻，给教师 <code>x y+ y⁻&lt;t</code>，给学生 <code>x y⁻&lt;t</code>，然后逐 token 算前向 KL，共享的上下文为问题和 y⁻，教师多看了共识轨迹 y+，为什么变强的原因是对于已经训练充分的模型，很多问题是他大部分时间能答对偶尔打不对，通过 U-OPSD 让他强化这类的信息从而提升模型的能力。</p>
 </blockquote>
 </section>
-<section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><div class="qa" id="qa-context"><p class="qa-q">Q：Q1 上下文谁看 y+/y⁻，最初答反了&quot;学生看到 y+&quot;。</p><div class="qa-a"><p>纠正后——教师 <code>x + y+ + y⁻&lt;t</code>（看 y+），学生 <code>x + y⁻&lt;t</code>（<strong>不看 y+</strong>）。两者共享 <code>x + y⁻&lt;t</code>，教师多出的只有 y+。学生若也看 y+，则教师=学生 KL 恒 0 无信号；学习信号正是从&quot;教师知答案、学生不知&quot;的差里长出来。后确认是手误打反（原意为学生见 y⁻）。</p>
+<section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><div class="qa" id="qa-context"><p class="qa-q">Q：Q1 上下文谁看 y+/y⁻，最初答反了&quot;学生看到 y+&quot;。</p><div class="qa-a"><p>纠正后——教师 <code>x + y+ + y⁻&lt;t</code>（看 y+），学生 <code>x + y⁻&lt;t</code>（**不看 y+**）。两者共享 <code>x + y⁻&lt;t</code>，教师多出的只有 y+。学生若也看 y+，则教师=学生 KL 恒 0 无信号；学习信号正是从&quot;教师知答案、学生不知&quot;的差里长出来。后确认是手误打反（原意为学生见 y⁻）。</p>
 </div></div><div class="qa" id="qa-13-3"><p class="qa-q">Q：13.3% 的错标签为什么没把模型带偏？</p><div class="qa-a"><p>错共识仍会提供误导监督。论文抽查中，过门后的伪标签有 13.3% 错误；实验总体仍提升，说明这份噪声没有抵消该设置的全部收益。门控、自发课程和稠密分布信号是方法设计，但原文没有证明「正确梯度必然盖过错误梯度」或「噪声 token 必然被平均掉」。13.3% 也不是最终准确率的硬上界。稳定地多数答错仍是失败情形。</p>
 </div></div><div class="qa" id="qa-ttrl"><p class="qa-q">Q：Q3&quot;共识被用作上下文&quot;不确定对不对。</p><div class="qa-a"><p>对，就是这一句话。TTRL/RENT/Intuitor 把多数投票/置信度当<strong>标量奖励</strong>（整条 rollout 一个数，稀疏，信息被压成 scalar）；U-OPSD 把共识当<strong>教师的特权上下文</strong>（y+ 拼进教师输入，每个 token 都有教师完整下一 token 分布，稠密）。同样 rollout 预算领先 7–11 个点的本质原因。</p>
 </div></div><div class="qa" id="qa-thinking"><p class="qa-q">Q：thinking 模式为什么增益小？</p><div class="qa-a"><p>三层原因（原文均给出）：① 基座已强（74.9/76.1）headroom 小；② thinking rollout 太长，同 token 预算下完成投票少；③ 长 rollout 截断多，截断是无效 rollout 拉低 c(x)（分母是 G 不是有效数）。</p>
@@ -184,7 +184,7 @@
 <p>y+ 是&quot;心里有数的完整答案&quot;，y⁻&lt;t 是&quot;学生正在解题、走到第 t 步&quot;的状态模拟。t 每加 1，在新位置算一次教师/学生下一 token 分布的 KL，产生一个梯度，沿 y⁻ 走完全长累计成总损失。</p>
 <p>[这里最容易卡住] 别把 y+ 误当成共识答案值 ã(x) 本身（即 <code>\boxed{42}</code> 这个单值）。<strong>ã(x) 是单值，用来投票和分组；y+ 是通向 ã(x) 的整条推理轨迹，用来喂教师当上下文。</strong> 这正是消融&quot;label-only（只给教师看 boxed 答案）掉 10.3–15.8%&quot;的来由——只给一个答案值没用，教师不知道&quot;怎么走到这个答案&quot;，没法在每个 token 上给出&quot;已知这条路的我现在该怎么走&quot;的指引。y+ 必须是完整轨迹。</p>
 </div></div></section>
-<section class="note-sec" id="open"><h2>还没搞懂</h2><p><em>无</em>——检验题全部补齐，无残留漏洞。</p>
+<section class="note-sec" id="open"><h2>还没搞懂</h2><p>_无_——检验题全部补齐，无残留漏洞。</p>
 </section>
 <section class="note-sec" id="relations"><h2>关联</h2><ul>
 <li><a href="2026-s2vopd.html">S²VOPD</a> — 兑现本文预留的 on-policy distillation 钩子（视觉域）。同作者线（Yijiang Li 一作 + Vasconcelos 组）的域互补：本文教师多看&quot;伪解 y+&quot;（文本特权上下文），S²VOPD 教师多看&quot;清晰像素&quot;（把学生的输入图退化来构造不对称，方向倒转：不减教师加的信息，而减学生的信息）。<strong>散度冲突注记（重要）</strong>：本文实验中 forward KL 更稳（reverse 复读塌缩、JSD 掉 13.8），S²VOPD 却是 JSD 最好 &gt; reverse KL &gt; forward KL 最差，排序完全颠倒——一种统一解释（待验证）是&quot;教师多出的信息可否恢复&quot;：本文的解题思路学生原则上能自己推出来（可恢复→全面模仿对），S²VOPD 的清晰像素永远拿不回来（不可恢复→模仿不可及细节有害）。两组结果不能推出普适散度规则；是否由信息类型解释仍待验证。</li>

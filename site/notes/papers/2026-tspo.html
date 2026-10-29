@@ -48,12 +48,12 @@
 <p>它与 <a href="2026-video-o3.html">Video-o3</a> 都处理「稀疏证据被均匀采样淹没」，但控制方式不同：TSPO 训练一个 query-aware temporal agent，一次性选帧后再回答；Video-o3 则在拿到问题后，边推理边多轮调用工具回看和裁剪视频。</p>
 <figure class="paper-fig"><img src="../../assets/figures/2026-tspo/fig1.png" alt="不同帧采样方法对比" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：三类采样方法对比。均匀采样按固定间隔抽帧、与问题无关（关键瞬间可能恰好漏掉）；training-free 检索用现成相似度找帧但不会因答错而改进；TSPO 把「选哪些帧」当策略，用最终答案对错反向训练采样器。</figcaption></figure>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>先想象一次错误的监控回放</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="先想象一次错误的监控回放">先想象一次错误的监控回放</h3>
 <p>你要回答「短发女生进博物馆后最先看了什么」。如果 10 分钟视频只均匀抽 64 帧，可能刚好没有抽到她第一次进入展厅的片段。后面的 MLLM 再强，也不能从没有看到的画面里恢复答案。</p>
 <p>TSPO 先用 1 FPS 的方式得到候选帧，再根据问题给候选帧打分。它不只看「这一帧里有没有短发女生」，还用局部窗口注意力看「这几帧合起来是不是一个进入博物馆的事件」。选出的帧交给一个冻结的 Video-MLLM 回答。</p>
 <p>训练时，同一个问题会随机产生多组候选帧。哪一组让 MLLM 答对，哪一组的采样策略就得到更高的组内相对奖励。这样，答案本身就成了采样器的弱监督，不需要人工逐帧标注。</p>
 <p>但「答对」只说明一组帧足够，不说明其中每一帧都不可替代。一组帧可能很精简，另一组可能包含大量无关帧，却都能让 MLLM 答对。为此，论文另外构造了长视频 needle-in-a-haystack 数据，知道目标视频片段在哪里，并用选中帧落入目标片段的比例提供更细的定位信号。</p>
-<h3>类比：给侦探配一个会学习的取证助手</h3>
+<h3 id="类比：给侦探配一个会学习的取证助手">类比：给侦探配一个会学习的取证助手</h3>
 <ul>
 <li>均匀采样：助手每隔固定时间拍一张照片，不管问题问什么。</li>
 <li>training-free 搜索：助手用现成相似度规则找照片，但不会因为最后答错而改变策略。</li>
@@ -62,22 +62,22 @@
 <p>最容易卡住的点是：论文说「端到端」，并不表示整个 MLLM 都被训练。端到端指的是最终语言任务奖励能够优化选帧策略；实际训练中 CLIP 和 Video-MLLM 都冻结，只更新约 3.5M 个 temporal agent 参数。</p>
 </section>
 <section class="note-sec" id="mechanism"><h2>关键机制</h2><figure class="paper-fig"><img src="../../assets/figures/2026-tspo/fig2.png" alt="TSPO 框架总览" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。</figcaption></figure>
-<h3>1. Event-aware Temporal Agent</h3>
+<h3 id="1-event-aware-temporal-agent">1. Event-aware Temporal Agent</h3>
 <p>对长视频先按 1 FPS 得到候选帧 <span class="note-math">$V_c$</span>。冻结的 CLIP-Large 分别提取帧特征 <span class="note-math">$F_f$</span> 和 query 特征 <span class="note-math">$F_t$</span>。Temporal Agent 对帧特征施加长度为 12 的局部窗口注意力、正弦位置编码和 MLP，得到带局部事件上下文的 <span class="note-math">$F_e$</span>。</p>
 <p>它把两种相似度相加：</p>
 <pre class="note-pre">$$S = \operatorname{Sim}_{event}(F_e,F_t) + \operatorname{Sim}_{frame}(F_f,F_t)$$</pre>
 <p>帧级相似度更像是在问「画面里有没有 query 提到的人或物」，事件级相似度则尝试回答「这段局部时间上下文是否对应 query 描述的事件关系」。</p>
-<h3>2. Gumbel-Softmax Top-K 选帧</h3>
+<h3 id="2-gumbel-softmax-top-k-选帧">2. Gumbel-Softmax Top-K 选帧</h3>
 <p>训练时在分数上加入 Gumbel 噪声：</p>
 <pre class="note-pre">$$P,I = \operatorname{TopK}\left(\operatorname{Softmax}(S/\tau + \gamma)\right), \quad \gamma \sim \operatorname{Gumbel}(0,1)$$</pre>
 <p>其中 <span class="note-math">$I$</span> 是被选中的帧索引，<span class="note-math">$P$</span> 是相应概率。噪声让训练可以探索不同的帧组合；温度 <span class="note-math">$	au$</span> 从 0.025 退火到 0.01，代表从「多探索」逐渐转向「更确定地选高分帧」。推理时去掉 Gumbel 噪声，得到确定性的选帧结果。</p>
-<h3>3. 把选帧和回答建模成联合决策</h3>
+<h3 id="3-把选帧和回答建模成联合决策">3. 把选帧和回答建模成联合决策</h3>
 <p>对一个问题 <span class="note-math">$q$</span>，训练时采样 <span class="note-math">$G$</span> 组关键帧，分别送入冻结的 LLaVA-Video-7B，得到 <span class="note-math">$G$</span> 个回答。联合策略可以写成：</p>
 <pre class="note-pre">$$\pi(o,V_s\mid q,V_c)=\pi_l(o\mid q,V_s,V_c)\,\pi_{ts}(V_s\mid q,V_c)$$</pre>
 <p>这比普通 GRPO 多了一层「选哪些视觉输入」的动作。由于语言模型冻结，论文令语言策略的新旧概率比为 1，最终只用组内相对优势更新 temporal sampling policy：</p>
 <pre class="note-pre">$$J^*_{tspo} \propto \sum_i \frac{\pi_{ts}(V_{s_i}\mid q,V_c)}{\pi_{ts,old}(V_{s_i}\mid q,V_c)}A_i$$</pre>
 <p>因此，TSPO 不是先固定帧再优化语言模型，而是让语言任务的奖励反过来筛选和塑造帧选择策略。</p>
-<h3>4. 双风格数据与双奖励</h3>
+<h3 id="4-双风格数据与双奖励">4. 双风格数据与双奖励</h3>
 <figure class="paper-fig"><img src="../../assets/figures/2026-tspo/fig4.png" alt="TSPO 双数据构建流程" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 4）：双风格训练数据。Comprehensive Temporal Data 过滤过易/过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱，保留目标片段伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。</figcaption></figure>
 <p>论文构造 TSPO-10K：</p>
 <ul>
@@ -90,7 +90,7 @@
 <pre class="note-pre">$$R_T=\frac{T_t}{T_a}$$</pre>
 <p><span class="note-math">$T_t$</span> 是选中且落在目标视频片段内的帧数，<span class="note-math">$T_a$</span> 是总选帧数。它更接近「选中帧的目标片段 precision」，不是完整的 IoU，也不是精确事件边界标注。</p>
 <p>Comprehensive 数据的总奖励是 <span class="note-math">$R_A+1$</span>，needle 数据的总奖励是 <span class="note-math">$R_A+R_T$</span>。前者让采样器学会服务于最终回答，后者进一步区分「同样答对但冗余更多」和「答对且集中命中目标片段」的采样方案。</p>
-<h3>5. 为什么冻结 MLLM</h3>
+<h3 id="5-为什么冻结-mllm">5. 为什么冻结 MLLM</h3>
 <p>论文依赖一个前提：LLaVA-Video 已经用均匀 32 帧做过 SFT，模型本身有足够强的语言和视频问答能力；只要选到正确关键帧，它就有机会答对。</p>
 <p>冻结 MLLM 有三个直接好处：保留语言模型的强先验，避免 RL 同时改变回答器和采样器导致奖励难以归因，并把训练显存与可学习参数压到很小。代价是，如果 MLLM 即使看到了正确帧也答不对，<span class="note-math">$R_A$</span> 就不再是可靠的选帧监督。</p>
 </section>

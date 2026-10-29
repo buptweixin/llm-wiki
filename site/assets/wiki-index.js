@@ -962,7 +962,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：Q1 上下文谁看 y+/y⁻，最初答反了\"学生看到 y+\"。",
         "a": "notes/papers/2026-u-opsd.html#qa-context",
-        "t": "Q：Q1 上下文谁看 y+/y⁻，最初答反了\"学生看到 y+\"。 纠正后：教师 x + y+ + y⁻<t （看 y+），学生 x + y⁻<t （ 不看 y+ ）。两者共享 x + y⁻<t ，教师多出的只有 y+。学生若也看 y+，则教师=学生 KL 恒 0 无信号；学习信号正是从\"教师知答案、学生不知\"的差里长出来。后确认是手误打反（原意为学生见 y⁻）。"
+        "t": "Q：Q1 上下文谁看 y+/y⁻，最初答反了\"学生看到 y+\"。 纠正后：教师 x + y+ + y⁻<t （看 y+），学生 x + y⁻<t （**不看 y+**）。两者共享 x + y⁻<t ，教师多出的只有 y+。学生若也看 y+，则教师=学生 KL 恒 0 无信号；学习信号正是从\"教师知答案、学生不知\"的差里长出来。后确认是手误打反（原意为学生见 y⁻）。"
       },
       {
         "h": "全文问答 · Q：13.3% 的错标签为什么没把模型带偏？",
@@ -1340,7 +1340,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 卡壳点与解答",
         "a": "notes/papers/2026-locateanything.html#pitfalls",
-        "t": "卡壳点与解答 Q：第一版讲解看完说\"还是没看懂具体怎么做的\"，卡在哪？ A：卡在机制没落到 token 级操作。重讲的三步走通：① 原材料：框 = 一串词（结构词 + 坐标词），旧法一个 forward 蹦一个；② Transformer 天生\"每个位置都预测下一词\"，只是自回归只取最后一个：PBD 把浪费的位置用起来，训练时专出\"填空题\"（块留首格、后 5 格 [MASK]、一次填）；③ 推理 = 只做填空，一段段填。教训：这篇的机制必须讲到 token 级演算才能建立直觉，纯架构图讲不通。 Q：坐标并行出、没有先后，凭什么\"互相约束\"？ A：不是先生成 x1 再传给 x2。四个 mask 位置共享上下文，在块内双向交互，并同时接受各位置的 token 交叉熵监督。共享权重由此学习框结构。实际目标没有额外的“整框合法才得分”判卷器，位置也读不到尚未生成的真实坐标。并行预测减少串行错误传递，但不保证四个预测统计独立或每个框都合法。 Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了） A：先澄清：条件 2 的\"top-5 极差 > 80\"指 5 个候选坐标词在 [0,1000] 坐标轴上互相差多远，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测：候选分布是否\"撕裂\"。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有\"不自信 + 候选在几何上严重分裂\"（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。 Q：PBD-Slow 也是 NTP 解码，凭啥比旧 Quantized-NTP 高 +2？（消融归因） A：初答\"两种形式互相促进\"太泛、抓不到点。决定性数据点是 Table 6c 第一行：只训 Lntp（表征已经块对齐）→ Slow 50.1，跟旧 Quantized-NTP 分毫不差：只把坐标包成块、不加填空监督，零增益。所以 +2 只有一个来源：Lblk 这条块级填空损失。它的作用不是\"教并行\"（Slow 不并行），而是用\"同块各位置共同接受 token 交叉熵监督\"把几何联合约束压进共享权重，x1 的分布不再孤立被评、和 y1/x2/y2 绑一起评；这份结构化监督在权重里沉淀后，换回 NTP 推理依然生效。这就是论文 \"box-aligned formulation provides stronger supervision than 1D serialization, without sacrificing throughput\" 的意思：精度收益从\"必须靠并行\"里解放出来了。 Q：通用 MTP（SDLM/BlockDiff）为什么又慢又差？ A：结构无关切块让块边界大概率落在无意义处，一个块同时装\"上一框尾巴坐标 + 下一类别的开头词\"，模型被迫拟合横跨框边界、横跨类别的虚假相关（共现统计，非真实规律），纯消耗容量还错误传播。加速弱是因为块内容不连贯，实际可用性差（SDLM 只到 ~5.5 BPS）。PBD 用\"块 = 框\"把这个伪模式源头拆掉。 2026-10-04 核对原文 §3.2：历史问答中「整块全对才拿分」「合法框约束直接入 loss」是过强类比。实际为两种序列的 token 交叉熵联合训练。Table 6 的增益支持结构化训练有效，不证明增加了硬几何损失。"
+        "t": "卡壳点与解答 Q：第一版讲解看完说\"还是没看懂具体怎么做的\"，卡在哪？ A：卡在机制没落到 token 级操作。重讲的三步走通：① 原材料：框 = 一串词（结构词 + 坐标词），旧法一个 forward 蹦一个；② Transformer 天生\"每个位置都预测下一词\"，只是自回归只取最后一个：PBD 把浪费的位置用起来，训练时专出\"填空题\"（块留首格、后 5 格 [MASK]、一次填）；③ 推理 = 只做填空，一段段填。教训：这篇的机制必须讲到 token 级演算才能建立直觉，纯架构图讲不通。 Q：坐标并行出、没有先后，凭什么\"互相约束\"？ A：不是先生成 x1 再传给 x2。四个 mask 位置共享上下文，在块内双向交互，并同时接受各位置的 token 交叉熵监督。共享权重由此学习框结构。实际目标没有额外的“整框合法才得分”判卷器，位置也读不到尚未生成的真实坐标。并行预测减少串行错误传递，但不保证四个预测统计独立或每个框都合法。 Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了） A：先澄清：条件 2 的\"top-5 极差 > 80\"指 5 个候选坐标词在 [0,1000] 坐标轴上互相差多远，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测：候选分布是否\"撕裂\"。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有\"不自信 + 候选在几何上严重分裂\"（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。 Q：PBD-Slow 也是 NTP 解码，凭啥比旧 Quantized-NTP 高 +2？（消融归因） A：初答\"两种形式互相促进\"太泛、抓不到点。决定性数据点是 Table 6c 第一行：只训 Lntp（表征已经块对齐）→ Slow 50.1，跟旧 Quantized-NTP 分毫不差：只把坐标包成块、不加填空监督，零增益。所以 +2 只有一个来源：Lblk 这条块级填空损失。它的作用不是\"教并行\"（Slow 不并行），而是用\"同块各位置共同接受 token 交叉熵监督\"把几何联合约束压进共享权重，x1 的分布不再孤立被评、和 y1/x2/y2 绑一起评；这份结构化监督在权重里沉淀后，换回 NTP 推理依然生效。这就是论文 \"box-aligned formulation provides stronger supervision than 1D serialization, without sacrificing throughput\" 的意思：精度收益从\"必须靠并行\"里解放出来了。 Q：通用 MTP（SDLM/BlockDiff）为什么又慢又差？ A：结构无关切块让块边界大概率落在无意义处，一个块同时装\"上一框尾巴坐标 + 下一类别的开头词\"，模型被迫拟合横跨框边界、横跨类别的虚假相关（共现统计，非真实规律），纯消耗容量还错误传播。加速弱是因为块内容不连贯，实际可用性差（SDLM 只到 ~5.5 BPS）。PBD 用\"块 = 框\"把这个伪模式源头拆掉。 2026-10-04 核对原文 §3.2：历史问答中「整块全对才拿分」「合法框约束直接入 loss」是过强类比。实际为两种序列的 token 交叉熵联合训练。Table 6 的增益支持结构化训练有效，不证明增加了硬几何损失。 2026-10-07 第二次复测纠偏：复测中一度将 L_blk 的约束通道归因为目标检测式的连续坐标回归损失（L1/GIoU），核对原文 §3.2 确认目标只有 L_ntp + L_blk 两个序列的 token 交叉熵联合训练。约束通道本质是：块对齐 + 块内双向注意力 + 同块多位置 token CE 联合优化逼共享权重学到四坐标联合分布。Fast 也非推测解码的草稿验证机制，而是一次并行前向直接产出提交。门控信号来自并行步自身的置信统计，非额外运行 NTP 检验。"
       },
       {
         "h": "全文问答 · Q：第一版讲解看完说\"还是没看懂具体怎么做的\"，卡在哪？",
@@ -1355,7 +1355,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了）",
         "a": "notes/papers/2026-locateanything.html#qa-trigger",
-        "t": "Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了） 先澄清：条件 2 的\"top-5 极差 > 80\"指 5 个候选坐标词在 [0,1000] 坐标轴上 互相差多远 ，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测： 候选分布是否\"撕裂\" 。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有\"不自信 + 候选在几何上严重分裂\"（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。"
+        "t": "Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了） 先澄清：条件 2 的\"top-5 极差 > 80\"指 5 个候选坐标词在 [0,1000] 坐标轴上 互相差多远 ，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测：**候选分布是否\"撕裂\"**。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有\"不自信 + 候选在几何上严重分裂\"（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。"
       },
       {
         "h": "全文问答 · Q：PBD-Slow 也是 NTP 解码，凭啥比旧 Quantized-NTP 高 +2？（消融归因）",
@@ -1365,7 +1365,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：通用 MTP（SDLM/BlockDiff）为什么又慢又差？",
         "a": "notes/papers/2026-locateanything.html#qa-generic-mtp",
-        "t": "Q：通用 MTP（SDLM/BlockDiff）为什么又慢又差？ 结构无关切块让块边界大概率落在无意义处，一个块同时装\"上一框尾巴坐标 + 下一类别的开头词\"，模型被迫拟合横跨框边界、横跨类别的虚假相关（共现统计，非真实规律），纯消耗容量还错误传播。加速弱是因为块内容不连贯，实际可用性差（SDLM 只到 ~5.5 BPS）。PBD 用\"块 = 框\"把这个伪模式源头拆掉。 2026-10-04 核对原文 §3.2：历史问答中「整块全对才拿分」「合法框约束直接入 loss」是过强类比。实际为两种序列的 token 交叉熵联合训练。Table 6 的增益支持结构化训练有效，不证明增加了硬几何损失。"
+        "t": "Q：通用 MTP（SDLM/BlockDiff）为什么又慢又差？ 结构无关切块让块边界大概率落在无意义处，一个块同时装\"上一框尾巴坐标 + 下一类别的开头词\"，模型被迫拟合横跨框边界、横跨类别的虚假相关（共现统计，非真实规律），纯消耗容量还错误传播。加速弱是因为块内容不连贯，实际可用性差（SDLM 只到 ~5.5 BPS）。PBD 用\"块 = 框\"把这个伪模式源头拆掉。 2026-10-04 核对原文 §3.2：历史问答中「整块全对才拿分」「合法框约束直接入 loss」是过强类比。实际为两种序列的 token 交叉熵联合训练。Table 6 的增益支持结构化训练有效，不证明增加了硬几何损失。 2026-10-07 第二次复测纠偏：复测中一度将 L_blk 的约束通道归因为目标检测式的连续坐标回归损失（L1/GIoU），核对原文 §3.2 确认目标只有 L_ntp + L_blk 两个序列的 token 交叉熵联合训练。约束通道本质是：块对齐 + 块内双向注意力 + 同块多位置 token CE 联合优化逼共享权重学到四坐标联合分布。Fast 也非推测解码的草稿验证机制，而是一次并行前向直接产出提交。门控信号来自并行步自身的置信统计，非额外运行 NTP 检验。"
       },
       {
         "h": "全文 · 还没搞懂",
@@ -1991,6 +1991,131 @@ window.WIKI_INDEX = [
     ]
   },
   {
+    "id": "2025-gspo",
+    "type": "paper",
+    "title": "GSPO",
+    "href": "papers/2025-gspo.html",
+    "noteHref": "notes/papers/2025-gspo.html",
+    "sourceHref": "wiki/papers/2025-gspo.md",
+    "date": "2026-10-29",
+    "topic": "reinforcement-learning",
+    "aliases": [
+      "GSPO",
+      "Group Sequence Policy Optimization"
+    ],
+    "tags": [
+      "group-rl",
+      "policy-gradient",
+      "clipped-surrogate",
+      "cot-reasoning",
+      "improve-stability",
+      "improve-training-efficiency",
+      "improve-reasoning"
+    ],
+    "essence": "GSPO 把强化学习策略比率与裁剪边界从逐 Token 提升到整条序列的长度归一化似然，消除优化与奖励的粒度错位，使 MoE 与长推理 RL 训练无需 Routing Replay 即可稳定收敛。",
+    "review": {
+      "next": "2026-11-01",
+      "last": "2026-10-29",
+      "count": 0,
+      "result": "首测已通过：三题全过，准确理解长序列似然比几何平均（1/L 指数次方）防下溢、MoE 稀疏路由震荡被整序列似然平滑抵消而免除 Routing Replay，以及结果奖励下前序正确步骤平摊负奖励的因果妥协边界；待首轮复测。"
+    },
+    "relations": [
+      {
+        "type": "extends",
+        "to": "2024-deepseekmath",
+        "title": "DeepSeekMath",
+        "claim": "继承 GRPO 的无 Critic 组相对优势估计架构，将重要性采样与裁剪从逐 token 升级至整序列似然比",
+        "status": "reported"
+      },
+      {
+        "type": "compare",
+        "to": "2025-dapo",
+        "title": "DAPO",
+        "claim": "共同解决长推理 RL 稳定性痛点：DAPO 采用非对称裁剪与 Token-level 权重调优，GSPO 采用长度归一化序列比率根除方差",
+        "status": "synthesis"
+      },
+      {
+        "type": "extends",
+        "to": "2017-ppo",
+        "title": "PPO",
+        "claim": "将单步信任域代理裁剪扩展为自回归长序列级别的几何平均似然比裁剪",
+        "status": "reported"
+      }
+    ],
+    "entries": [
+      {
+        "h": "速览 · 五分钟重建",
+        "a": "papers/2025-gspo.html#rebuild",
+        "t": "GRPO 将整道题的结果奖励与逐 token 策略比率和逐 token 裁剪绑定。长序列各 token 比率波动撕裂完整证明，MoE 路由轻微跳变更会引发梯度爆炸，迫使系统使用沉重的 Routing Replay 补丁。GSPO 将重要性采样与裁剪统一提升到序列级别。 序列级似然比 计算整条回答在当前策略与旧策略下的联合概率比，并按序列长度取几何平均（1/ y_i 指数次方），使比率稳定维持在 1.0 附近。 序列级全局裁剪 在序列重要性比率上施加 [1-ε, 1+ε] 裁剪，由组内相对优势驱动整条序列协同更新，不再逐字撕裂。 平滑更新免回放 单个 token 的专家路由变动被全序列几何平均自然稀释，MoE 训练无需保存和回放旧路由即可平稳收敛。 具体例子（教学假设） ：一条 2000 token 的解题回答，新旧策略下各 token 的 log 概率差均值为 0.001。整条序列连乘概率比为 exp(2) ≈ 7.39（严重失真），但经长度归一化后比率为 exp(0.001) ≈ 1.001，平稳落在裁剪区间内；序列内每个 token 分配到一致且平滑的更新尺度。 边界 ：GSPO 假设外部奖励仅在序列生成完毕后提供（Outcome Reward）。若存在可靠的密集过程奖励（PRM），序列级平摊会稀释步级精准信用分配；此外短文本或单步决策任务中相比 GRPO 收益有限。 换个条件看机制 如果解题过程有 2000 个 token，前 1990 个 token 严密正确，最后 10 个 token 算错导致全题得负奖，GSPO 会如何更新？ 前 1990 个 token 同样会接受负优势更新。但在无单步过程标签的前提下，GRPO 赋予 token 的不同比率只是采样漂移而非真实因果归因；GSPO 消除伪方差换取全局训练稳定性，是工程上完全可接受的妥协。"
+      },
+      {
+        "h": "全文 · 五分钟重建",
+        "a": "notes/papers/2025-gspo.html#rebuild",
+        "t": "五分钟重建 GRPO 将整道题的结果奖励与逐 token 策略比率和逐 token 裁剪绑定。长序列各 token 比率波动撕裂完整证明，MoE 路由轻微跳变更会引发梯度爆炸，迫使系统使用沉重的 Routing Replay 补丁。GSPO 将重要性采样与裁剪统一提升到序列级别。 序列级似然比 计算整条回答在当前策略与旧策略下的联合概率比，并按序列长度取几何平均（1/ y_i 指数次方），使比率稳定维持在 1.0 附近。 序列级全局裁剪 在序列重要性比率上施加 [1-ε, 1+ε] 裁剪，由组内相对优势驱动整条序列协同更新，不再逐字撕裂。 平滑更新免回放 单个 token 的专家路由变动被全序列几何平均自然稀释，MoE 训练无需保存和回放旧路由即可平稳收敛。 具体例子（教学假设） ：一条 2000 token 的解题回答，新旧策略下各 token 的 log 概率差均值为 0.001。整条序列连乘概率比为 exp(2) ≈ 7.39（严重失真），但经长度归一化后比率为 exp(0.001) ≈ 1.001，平稳落在裁剪区间内；序列内每个 token 分配到一致且平滑的更新尺度。 边界 ：GSPO 假设外部奖励仅在序列生成完毕后提供（Outcome Reward）。若存在可靠的密集过程奖励（PRM），序列级平摊会稀释步级精准信用分配；此外短文本或单步决策任务中相比 GRPO 收益有限。 换个条件看机制 如果解题过程有 2000 个 token，前 1990 个 token 严密正确，最后 10 个 token 算错导致全题得负奖，GSPO 会如何更新？ 前 1990 个 token 同样会接受负优势更新。但在无单步过程标签的前提下，GRPO 赋予 token 的不同比率只是采样漂移而非真实因果归因；GSPO 消除伪方差换取全局训练稳定性，是工程上完全可接受的妥协。 可选自测 关掉提示后解释：为什么 GSPO 裁剪掉的 token 比例比 GRPO 高两个数量级，训练效率却反而显著更高？ 2026-10-29：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。"
+      },
+      {
+        "h": "全文 · 论文图解",
+        "a": "notes/papers/2025-gspo.html#figures",
+        "t": "论文图解 GSPO 与 GRPO 在 Qwen3-30B-A3B-Base 上的训练曲线与基准评测 *图 1 费曼图解（论文 Figure 1）：在 48 层 MoE 模型 Qwen3-30B-A3B-Base 上，GSPO 的训练奖励以及在 AIME'24（Pass@1 over 32）、LiveCodeBench 和 CodeForces 上的表现全面超越带有 Routing Replay 的 GRPO 基线，随训练计算量持续稳定爬升。* GSPO 与 GRPO 训练期间被裁剪 token 比例对比 *图 2 费曼图解（论文 Figure 2）：GSPO 采用整序列裁剪，被截断丢弃的 token 比例在数值上高出 GRPO 两个数量级（GSPO 约 15%，GRPO 仅 0.13%）；但留下的样本提供了高度可靠的梯度信号，反而实现了更高的训练利用效率。* Routing Replay 对 MoE 模型 GRPO 训练收敛的关键作用 *图 3 费曼图解（论文 Figure 3）：在 48 层的深层 MoE 模型中，单步参数更新会导致约 10% 的专家分配发生漂移。GRPO 缺乏该机制时训练奖励瞬间崩盘（w/o Routing Replay）；GSPO 凭借序列级似然对局部跳变的天然容忍，彻底丢弃 Routing Replay 依然稳定收敛。*"
+      },
+      {
+        "h": "全文 · 解决什么问题",
+        "a": "notes/papers/2025-gspo.html#problem",
+        "t": "解决什么问题 在长思维链大模型强化学习（如 DeepSeek-R1、Qwen 系列）中，GRPO 虽通过组内相对优势比较剔除了独立 Critic 价值网络，却直接继承了源自 PPO 的逐 token 重要性比率与逐 token 裁剪机制，引发两大系统性暗礁： 奖励与优化的粒度错位（Unit Mismatch）与长链条方差爆炸： 外部评估（数学对错、代码测例）是序列级标量奖励（Outcome Reward），算法无法获知每个 token 的真实因果贡献； GRPO 强行在每个 token 上独立计算重要性比率 $r_{i,t} = \\frac{\\pi_\\theta(y_{i,t})}{\\pi_{\\text{old}}(y_{i,t})}$ 并独立执行 $[1-\\varepsilon, 1+\\varepsilon]$ 裁剪； 在长达数千 token 的推导中，整条本该协同强化的正确解题过程，部分 token 满足比率被放大，部分 token 越过阈值被强行截断为 0 梯度，导致连贯的思维链被撕裂。累计梯度方差随生成长度激增，容易诱发不可逆的灾难性模型崩溃（Model Collapse）。 MoE 模型的稀疏路由地震与沉重的工程包袱： 在混合专家（MoE）模型中，每个 token 由门控路由分配给 Top-K 专家； 训练步轻微更新后，某些 token 激活的专家组合发生变动，导致单 token 条件概率剧烈跳跃，使得 token 级比率 $r_t$ 瞬间飞出正常区间甚至溢出； 过去为了维系 MoE 的 GRPO 训练收敛，业界被迫引入 Routing Replay（路由回放）：Rollout 采样时必须在显存中缓存每一层、每个 token 的激活专家索引，训练前向传播时强行劫持 Router 注入旧专家。这造成了极其庞大的显存占用、分布式跨集群通信延迟与脆弱的底层算子侵入。"
+      },
+      {
+        "h": "全文 · 大白话讲解",
+        "a": "notes/papers/2025-gspo.html#intuition",
+        "t": "大白话讲解 类比：合力做大题与拔河比赛 把模型的长思维链推理比作一个班级齐心协力解出一道压轴奥数题： GRPO 的做法：老师给整道题打了满分（序列级奖励 $\\widehat{A} > 0$）。但发奖励时，主任拿着放大镜去给每个人的「呼吸频率」算系数：谁呼吸稍微急促了一点就当场扇一巴掌让他闭嘴（Token 级裁剪截断梯度）；谁呼吸平缓就硬拉着往前拽。一条完整严密的证明被切成了无数段碎肉，队员互相绊倒，全班当场散伙。 GSPO 的做法：主任只看整班人交出来的试卷总体倾向相比草稿调整了多少（整篇序列似然取几何平均）。只要整篇文章的方向可控，所有队员共享平滑、同步的奖励；若整篇跑偏过远，则全篇统一减速。整篇逻辑骨架保持完整，方差自然消失。 在 MoE 架构中，就像班里有 64 位不同学科的专家辅导员。GRPO 因为单字微观挑刺，一旦门卫把某个字的辅导员换成了另一个人，该字的比率就会爆发大地震；而 GSPO 关注整篇作文的宏观质量，个别专家的微调被全篇数千字平滑稀释，根本不需要花重金雇佣监工（Routing Replay）强行规定谁辅导哪个字。"
+      },
+      {
+        "h": "全文 · 关键机制",
+        "a": "notes/papers/2025-gspo.html#mechanism",
+        "t": "关键机制 1. 长度归一化的序列重要性比率（Length-Normalized Sequence Ratio） GSPO 将重要性采样比率定义在整条候选序列 $y_i$ 的联合概率上，并通过序列长度 $ y_i $ 取几何平均： $$s_i(\\theta) = \\left[ \\frac{\\pi_\\theta(y_i \\mid x)}{\\pi_{\\theta_{\\text{old}}}(y_i \\mid x)} \\right]^{\\frac{1}{ y_i }} = \\exp\\left( \\frac{1}{ y_i } \\sum_{t=1}^{ y_i } \\log \\frac{\\pi_\\theta(y_{i,t} \\mid x, y_{i,<t})}{\\pi_{\\theta_{\\text{old}}}(y_{i,t} \\mid x, y_{i,<t})} \\right)$$ 数值稳定性保障：若直接计算联合概率比的连乘 $\\prod_{t=1}^{ y_i } r_{i,t}$，数千步的概率积在浮点精度下必然下溢至 0 或极端爆炸；通过取 $\\frac{1}{ y_i }$ 次方（即 log-ratio 算术平均后再指数化），$s_i(\\theta)$ 在不同生成长度下均稳定居中在 1.0 附近。 2. 序列级裁剪代理目标（Sequence-level Clipped Objective） 将裁剪限制在整条序列的全局标量比率 $s_i(\\theta)$ 上： $$\\mathcal{J}_{\\text{GSPO}}(\\theta) = \\mathbb{E}_{x \\sim \\mathcal{D},\\, \\{y_i\\}_{i=1}^G \\sim \\pi_{\\theta_{\\text{old}}}}\\left[ \\frac{1}{G} \\sum_{i=1}^G \\min\\left( s_i(\\theta)\\widehat{A}_i, \\; \\text{clip}\\left(s_i(\\theta), \\, 1 - \\varepsilon, \\, 1 + \\varepsilon\\right)\\widehat{A}_i \\right) \\right]$$ 其中 $\\widehat{A}_i$ 沿用组内相对标准化优势：$\\widehat{A}_i = \\frac{R_i - \\text{mean}(R)}{\\text{std}(R)}$。 3. 梯度展开与序列内同频更新 对未触发裁剪的序列求梯度： $$\\nabla_\\theta \\mathcal{J}_{\\text{GSPO}} = \\frac{1}{G} \\sum_{i=1}^G \\widehat{A}_i \\cdot s_i(\\theta) \\cdot \\frac{1}{ y_i } \\sum_{t=1}^{ y_i } \\nabla_\\theta \\log \\pi_\\theta(y_{i,t} \\mid x, y_{i,<t})$$ 在反向传播时，序列 $y_i$ 内每一个 token 共享统一的缩放因子 $\\frac{\\widehat{A}_i \\cdot s_i(\\theta)}{ y_i }$，消除了局部 token 梯度非均匀裁剪造成的语义扭曲； 只有当整条序列偏离旧策略过远时，裁剪才一次性踩刹车，保护完整逻辑链路。 4. 彻底抛弃 Routing Replay 在 48 层的 Qwen3-30B-A3B-Base 中，一次更新后约 10% 的 token 会路由到不同专家。在 GSPO 下，序列似然的宏观平滑性抵抗了微观专家路径震荡，系统无需在显存中缓存路由索引，节省数 GB 显存与繁重的跨集群 All-to-All 路由通信。 5. 解耦推理与训练重算（RL Infrastructure 简化） 由于训练引擎（Megatron）与推理引擎（vLLM / SGLang）之间存在底层算子浮点差异，GRPO 必须在训练端重新前向跑一遍旧策略以消除单 token 误差。GSPO 对单 token 精度差异容忍度高，可直接复用推理引擎产出的序列似然，在分布式训练架构下进一步提升吞吐。"
+      },
+      {
+        "h": "全文 · 结果与代价",
+        "a": "notes/papers/2025-gspo.html#evidence",
+        "t": "结果与代价 实测性能：在 Qwen3-30B-A3B-Base 冷启动模型上，GSPO 在 AIME'24、LiveCodeBench 和 CodeForces 全面超越带 Routing Replay 的 GRPO 基线；直接赋能了 Qwen3 全系模型的强化学习扩展。 反直觉发现（Figure 2）：GSPO 裁剪掉的 token 总量比 GRPO 高两个数量级（15% vs 0.13%），却在消耗更少有效 token 的情况下达成更高效率，实证了 GRPO 未裁剪 token 梯度的虚假方差破坏性。 代价与局限： 牺牲了理想状态下的步骤级因果归因（但该因果在结果奖励体系下本就是伪命题）； 若未来引入高精度过程奖励模型（PRM），序列级统一缩放需要针对步级奖励进行拓展重构； 短序列或单步动作任务中，相比 GRPO 的稳定性增益减弱。"
+      },
+      {
+        "h": "全文 · AI 预读备注",
+        "a": "notes/papers/2025-gspo.html#ai-notes",
+        "t": "AI 预读备注 底稿来源：Zotero AI Butler 子笔记 JS69TIZA（task=summary）与 VEEZCGDC（task=table）。 预读要点确认：AI Butler 准确指出了「序列级似然定义比率」与「稳定 MoE 避免 Routing Replay」，但未透彻解释几何平均在数学上防止长序列浮点下溢的机制，亦未点出 Figure 2「裁剪比例高两阶却更高效」的反直觉因果。本篇费曼讲解予以深化补齐。"
+      },
+      {
+        "h": "全文 · 我的复述",
+        "a": "notes/papers/2025-gspo.html#restatement",
+        "t": "我的复述 XinLi 费曼检验原话记录（2026-10-29）： 针对长序列连乘数值崩溃： \"会导致乘积接近0甚至下溢到精度外变成0， GSPO 取 1/ y_i 指数次方，取几何平均，比率会落在1.0附近\" 针对 MoE 路由跳变与免回放机制： \"因为 MoE 模型更新后可能会被路由到新的专家导致分布大范围波动，触发梯度裁剪等操作；GSPO 取的是整个序列的平均序列比率，个别路由波动可以被平均抵消。\" 针对前序正确步骤平摊负奖励的权衡： \"由于 GSPO 是采用平均序列比例，所以前面的 token 会获得正常幅度的更新负奖励，这是可接受的妥协，因为GRPO 赋予各个 token 的不同更新幅度也不是真正的因果归因。\""
+      },
+      {
+        "h": "全文 · 卡壳点与解答",
+        "a": "notes/papers/2025-gspo.html#pitfalls",
+        "t": "卡壳点与解答 Q1：为什么说 Routing Replay 是高开销的工程包袱？ 显存膨胀：MoE 深度可达 48~64 层，每层每个 token 都要保存 Top-K 专家索引。在长推理与大批次下，整套路由缓存占用数 GB 到数十 GB 显存，极度挤占上下文长度。 通信与序列化延迟：Rollout 推理集群与 Trainer 训练集群分离时，必须跨节点打包并传输整套庞大的路由张量，拖慢端到端迭代流水线。 算子侵入脆弱：需要在推理引擎与训练框架的底层 MoE 算子中强行打补丁拦截 Router 计算，系统升级维护代价极高。 Q2：GRPO 的 Token 级方差缺陷到底指的是什么？ 奖励与惩罚的错位：外部裁判只看整篇证明做对做错发一份总奖金（序列级奖励），GRPO 却把几千个单词拆成独立小人各自算比率。 思维链被撕裂：因为单 token 裁剪，导致同一条证明里有的词在猛冲、有的词被踩刹车归零。连贯推导被切碎，梯度忽大忽小乱晃，最终造成模型崩溃。 GSPO 的解决本质：取消单字弹簧，整篇求几何平均似然比。要奖全篇一起奖，要刹全篇一起刹，方差自然消除。"
+      },
+      {
+        "h": "全文问答 · Q1：为什么说 Routing Replay 是高开销的工程包袱？",
+        "a": "notes/papers/2025-gspo.html#qa-routing-replay",
+        "t": "Q1：为什么说 Routing Replay 是高开销的工程包袱？ 显存膨胀 ：MoE 深度可达 48~64 层，每层每个 token 都要保存 Top-K 专家索引。在长推理与大批次下，整套路由缓存占用数 GB 到数十 GB 显存，极度挤占上下文长度。 通信与序列化延迟 ：Rollout 推理集群与 Trainer 训练集群分离时，必须跨节点打包并传输整套庞大的路由张量，拖慢端到端迭代流水线。 算子侵入脆弱 ：需要在推理引擎与训练框架的底层 MoE 算子中强行打补丁拦截 Router 计算，系统升级维护代价极高。"
+      },
+      {
+        "h": "全文问答 · Q2：GRPO 的 Token 级方差缺陷到底指的是什么？",
+        "a": "notes/papers/2025-gspo.html#qa-token-variance",
+        "t": "Q2：GRPO 的 Token 级方差缺陷到底指的是什么？ 奖励与惩罚的错位 ：外部裁判只看整篇证明做对做错发一份总奖金（序列级奖励），GRPO 却把几千个单词拆成独立小人各自算比率。 思维链被撕裂 ：因为单 token 裁剪，导致同一条证明里有的词在猛冲、有的词被踩刹车归零。连贯推导被切碎，梯度忽大忽小乱晃，最终造成模型崩溃。 GSPO 的解决本质 ：取消单字弹簧，整篇求几何平均似然比。要奖全篇一起奖，要刹全篇一起刹，方差自然消除。"
+      },
+      {
+        "h": "全文 · 还没搞懂",
+        "a": "notes/papers/2025-gspo.html#open",
+        "t": "还没搞懂 当引入可靠的密集过程奖励模型（PRM）时，如何将 GSPO 的几何平均序列比率与步骤级边界自然融合，既保留抗 MoE 路由扰动的平滑性，又实现精准的步骤信用分配？（已同步至 questions.md）"
+      },
+      {
+        "h": "全文 · 关联",
+        "a": "notes/papers/2025-gspo.html#relations",
+        "t": "关联 PPO ： 奠定了裁剪代理目标（Clipped Surrogate）与信任域优化范式，GSPO 将其单步裁剪拓展为序列级裁剪。 DeepSeekMath ： 提出了 GRPO 组相对优势估计，GSPO 继承其去 Critic 的组比较架构并修复其 Token 级方差缺陷。 DAPO ： 同样针对长思维链 RL 的稳定性瓶颈，DAPO 采用不对称 Clip-Higher 与 Token-level loss weight 启发式调优，GSPO 则在数学粒度上更彻底地重塑为序列似然比。"
+      }
+    ]
+  },
+  {
     "id": "distillation",
     "type": "synthesis",
     "title": "蒸馏与训练预算",
@@ -2144,7 +2269,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关系记录",
         "a": "notes/syntheses/distillation.html#relations",
-        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-distill-asymmetry-source 2026-u-opsd compare 2026-s2vopd 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations a52b09ab rel-distill-divergence-fact 2026-u-opsd tension 2026-s2vopd 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 在其实验中 forward KL 更稳（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 reported notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence 027ac948 rel-distill-recoverability 2026-u-opsd compare 2026-s2vopd 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 hypothesis notes/papers/2026-s2vopd.html#open deb3b3b8 rel-distill-orthogonal-slices 2026-u-opsd complement 2026-open-mopd 单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-combine-self-teachers 2026-u-opsd possible-combination 2026-open-mopd 组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节提出了组合设想，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额 hypothesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-divergence-slot 2026-u-opsd compare 2026-open-mopd 散度的角色不同：U-OPSD 的 forward KL 直接当损失（其 reverse KL 实验出现复读塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 PPO 裁剪目标）；同方向不同框架，不矛盾 reported notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-self-asymmetry-in-multi 2026-s2vopd possible-combination 2026-open-mopd 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） hypothesis notes/papers/2026-s2vopd.html#relations 1e64510c rel-distill-ppo-prerequisite 2017-ppo prerequisite 2026-open-mopd Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，clip fraction 约为 75.8%，不等于全部梯度冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob reported notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse 08620a65"
+        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-distill-asymmetry-source 2026-u-opsd compare 2026-s2vopd 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations a52b09ab rel-distill-divergence-fact 2026-u-opsd tension 2026-s2vopd 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 在其实验中 forward KL 更稳（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 reported notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence 027ac948 rel-distill-recoverability 2026-u-opsd compare 2026-s2vopd 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 hypothesis notes/papers/2026-s2vopd.html#open 741401a2 rel-distill-orthogonal-slices 2026-u-opsd complement 2026-open-mopd 单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-combine-self-teachers 2026-u-opsd possible-combination 2026-open-mopd 组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节提出了组合设想，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额 hypothesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-divergence-slot 2026-u-opsd compare 2026-open-mopd 散度的角色不同：U-OPSD 的 forward KL 直接当损失（其 reverse KL 实验出现复读塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 PPO 裁剪目标）；同方向不同框架，不矛盾 reported notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-self-asymmetry-in-multi 2026-s2vopd possible-combination 2026-open-mopd 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） hypothesis notes/papers/2026-s2vopd.html#relations 1e64510c rel-distill-ppo-prerequisite 2017-ppo prerequisite 2026-open-mopd Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，clip fraction 约为 75.8%，不等于全部梯度冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob reported notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse 08620a65"
       },
       {
         "h": "全文 · 分叉与演进",

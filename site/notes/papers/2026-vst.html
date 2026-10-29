@@ -78,7 +78,7 @@
 </tbody></table>
 <p>还有个隐藏的坑：拿现成离线 CoT 数据训流式模型也不行——离线 CoT 是<strong>全局 hindsight 视角</strong>写的，thoughts 里偷藏后文信息（信息泄露），模型学成「作弊」，流式部署时没未来可看就崩。这是 VST 要造一套<strong>严格因果</strong>的数据合成管线的根本原因。</p>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：边看直播边做笔记</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="类比：边看直播边做笔记">类比：边看直播边做笔记</h3>
 <p>想象你看一部长篇悬疑剧直播。两种看法：</p>
 <ul>
 <li><strong>Video-R1 式</strong>：全程干看不动笔，等朋友突然问「凶手什么时候第一次出现？」，你才从头回忆、一步步推理——答得慢（8.8s），还可能因为信息太散想错。</li>
@@ -93,7 +93,7 @@
 <p>🔧 <strong>最容易卡住的点②</strong>：离线 CoT 数据为什么不能直接拿来训？
 因为它是「看完全片后」写的，思考链里会自然引用后文信息（比如第 3 段的 thought 提到第 7 段才出现的物件）。模型学成「偷看未来」，流式部署时没未来可看就崩。</p>
 </blockquote>
-<h3>图解：训练与部署能看哪些视觉 token</h3>
+<h3 id="图解：训练与部署能看哪些视觉-token">图解：训练与部署能看哪些视觉 token</h3>
 <p>未来画面尚未到达，所以训练和部署都不能看它们。窗口部署只保留最近 L 个视觉 token，训练也要采用同样的可见范围。若部署改成保留所有已到达的视觉 token，训练规则也应同步改变；遮住未来的规则仍然保留。</p>
 <figure class="paper-fig"><img src="../../assets/diagrams/vst-visibility.png" alt="VST 可见性示意：t=6、L=3 时，训练和窗口部署都能看视觉 token 4、5、6，1、2、3 已出窗口，7、8 尚未到达" loading="lazy"><figcaption>机制图解：示例有 8 个视觉 token，当前已到达 token 6，窗口容量 L=3。训练与窗口部署都只看 token 4、5、6；早期画面已出窗口，未来画面尚未到达。每格是一个视觉 token，不是一帧或一秒；文本记忆另有规则，本图不画文本记忆。</figcaption></figure>
 <div class="mechanism-reference" id="demo-vst-mask" data-demo="visibility" data-total="8" data-time="6" data-window="3">
@@ -112,19 +112,19 @@
 </div>
 
 <p class="guide-status">2026-10-04：新增静态图和条件变换练习，待试用；本次没有进行理解检验。2026-08-28 换框架后的反例复验记录保留。</p></section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>① 范式：推理时机从「查询后」挪到「查询前」</h3>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="①-范式：推理时机从「查询后」挪到「查询前」">① 范式：推理时机从「查询后」挪到「查询前」</h3>
 <p>VST 把「思考 + 作答」的联合概率拆成两段：</p>
 <pre class="note-pre">$$p(y, \{z^k\} \mid q, V) = \underbrace{p(y \mid q, c^K, m^{K-1})}_{\text{查询后直接答}} \prod_{k=1}^{K-1} \underbrace{p(z^k \mid c^k, m^{k-1})}_{\text{查询前边看边想}}$$</pre>
 <p>每来一个 clip <span class="note-math">$c^k$</span>，模型拿「当前片段 + 之前累积的笔记 <span class="note-math">$m^{k-1}$</span>」生成想法 <span class="note-math">$z^k$</span>，写入记忆（FIFO 淘汰最旧）。到第 K 段用户提问 <span class="note-math">$q$</span>，直接拿「全部笔记 + 当前画面」生成答案，不再做 post-query 长推理。</p>
 <p>两个好处：(1) 推理算力分摊到播放期，查询不涨价；(2) 逐段生成的想法天然对齐视频的时间因果性，方便离线模型迁移到流式。</p>
-<h3>② 训练：VST-SFT → VST-RL 两阶段</h3>
+<h3 id="②-训练：vst-sft-→-vst-rl-两阶段">② 训练：VST-SFT → VST-RL 两阶段</h3>
 <p><strong>VST-SFT（学会协议）</strong>——用合成的因果 CoT 数据做监督微调。两个关键工程技巧：</p>
 <ul>
 <li><strong>流式注意力掩码</strong>（式3）：训练时强制模拟推理时的滑动视觉窗口——每个 token 只能看到<strong>最近 L 个视觉 token</strong>（短期缓冲），但所有历史<strong>文本</strong>（笔记、记忆）全部可见。<strong>既防信息泄露（堵未来），又对齐训练-推理架构（堵分布漂移）</strong>——不加掩码的话训练看全片、推理只能看一段，分布不一致导致推理掉点。</li>
 <li><strong>时序分段</strong>（式4）：超长视频切成多段训练，段间靠记忆递归传递，绕过上下文长度限制（每样本上限 128s）。Loss 只算在 thoughts 和最终答案上，视觉 token 和历史记忆当条件。</li>
 </ul>
 <p><strong>VST-RL（自我改进）</strong>——SFT 只是模仿（off-policy），RL 让模型自己探索什么样的思考有用。用 GRPO：每问采 8 条轨迹（每条 = 一串 thoughts + 一个答案），<strong>奖励只看最终答案对不对</strong>（verifiable reward），但<strong>组相对优势赋给轨迹内全部生成 token</strong>（含中间 thoughts）——答案对了，中间那些思考就算有功。这就把「答案正确性」的信用间接传回中间推理步骤，逼模型写出真正有用的思考而非废话。clip 用 DAPO 式非对称超参，KL 系数 β=0.001。</p>
-<h3>③ 数据合成：知识图谱驱动的因果 CoT 生成</h3>
+<h3 id="③-数据合成：知识图谱驱动的因果-cot-生成">③ 数据合成：知识图谱驱动的因果 CoT 生成</h3>
 <p>没现成数据，VST 自己造了 100K 条。流程：PySceneDetect 切场景 → 滑动窗口让 Gemini 抽 (头实体, 关系, 尾实体) 三元组建知识图谱（窗口滑过丢最旧帧，保证因果）→ NetworkX 建图 → 随机起点 <strong>DFS 采证据链</strong>（多跳，链间实体重叠 &lt;10% 保多样性）→ Gemini 基于证据链生成「流式 CoT + QA 对」→ 五重过滤（世界知识/格式/逻辑/重复/thought 校验）。每段 thought 严格只引用当前及过往内容，强制多证据关联。</p>
 </section>
 <section class="note-sec" id="evidence"><h2>结果与代价</h2><ul>

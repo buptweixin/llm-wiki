@@ -5,7 +5,7 @@ aliases: [LocateAnything, Parallel Box Decoding, PBD]
 topic: structured-output
 mechanisms: [parallel-decoding, grounding]
 goals: [improve-grounding, improve-efficiency]
-updated: 2026-10-04
+updated: 2026-10-07
 ---
 
 # LocateAnything（全称：Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding）
@@ -188,6 +188,8 @@ A：初答"两种形式互相促进"太泛、抓不到点。决定性数据点�
 A：结构无关切块让块边界大概率落在无意义处，一个块同时装"上一框尾巴坐标 + 下一类别的开头词"，模型被迫拟合横跨框边界、横跨类别的虚假相关（共现统计，非真实规律），纯消耗容量还错误传播。加速弱是因为块内容不连贯，实际可用性差（SDLM 只到 ~5.5 BPS）。PBD 用"块 = 框"把这个伪模式源头拆掉。
 
 2026-10-04 核对原文 §3.2：历史问答中「整块全对才拿分」「合法框约束直接入 loss」是过强类比。实际为两种序列的 token 交叉熵联合训练。Table 6 的增益支持结构化训练有效，不证明增加了硬几何损失。
+
+2026-10-07 第二次复测纠偏：复测中一度将 L_blk 的约束通道归因为目标检测式的连续坐标回归损失（L1/GIoU），核对原文 §3.2 确认目标只有 L_ntp + L_blk 两个序列的 token 交叉熵联合训练。约束通道本质是：块对齐 + 块内双向注意力 + 同块多位置 token CE 联合优化逼共享权重学到四坐标联合分布。Fast 也非推测解码的草稿验证机制，而是一次并行前向直接产出提交。门控信号来自并行步自身的置信统计，非额外运行 NTP 检验。
 
 ## 还没搞懂
 

@@ -86,7 +86,7 @@
 </li>
 </ol>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：给长跑选手配上四项护具</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="类比：给长跑选手配上四项护具">类比：给长跑选手配上四项护具</h3>
 <p>在只有几百字的短问答里，<a href="2024-deepseekmath.html">GRPO</a> 就像穿轻便跑鞋在操场慢跑，小修小补就能跑通；但当任务变成 20,000 字竞赛级高强度长跑（Long-CoT 极长推导）时，旧机制的关节就会全部卡死。DAPO 为选手装上了四块关键护具：</p>
 <ul>
 <li><strong>护具一：向上放开剪刀口（Clip-Higher）</strong>：<ul>
@@ -107,19 +107,19 @@
 </li>
 </ul>
 </section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>1. 非对称解耦裁剪（Clip-Higher）：抑制熵坍缩</h3>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="1-非对称解耦裁剪（clip-higher）：抑制熵坍缩">1. 非对称解耦裁剪（Clip-Higher）：抑制熵坍缩</h3>
 <p>DAPO 去掉参考模型 KL 项，并将概率比 clip 项的上侧与下侧阈值解耦。裁剪的是目标函数中的比率项，不是直接裁剪参数梯度：</p>
 <pre class="note-pre">$$\text{clip}(r_t(\theta), 1 - \varepsilon_{low}, 1 + \varepsilon_{high})$$</pre>
 <p>其中将下界保持为 <span class="note-math">$\varepsilon_{low} = 0.2$</span>（保留下侧裁剪阈值，不代表概率被硬性锁在边界内），而将上界放宽至 <span class="note-math">$\varepsilon_{high} = 0.28$</span>。</p>
 <figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig2.png" alt="Clip-Higher 对 AIME 准确率与策略熵的改善" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：(a) AIME 准确率随训练显著提升；(b) 策略模型生成熵对比——无 Clip-Higher 时熵在 1000 步内急剧暴跌（熵坍缩），而引入 Clip-Higher 后策略熵平稳保持在健康区间，模型探索活力得以持续维系。</figcaption></figure>
-<h3>2. 动态采样（Dynamic Sampling）：剔除零梯度样本</h3>
+<h3 id="2-动态采样（dynamic-sampling）：剔除零梯度样本">2. 动态采样（Dynamic Sampling）：剔除零梯度样本</h3>
 <p>在训练流程中设立动态缓冲池（Dynamic Sampling Buffer）。对于每个采样题目 <span class="note-math">$q$</span> 生成的 <span class="note-math">$G$</span> 个候选回答 <span class="note-math">$\{o_i\}_{i=1}^G$</span>，只有满足以下非平凡条件的题目才被允许进入反向传播批次：</p>
 <pre class="note-pre">$$0 &lt; \sum_{i=1}^G \mathbb{I}(\text{is\_equivalent}(a, o_i)) &lt; G$$</pre>
 <ul>
 <li><strong>机制逻辑</strong>：若准确率为 0（全错）或 1（全对），在相对优势公式 <span class="note-math">$\hat{A}_{i,t} = \frac{R_i - \text{mean}(\mathbf{R})}{\text{std}(\mathbf{R})}$</span> 中分子或标准差归零，整道题产生零有效梯度。</li>
 <li><strong>动态补满</strong>：系统持续异步采样，直到批次完全由具备正负对比信号的有效题目填满后才执行参数更新。虽然采样量增加，但由于并行 rollout 耗时通常被最长长尾样本阻塞，且有效批次补满后再更新，论文报告该实验收敛更快；DAPO 全套系统的更新步数差异不能单独归因于动态采样；额外采样仍有成本，更新步数的减少不能单独保证所有机器的墙钟时间更短。</li>
 </ul>
-<h3>3. 逐 Token 策略梯度损失（Token-Level Policy Gradient Loss）</h3>
+<h3 id="3-逐-token-策略梯度损失（token-level-policy-gradient-loss）">3. 逐 Token 策略梯度损失（Token-Level Policy Gradient Loss）</h3>
 <p>重构多样本与多步骤的累加归约顺序：</p>
 <ul>
 <li><strong>朴素 GRPO（样本级归约）</strong>：<span class="note-math">$\mathbb{E}\left[ \frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} L_{clip} \right]$</span>（各样本权重平等，长样本 token 被除以更大分母 <span class="note-math">$|o_i|$</span>）；</li>
@@ -127,7 +127,7 @@
 </li>
 </ul>
 <figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig4.png" alt="Token-level 损失对生成熵与平均响应长度的控制" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 4）：无 Token-level 损失时，样本级归一化对长篇复读废话惩罚不足，导致生成熵畸高（异常混乱）且输出长度恶性膨胀；Token-level 损失通过字字均等计责，使策略熵维持在正常收敛轨迹，响应长度以健康节奏平稳增长。</figcaption></figure>
-<h3>4. 软超长奖励塑形（Soft Overlong Punishment）</h3>
+<h3 id="4-软超长奖励塑形（soft-overlong-punishment）">4. 软超长奖励塑形（Soft Overlong Punishment）</h3>
 <p>在预设的目标最大长度 <span class="note-math">$L_{max} - L_{cache} = 16,384$</span> 与显存硬截断上限 <span class="note-math">$L_{max} = 20,480$</span> 之间引入线性衰减惩罚函数：</p>
 <pre class="note-pre">$$R_{length}(y) = \begin{cases}
 0, &amp; |y| \le L_{max} - L_{cache} \\
@@ -136,10 +136,10 @@
 \end{cases}$$</pre>
 <p>最终奖励由正确性奖励与长度软惩罚相加：<span class="note-math">$R = R_{rule} + R_{length}$</span>。长度扣分提示模型控制过长输出，不是对中间步骤正确性的逐步判定。论文还验证了 Overlong Filtering：屏蔽截断样本的损失，减少将未完成推导直接当错误处理的奖励噪声；不能保证任何情况下都消除噪声。</p>
 <figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig5.png" alt="超长样本过滤对 AIME 性能与熵的稳定作用" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 5）：论文 Figure 5 比较截断样本默认惩罚与 Overlong Filtering。屏蔽截断样本损失后，该实验的准确率与熵曲线更稳定，支持减少截断奖励噪声；软长度惩罚是进一步的长度控制机制，不能把过滤消融等同于软惩罚的独立效果。</figcaption></figure>
-<h3>5. 整数标准化数据集：DAPO-Math-17K</h3>
+<h3 id="5-整数标准化数据集：dapo-math-17k">5. 整数标准化数据集：DAPO-Math-17K</h3>
 <p>数学答案的形式多样（如分数、根号、代数式 <span class="note-math">$a+\frac{\sqrt{b}}{c}$</span>）极易导致规则判卷器出现解析误判（Reward Hacking 或假错判）。DAPO 启发自 AIME 竞赛规范，通过 CoT 提示词指导 LLM 将题目重新改写为要求输出整数（例如将求 <span class="note-math">$a+\frac{\sqrt{b}}{c}$</span> 改写为求 <span class="note-math">$a+b+c$</span>），构建了包含 17K 题目且完全由纯整数答案验证的 <code>DAPO-Math-17K</code>，减少答案解析歧义；规则验证仍依赖题目改写与答案标注正确。</p>
 </section>
-<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3>1. 递进消融实验数据（Qwen2.5-32B 基座）</h3>
+<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3 id="1-递进消融实验数据（qwen25-32b-基座）">1. 递进消融实验数据（Qwen2.5-32B 基座）</h3>
 <p>在竞赛级 AIME 2024 测试基准（avg@32）上的技术叠加贡献：</p>
 <table class="dtable">
 <thead>
@@ -193,9 +193,9 @@
 <td>官方闭源报告成绩（DAPO 步数仅需其 50%）</td>
 </tr>
 </tbody></table>
-<h3>2. 涌现能力与反思行为</h3>
-<p>在经过充足步数的强化学习后，模型在不依赖任何 SFT 人类反思演示的前提下，自发涌现出了自主反思（Self-reflection）与多角度重算行为（如在四面体几何求体积中途出现：“<em>Wait a moment, let&#39;s rethink about the dihedral angle involving planes in a more thoughtful geometric way...</em>”），验证了纯规则 RL 在大模型长思维链上的自主演进力量。</p>
-<h3>3. 代价与局限性</h3>
+<h3 id="2-涌现能力与反思行为">2. 涌现能力与反思行为</h3>
+<p>在经过充足步数的强化学习后，模型在不依赖任何 SFT 人类反思演示的前提下，自发涌现出了自主反思（Self-reflection）与多角度重算行为（如在四面体几何求体积中途出现：“*Wait a moment, let&#39;s rethink about the dihedral angle involving planes in a more thoughtful geometric way...*”），验证了纯规则 RL 在大模型长思维链上的自主演进力量。</p>
+<h3 id="3-代价与局限性">3. 代价与局限性</h3>
 <ul>
 <li><strong>Rollout 采样算力开销略增</strong>：动态采样需要过滤掉全对/全错样本，在训练后期（模型变聪明后）需要比静态批次采样更多的环境生成交互，对推理引擎（如 vLLM / SGLang）的高并发与批处理吞吐提出了更高要求；</li>
 <li><strong>任务形式依赖纯净的规则判定</strong>：DAPO-Math-17K 的成功高度依赖“将复杂数学改写为整数答案”的数据工程，在难以自动化精准判对错的开放式任务（如创意写作、代码架构设计）中较难直接套用。</li>
@@ -216,7 +216,7 @@
 <li>因为移除的是不带来优势的样本加入训练也没有梯度对模型来说是没有意义的，移除之后每次的样本都是有效的，代价只是增加一点 rollout 时间甚至不增加，因为并行 rollout 本身就会被最长的那条阻塞。</li>
 </ol>
 </blockquote>
-<h3>2026-10-25 首轮复测原话</h3>
+<h3 id="2026-10-25-首轮复测原话">2026-10-25 首轮复测原话</h3>
 <p>首次独立重讲：</p>
 <blockquote class="note-quote">
 <p>主要是对 GRPO 的优化。优化点主要是对 GRPO 梯度 clip 的上下界进行了非平衡的切割，将上界提高，这样能够给模型更大的探索空间。其他的我记不太清楚了。</p>

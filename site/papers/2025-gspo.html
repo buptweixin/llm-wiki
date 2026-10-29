@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSPO · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+</head>
+<body>
+<div class="page">
+  <a class="skip-link" href="#deck">跳到正文</a>
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 知识库</a>
+    <span class="topbar-title">GSPO</span>
+    <nav class="topbar-nav"></nav>
+    <span class="topbar-count">连续阅读</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <!-- ① 核心直觉 -->
+    <section class="slide" id="slide-1" data-section="essence">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2025</p>
+        <h1>GSPO</h1>
+        <p class="cover-full">Group Sequence Policy Optimization</p>
+        <p class="cover-essence">GSPO 把强化学习策略比率与裁剪边界从逐 Token 提升到整条序列的长度归一化似然，消除优化与奖励的粒度错位，使 MoE 与长推理 RL 训练无需 Routing Replay 即可稳定收敛。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>阿里巴巴 Qwen 团队（Chujie Zheng, Junyang Lin 等）</dd>
+          <dt>入库</dt><dd>2026-10-29</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/K3FZ7X74">Zotero</a> · <a href="https://arxiv.org/abs/2507.18071">arXiv</a></dd>
+        </dl>
+        <div class="tagrow"><span class="tag">GRPO</span><span class="tag">策略梯度</span><span class="tag">裁剪代理目标</span><span class="tag">CoT 推理</span><span class="tag">提高推理深度</span><span class="tag">提高训练稳定性</span><span class="tag">提高训练预算利用率</span></div>
+      </div>
+    </section>
+
+    <!-- ② 五分钟重建 -->
+    <section class="slide" id="read-rebuild" data-section="rebuild">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>五分钟重建</h2></div>
+        <div class="learning-guide" id="guide-2025-gspo">
+          <p class="guide-problem">GRPO 将整道题的结果奖励与逐 token 策略比率和逐 token 裁剪绑定。长序列各 token 比率波动撕裂完整证明，MoE 路由轻微跳变更会引发梯度爆炸，迫使系统使用沉重的 Routing Replay 补丁。GSPO 将重要性采样与裁剪统一提升到序列级别。</p>
+          <ol class="guide-path" aria-label="机制路径">
+            <li><h3>序列级似然比</h3><p>计算整条回答在当前策略与旧策略下的联合概率比，并按序列长度取几何平均（1/|y_i| 指数次方），使比率稳定维持在 1.0 附近。</p></li>
+            <li><h3>序列级全局裁剪</h3><p>在序列重要性比率上施加 [1-ε, 1+ε] 裁剪，由组内相对优势驱动整条序列协同更新，不再逐字撕裂。</p></li>
+            <li><h3>平滑更新免回放</h3><p>单个 token 的专家路由变动被全序列几何平均自然稀释，MoE 训练无需保存和回放旧路由即可平稳收敛。</p></li>
+          </ol>
+          <p class="guide-example"><strong>具体例子（教学假设）</strong>：一条 2000 token 的解题回答，新旧策略下各 token 的 log 概率差均值为 0.001。整条序列连乘概率比为 exp(2) ≈ 7.39（严重失真），但经长度归一化后比率为 exp(0.001) ≈ 1.001，平稳落在裁剪区间内；序列内每个 token 分配到一致且平滑的更新尺度。</p>
+          <p class="guide-boundary"><strong>边界</strong>：GSPO 假设外部奖励仅在序列生成完毕后提供（Outcome Reward）。若存在可靠的密集过程奖励（PRM），序列级平摊会稀释步级精准信用分配；此外短文本或单步决策任务中相比 GRPO 收益有限。</p>
+          <div class="guide-case">
+            <h3>换个条件看机制</h3>
+            <p>如果解题过程有 2000 个 token，前 1990 个 token 严密正确，最后 10 个 token 算错导致全题得负奖，GSPO 会如何更新？</p>
+            <p class="guide-explanation">前 1990 个 token 同样会接受负优势更新。但在无单步过程标签的前提下，GRPO 赋予 token 的不同比率只是采样漂移而非真实因果归因；GSPO 消除伪方差换取全局训练稳定性，是工程上完全可接受的妥协。</p>
+          </div>
+          <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：为什么 GSPO 裁剪掉的 token 比例比 GRPO 高两个数量级，训练效率却反而显著更高？</p></aside>
+          <p class="guide-status">2026-10-29：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ 一页看懂 -->
+    <section class="slide" id="slide-2" data-section="overview">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>问题</h3>
+            <p>外部奖励是序列级的，GRPO 却在每个 token 上独立算比率并独立裁剪。长序列中有的 token 截断、有的放大，撕裂因果逻辑；MoE 架构下路由轻微变动即引发 token 比率爆炸，迫使系统使用极高开销的 Routing Replay。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>GSPO 将优化粒度提升至整条序列。采用几何平均似然比（1/|y_i| 长度归一化）计算序列比率 s_i(θ)，并在序列级别执行裁剪。内部所有 token 共享平滑更新幅度，天然免疫 MoE 稀疏路由震荡。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>彻底免除 Routing Replay，在 Qwen3-30B-A3B-Base（48层 MoE）上实现平稳收敛，训练效率大幅超越调优后的 GRPO 基线；直接支撑了 Qwen3 全系大模型的强化学习后训练扩展。</p>
+          </div>
+        </div>
+        <figure class="paper-fig"><img src="../assets/figures/2025-gspo/fig1.png" alt="GSPO 与 GRPO 在 Qwen3-30B-A3B-Base 上的训练曲线与基准评测" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：在 48 层 MoE 模型 Qwen3-30B-A3B-Base 上，GSPO 的训练奖励以及在 AIME'24（Pass@1 over 32）、LiveCodeBench 和 CodeForces 上的表现全面超越带有 Routing Replay 的 GRPO 基线，随训练计算量持续稳定爬升。</figcaption></figure>
+        <p class="takeaway">GSPO 把强化学习策略比率与裁剪边界从逐 Token 提升到整条序列的长度归一化似然，消除优化与奖励的粒度错位，使 MoE 与长推理 RL 训练无需 Routing Replay 即可稳定收敛。</p>
+      </div>
+    </section>
+
+    <!-- ④ 关键机制：序列似然比与全局裁剪 -->
+    <section class="slide" id="slide-3" data-section="mechanism">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：序列似然比与全局裁剪</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>不再对每个 token 独立计算重要性比率，改用整条序列联合概率比的几何平均值：</p>
+        <div class="codeblock"><pre><code>s_i(θ) = [ π_θ(y_i | x) / π_old(y_i | x) ] ^ (1 / |y_i|)
+       = exp( (1 / |y_i|) * Σ log( π_θ(y_i,t) / π_old(y_i,t) ) )</code></pre></div>
+        <table class="dtable">
+          <thead><tr><th>对比维度</th><th>朴素 GRPO 做法</th><th data-hi>GSPO 序列级重构</th><th>核心收益</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>比率粒度</td>
+              <td>Token 级独立比率 r_t</td>
+              <td data-hi>序列级几何平均比率 s_i</td>
+              <td>避免长序列浮点溢出与下溢，比率稳定在 1.0 附近</td>
+            </tr>
+            <tr>
+              <td>裁剪动作</td>
+              <td>逐 token 独立 [1-ε, 1+ε] 截断</td>
+              <td data-hi>整条序列全局协同裁剪</td>
+              <td>消除因果逻辑碎裂；未截断序列内所有 token 同频平滑更新</td>
+            </tr>
+            <tr>
+              <td>MoE 适应性</td>
+              <td>依赖显存/通信极重的 Routing Replay</td>
+              <td data-hi>完全丢弃 Routing Replay</td>
+              <td>单点路由漂移被整序列几何平均自然稀释，省去数十 GB 缓存</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ⑤ 机制深入：反直觉的高效裁剪与架构解耦 -->
+    <section class="slide" id="slide-4" data-section="mechanism-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>机制深入：反直觉的高效裁剪与架构解耦</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <figure class="paper-fig"><img src="../assets/figures/2025-gspo/fig2.png" alt="GSPO 与 GRPO 训练期间被裁剪 token 比例对比" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：GSPO 采用整序列裁剪，被截断丢弃的 token 比例在数值上高出 GRPO 两个数量级（GSPO 约 15%，GRPO 仅 0.13%）；但留下的样本提供了高度可靠的梯度信号，反而实现了更高的训练利用效率。</figcaption></figure>
+        <div class="cards-grid">
+          <div class="card">
+            <h3>反直觉发现：裁剪多 100 倍却更高效</h3>
+            <p>GRPO 仅截断 0.13% 的 token，把海量充满伪方差与噪声的 token 送入反向传播，导致严重内耗；GSPO 严格截断偏离过大的整条序列（剔除 15% token），保留高度纯净的学习信号。</p>
+          </div>
+          <div class="card">
+            <h3>训练与推理引擎免二次重算</h3>
+            <p>因为对单 token 的微小浮点精度误差高度容忍，GSPO 可以直接复用推理引擎（vLLM/SGLang）返回的序列似然，无需在训练引擎（Megatron）中重算前向，大幅降低端到端流水线延迟。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑥ 证据与边界 -->
+    <section class="slide" id="slide-5" data-section="evidence">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>证据与边界：MoE 路由震荡实测</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <figure class="paper-fig"><img src="../assets/figures/2025-gspo/fig3.png" alt="Routing Replay 对 MoE 模型 GRPO 训练收敛的关键作用" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 3）：在 48 层的深层 MoE 模型中，单步参数更新会导致约 10% 的专家分配发生漂移。GRPO 缺乏该机制时训练奖励瞬间崩盘（w/o Routing Replay）；GSPO 凭借序列级似然对局部跳变的天然容忍，彻底丢弃 Routing Replay 依然稳定收敛。</figcaption></figure>
+        <div class="limits">
+          <p><strong>边界与权衡</strong>：</p>
+          <ul>
+            <li><strong>结果奖励假定</strong>：GSPO 假设仅在解题结束时获得标量反馈。若有精准的过程奖励（PRM），序列级平摊会抑制步骤级的因果奖惩。</li>
+            <li><strong>短文本局限</strong>：在单步动作或短文本生成中，Token 级方差积累本就不严重，GSPO 带来的稳定性收益相对有限。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 卡壳点与解答 -->
+    <section class="slide" id="slide-6" data-section="pitfalls">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点与解答</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa" id="qa-routing-replay">
+          <p class="qa-q">Q1：为什么说 Routing Replay 是高开销的工程包袱？</p>
+          <div class="qa-a">
+            <ul>
+              <li><strong>显存膨胀</strong>：MoE 深度可达 48~64 层，每层每个 token 都要保存 Top-K 专家索引。在长推理与大批次下，整套路由缓存占用数 GB 到数十 GB 显存，极度挤占上下文长度。</li>
+              <li><strong>通信与序列化延迟</strong>：Rollout 推理集群与 Trainer 训练集群分离时，必须跨节点打包并传输整套庞大的路由张量，拖慢端到端迭代流水线。</li>
+              <li><strong>算子侵入脆弱</strong>：需要在推理引擎与训练框架的底层 MoE 算子中强行打补丁拦截 Router 计算，系统升级维护代价极高。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="qa" id="qa-token-variance">
+          <p class="qa-q">Q2：GRPO 的 Token 级方差缺陷到底指的是什么？</p>
+          <div class="qa-a">
+            <ul>
+              <li><strong>奖励与惩罚的错位</strong>：外部判卷只给整篇证明打满分，GRPO 却把几千个单词拆成独立小人各自算比率。</li>
+              <li><strong>思维链被撕裂</strong>：因为单 token 裁剪，导致同一条证明里有的词在猛冲、有的词被踩刹车归零。连贯推导被切碎，梯度忽大忽小乱晃，最终造成模型崩溃。</li>
+              <li><strong>GSPO 的解决本质</strong>：取消单字弹簧，整篇求几何平均似然比。要奖全篇一起奖，要刹全篇一起刹，方差自然消除。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑧ 关联与来源 -->
+    <section class="slide" id="slide-7" data-section="relations">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="rel-cards">
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">架构继承</span><h3>DeepSeekMath</h3></div>
+            <p>砍掉 Critic 的组相对优势范式：GRPO 奠定了无独立价值网络的低成本推理 RL，GSPO 继承其组内标准化优势架构，并根治其 Token 级方差顽疾。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">理论根基</span><h3>PPO</h3></div>
+            <p>裁剪代理目标的边界演进：PPO 确立了经典 [1-ε, 1+ε] 信任域单步裁剪，GSPO 证明了在长思维链自回归生成中，裁剪粒度应当升华至序列级别。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">同源探索</span><h3>DAPO</h3></div>
+            <p>长推理 RL 稳定性的两条路线：DAPO 采用不对称 Clip-Higher 与 Token-level loss weight 启发式调优，GSPO 则在数学粒度上更彻底地重塑为序列似然比。</p>
+          </div>
+        </div>
+        <dl class="cover-meta" style="margin-top:1.5rem">
+          <dt>完整笔记</dt><dd><a href="../notes/papers/2025-gspo.html">notes/papers/2025-gspo.html</a></dd>
+          <dt>源文件</dt><dd><code>wiki/papers/2025-gspo.md</code></dd>
+          <dt>Zotero 深链接</dt><dd><a href="zotero://select/items/K3FZ7X74">zotero://select/items/K3FZ7X74</a>（citekey: <code>zhengGroupSequencePolicy2025</code>）</dd>
+        </dl>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+</body>
+</html>

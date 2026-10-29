@@ -88,7 +88,7 @@
 Register 把高范数 token 挪走了，看起来&quot;artifact 消失了&quot;。但 Tab.1 实测：加 Register 后 PiB 从 42.7 <strong>掉到</strong> 41.5（更差）。高范数只是 lazy aggregation 的<strong>晚期症状</strong>，不是病因——病因是 CLS 往背景跑，你把高范数 token 挪走，CLS 照样往背景跑。&quot;ViT needs more than registers&quot;——标题就是在说这个。</p>
 </blockquote>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>核心发现：懒惰聚合假说</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="核心发现：懒惰聚合假说">核心发现：懒惰聚合假说</h3>
 <p>两个诊断工具：</p>
 <ul>
 <li><strong>Patch Score</strong> = CLS token 与各 patch 的余弦相似度——看 CLS 到底&quot;看&quot;哪。</li>
@@ -99,7 +99,7 @@ Register 把高范数 token 挪走了，看起来&quot;artifact 消失了&quot;�
 <li><strong>从一开始就有</strong>：训练初期 PiB 就低，全程不改善（不是后期才崩的）。</li>
 <li><strong>去掉高分 patch 不影响分类</strong>：遮掉 score 最高的 50% patch，ImageNet 精度几乎不掉甚至略升——该遮挡实验说明高分位置不等于分类所必需的输入证据；不能据此证明每个背景 patch 的因果贡献都为零。</li>
 </ol>
-<h3>类比：偷懒的考官</h3>
+<h3 id="类比：偷懒的考官">类比：偷懒的考官</h3>
 <p>想象考试只看总分不看过过程：</p>
 <ul>
 <li><strong>ConvNet</strong>：每个学生（感受野）只能看局部，必须认真看前景才能答对——笨但靠谱。</li>
@@ -107,13 +107,13 @@ Register 把高范数 token 挪走了，看起来&quot;artifact 消失了&quot;�
 </ul>
 <p>LaSt-ViT：<strong>强制 CLS 只从&quot;靠谱&quot;的 patch 取信息</strong>——用频域稳定性判断哪些是前景。</p>
 </section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>① 懒惰聚合根因 = 粗粒度监督 + 全局注意力</h3>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="①-懒惰聚合根因--粗粒度监督--全局注意力">① 懒惰聚合根因 = 粗粒度监督 + 全局注意力</h3>
 <ul>
 <li><strong>粗粒度监督</strong>（驱动1）：只有图像级标签 → 没有空间指导告诉模型&quot;前景在哪&quot;。自然图背景 patch 远多于前景 → 模型发现&quot;靠背景投票&quot;就能最小化分类 loss。</li>
 <li><strong>全局注意力</strong>（驱动2）：给前景语义扩散到背景的通道。验证：把全局注意力换成窗口注意力，PiB 升（50.1→59.8）但分类掉（-8%），证明全局注意力是帮凶，但简单砍掉得不偿失。</li>
 <li>这是论文提出的根因假说。相关消融支持粗粒度监督与全局依赖共同影响该现象，未证明它们是所有 artifact 的必要且充分条件。</li>
 </ul>
-<h3>② 频域稳定性评分</h3>
+<h3 id="②-频域稳定性评分">② 频域稳定性评分</h3>
 <p>直觉：前景在深层<strong>通道维</strong>上语义一致（低频主导），背景混杂多结构（频谱丰富、高频多）。</p>
 <ul>
 <li>对每个 patch 的 D 维特征做 1D FFT（沿通道维）→ 高斯低通滤波 → IFFT，得滤波后特征 <span class="note-math">$\hat{x}$</span>。</li>
@@ -124,11 +124,11 @@ Register 把高范数 token 挪走了，看起来&quot;artifact 消失了&quot;�
 <p>🔧 <strong>最容易卡住的点②</strong>：为什么&quot;频域稳定&quot;能区分前景背景？
 不是空间连续性，而是<strong>通道维频域特性</strong>。前景物体在深层特征的通道维度上语义一致（同一类内的颜色/纹理/形状在通道维是低频的）；背景包含多种混杂结构，频谱丰富，低通滤波后能量损失大 → 分数低。</p>
 </blockquote>
-<h3>③ 通道级 Top-K 选择性聚合</h3>
+<h3 id="③-通道级-top-k-选择性聚合">③ 通道级 Top-K 选择性聚合</h3>
 <p>对每个通道 <span class="note-math">$j$</span> 独立选稳定性最高的 K 个 patch，取均值作为该通道的 CLS 值：</p>
 <pre class="note-pre">$$\mathcal{Q}_{CLS}[j] = \frac{1}{K}\sum_{i \in \mathcal{I}_K(j)} x_{patch}[i,j]$$</pre>
 <p>不同通道可选不同 patch 组合——不同语义维度（颜色/纹理/形状）的前景区域可能不同。</p>
-<h3>④ 无额外参数、无额外损失</h3>
+<h3 id="④-无额外参数、无额外损失">④ 无额外参数、无额外损失</h3>
 <ul>
 <li>聚合模块<strong>零可学习参数</strong>（FFT 和 Top-K 都是确定性操作）。</li>
 <li>不改损失函数——原有分类/对比/DINO 损失不变，只是 CLS 的构成方式变了。</li>

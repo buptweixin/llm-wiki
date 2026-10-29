@@ -84,7 +84,7 @@
 </tr>
 </tbody></table>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：侦探破案 vs 一次性看监控</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="类比：侦探破案-vs-一次性看监控">类比：侦探破案 vs 一次性看监控</h3>
 <ul>
 <li><strong>常规推理</strong>：把整栋楼监控一次性快进看完直接下结论——关键 2 秒可能完全错过。</li>
 <li><strong>解耦迭代</strong>：派不同侦探分别看不同时段，各看各的不交流——没法把&quot;3 楼的人后来去了 5 楼&quot;串起来。</li>
@@ -95,7 +95,7 @@
 工具调用不是外部脚本触发的，而是<strong>模型自己生成的文本</strong>——模型在推理过程中自己写出 <code>&lt;grounding&gt;{&quot;temporal_segment&quot;: [97, 102], &quot;sampling_strategy&quot;: &quot;coarse&quot;}&lt;/grounding&gt;</code>，系统执行后把裁剪结果拼回对话。模型必须学会&quot;何时调、调哪里、用多少分辨率、何时停&quot;。</p>
 </blockquote>
 </section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>① 整体架构：回合制循环</h3>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="①-整体架构：回合制循环">① 整体架构：回合制循环</h3>
 <p>输入 = 工具说明 + 用户问题 + 全局低分辨率视频。模型进入循环：</p>
 <ol>
 <li><strong>思考</strong>（<code>&lt;think&gt;</code>）：分解问题、评估当前证据够不够。</li>
@@ -104,7 +104,7 @@
 <li>回到步骤 1，或直接 <code>&lt;answer&gt;</code> 终止。</li>
 </ol>
 <p>评估上限 8 轮，视觉上下文上限 32k token。</p>
-<h3>② Task-Decoupled Attention Masking（TDAM）：防注意力分散 + 防 Fake Thinking</h3>
+<h3 id="②-task-decoupled-attention-masking（tdam）：防注意力分散--防-fake-thinking">② Task-Decoupled Attention Masking（TDAM）：防注意力分散 + 防 Fake Thinking</h3>
 <p>共享上下文的问题：全局视频、局部裁剪、推理文本混在一起，注意力互相干扰。更严重的是 <strong>Fake Thinking</strong>——模型通过工具找到了正确证据，最终答案却和中间推理矛盾（&quot;推理对了却答错了&quot;），因为答题时被全局模糊印象带跑了。</p>
 <p>TDAM 在 SFT 阶段加硬性掩码：</p>
 <ul>
@@ -116,7 +116,7 @@
 <p>🔧 <strong>最容易卡住的点②</strong>：为什么只对 10% 加掩码？
 全加掩码会让模型丧失&quot;同时参考全局+局部&quot;的能力——有些问题确实需要两者结合。10% 是&quot;缓解注意力分散&quot;和&quot;保留综合推理&quot;的平衡点。</p>
 </blockquote>
-<h3>③ Verifiable Trajectory-Guided Reward（VTGR）：RL 阶段控效率</h3>
+<h3 id="③-verifiable-trajectory-guided-reward（vtgr）：rl-阶段控效率">③ Verifiable Trajectory-Guided Reward（VTGR）：RL 阶段控效率</h3>
 <pre class="note-pre">$$R = r_a \cdot (1 + \beta) + r_f$$</pre>
 <ul>
 <li><span class="note-math">$r_a$</span>：答案对错（0/1）。</li>
@@ -128,7 +128,7 @@
 </li>
 </ul>
 <p>逻辑：答对只拿基础分；裁得准+轮数少则 <span class="note-math">$\beta$</span> 大放大奖励；答错 <span class="note-math">$\beta$</span> 不生效。用 GRPO 优化，加 over-turn masking（超轮数轨迹不产梯度）。</p>
-<h3>④ Seeker-173K 数据集</h3>
+<h3 id="④-seeker-173k-数据集">④ Seeker-173K 数据集</h3>
 <p>四阶段合成：线索定位 → 有效性验证 → 轨迹生成 → 逻辑一致性检查。分 free（自由探索，无轨迹标注）和 tg（轨迹引导，有参考轮数 <span class="note-math">$k_{ref}$</span>）两类。</p>
 </section>
 <section class="note-sec" id="evidence"><h2>结果与代价</h2><ul>

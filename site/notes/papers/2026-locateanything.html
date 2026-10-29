@@ -58,13 +58,13 @@
 <li><strong>推理瓶颈</strong>：一个框 = 6+ 个 token 串行蹦，N 个框线性放大。H100 上 Qwen3-VL-4B 只有 ~1.1 框/秒（BPS）。机器人/UI 交互这类实时场景扛不住。</li>
 <li><strong>结构浪费 + 错误累积</strong>：x1,y1,x2,y2 是几何整体（x2&gt;x1、四数构成合法矩形、天然互相验证），逐 token 独立解码既没用上这种强耦合，又让后一个坐标在&quot;前一个已写错&quot;的基础上孤独地猜，误差滚雪球。</li>
 </ol>
-<p>通用 MTP（一次并行猜多个 token）能减步数，但<strong>结构无关</strong>：按固定大小（4/6/8）随便切序列，块边界大概率落在无意义处（一个块里装着&quot;上一个框的尾巴 + 下一类别的开头&quot;），模型被迫拟合横跨框边界、横跨类别的虚假模式（spurious correlations），消耗容量还传播错误。消融实测：SDLM/Block Diffusion 这类结构无关 MTP 在 COCO 上只有 44~46 F1（旧 NTP 还有 50），加速也弱（~5 BPS）。</p>
+<p>通用 MTP（一次并行猜多个 token）能减步数，但<strong>结构无关</strong>：按固定大小（4/6/8）随便切序列，块边界大概率落在无意义处（一个块里装着&quot;上一个框的尾巴 + 下一类别的开头&quot;），模型被迫拟合横跨框边界、横跨类别的虚假模式（spurious correlations），消耗容量还传播错误。消融实测：SDLM/Block Diffusion 这类结构无关 MTP 在 COCO 上只有 44<del>46 F1（旧 NTP 还有 50），加速也弱（</del>5 BPS）。</p>
 <p>本文之问：<strong>能不能让 MTP 的&quot;块&quot;恰好等于&quot;一个框&quot;？</strong> 用结构化并行同时拿下速度和精度。</p>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>前提：框在 VLM 眼里是什么</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="前提：框在-vlm-眼里是什么">前提：框在 VLM 眼里是什么</h3>
 <p>图像 → ViT 切成视觉 token；查询文本 → 语义 token；拼成序列喂 Transformer。模型继续&quot;写字&quot;，词表里预置结构词（<code>&lt;ref&gt;</code>、<code>&lt;box&gt;</code>、<code>&lt;eos&gt;</code>…）和坐标词（[0,1000] 每个整数一个词）。&quot;热狗在框 (342,345)-(890,567)&quot; 就是一句话：<code>&lt;ref&gt; hot dog &lt;/ref&gt; &lt;box&gt; 342 345 890 567 &lt;/box&gt; &lt;eos&gt;</code>。旧做法把这 11 个词一个接一个蹦出来（一次 forward 一个词）。</p>
 <p>Transformer 有个被浪费的隐藏能力：训练时它学的是&quot;每个位置都预测下一个词&quot;，自回归解码却只取最后一个位置的预测。PBD 的全部心思：<strong>把浪费掉的预测位置用起来，一次吐多个词</strong>。</p>
-<h3>类比：同一道题，出两张卷子</h3>
+<h3 id="类比：同一道题，出两张卷子">类比：同一道题，出两张卷子</h3>
 <p>正确答案（一串 token）排版成两种格式，训练时都喂：</p>
 <ul>
 <li><strong>接龙卷（NTP）</strong>：把整串词当&quot;已写内容&quot;，模型练&quot;看到前缀预测下一个字&quot;——保底的自回归能力。</li>
@@ -72,11 +72,11 @@
 </ul>
 <p>推理（Fast/Hybrid）时只用填空技能：喂 <code>[图+查询 | &lt;box&gt; MASK MASK MASK MASK MASK]</code>，一次 forward 填出 <code>342 567 890 345 &lt;/box&gt;</code>——<strong>整个框一次出来，从 6 步变 1 步</strong>。框与框仍逐个来（半自回归），每轮填完把结果定稿提交进 KV cache。</p>
 <p><strong>这里最容易卡住：并行坐标如何共同学习结构？</strong> 同块位置共享图像、问题和历史块，并在当前 mask 位置之间做双向注意力。训练把各位置的 token 交叉熵一起优化，使共享权重学习框结构。原文 §3.2 的目标是 <code>L_ntp + L_mtp</code>，不是「整框合法才得分」的硬几何判卷器，也不保证每次输出都合法。并行位置不能读取尚未生成的真实坐标；它们也不是统计上独立的四个猜测。</p>
-<p><strong>为什么要留着接龙技能不用？</strong> 填空有时整块填歪（类别边界犹豫时格式错乱、密集网格里坐标滑到两物体中间）。Hybrid 每块填完验两道：格式合法吗？空间置信够吗？（歧义判据 = top-1 坐标概率 &lt; 0.7 <strong>且</strong> top-5 候选极差 &gt; 80，两条件同满足 = 候选在坐标轴上撕裂，真歧义）。可疑就作废这块，退回上一块定稿处，<strong>改用接龙技能逐词重写这一块</strong>，写完再切回填空。Slow 模式更是纯接龙。所以接龙技能不能砍：它既是最高精度兜底，也是回退的引擎。</p>
+<p><strong>为什么要留着接龙技能不用？</strong> 填空有时整块填歪（类别边界犹豫时格式错乱、密集网格里坐标滑到两物体中间）。Hybrid 每块填完验两道：格式合法吗？空间置信够吗？（歧义判据 = top-1 坐标概率 &lt; 0.7 <strong>且** top-5 候选极差 &gt; 80，两条件同满足 = 候选在坐标轴上撕裂，真歧义）。可疑就作废这块，退回上一块定稿处，</strong>改用接龙技能逐词重写这一块**，写完再切回填空。Slow 模式更是纯接龙。所以接龙技能不能砍：它既是最高精度兜底，也是回退的引擎。</p>
 </section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>输出表征：固定长&quot;块&quot;，四种功能类型</h3>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="输出表征：固定长块，四种功能类型">输出表征：固定长&quot;块&quot;，四种功能类型</h3>
 <p>坐标归一化到 [0,1000] 离散成 token。输出组织成等长块 <code>B = (b₁…b_N)</code>，每块 L=6（一个框 + 两个结构 token，如 <code>&lt;box&gt;</code> <code>&lt;/box&gt;</code>），空位填 <code>&lt;null&gt;</code>。半自回归建模：<code>P(B|Z,E) = ∏ᵢ P(bᵢ|b&lt;i,Z,E)</code>（块级自回归、块内并行）。四种块：<strong>语义块</strong>（对象描述 <code>&lt;ref&gt;…&lt;/ref&gt;</code>，超长跨多块）、<strong>框块</strong>（四坐标）、<strong>负样本块</strong>（对象不存在，防幻觉）、<strong>结束块</strong>（终止信号）。框输出顺序用 X-Y Corner（按左上角 x 再 y 排序，消融最优）。</p>
-<h3>训练：双格式联合（L = L_ntp + L_blk）</h3>
+<h3 id="训练：双格式联合（l--l_ntp--l_blk）">训练：双格式联合（L = L_ntp + L_blk）</h3>
 <p><code>x_all = x_vis ⊕ x_q ⊕ x_ntp ⊕ x_blk</code>。x_ntp 是完整标准序列；x_blk 由 x_ntp 按块切分、每块只留首 token、其余换 <code>[mask]</code>。两条流 + 共享上下文靠<strong>混合注意力掩码</strong>精确隔离：</p>
 <ol>
 <li><strong>NTP 流 + 共享上下文：严格因果</strong>，且禁止看 x_blk（防泄漏），与推理 KV cache 完全对齐。</li>
@@ -84,7 +84,7 @@
 <li><strong>x_blk 块内双向</strong>：同块 token 两两全连接 → 几何耦合在此生效（详见大白话）。</li>
 </ol>
 <p>训练用 MagiAttention（异构掩码）+ stream packing。两阶段 SFT：先 world-knowledge 对齐（排除检测数据）→ Stage-1 138M 查询全量混合 → Stage-2 稠密数据提到 80%（MOT20Det/SKU110K 等）专攻密集。</p>
-<h3>推理：三种按需模式</h3>
+<h3 id="推理：三种按需模式">推理：三种按需模式</h3>
 <ul>
 <li><strong>Slow（NTP）</strong>：逐词自回归，最高精度/稳定性，适合高精度标注、最终清洗。</li>
 <li><strong>Fast（MTP）</strong>：整块并行，最大吞吐，适合端侧/机器人。块填出后去 <code>&lt;null&gt;</code>，提交 token 进 KV cache。</li>
@@ -92,9 +92,9 @@
 </ul>
 <p>推理时掩码镜像训练：KV cache 已提交 token 因果；当前块 N 个未来 token 块内双向；每步后截断 cache 只留已提交 token（驱逐 mask token 与重复锚点）。</p>
 <p><strong>两类失败</strong>：<strong>Format Irregularity</strong>（复杂多类别场景在类边界犹豫，块内混进结构与坐标 token，如 <code>&lt;box&gt;&lt;211&gt;&lt;/ref&gt;&lt;911&gt;…</code>）；<strong>Spatial Ambiguity</strong>（密集规则排列如网格行列，坐标滑进两物体中间 → 低 IoU）。歧义触发器 = top-1 坐标 token 概率 &lt; 0.7 <strong>且</strong> top-5 候选 max-min &gt; 80（[0,1000] 内），双条件同时满足才回退（详见卡壳点 ②）。</p>
-<h3>LocateAnything-Data 数据引擎</h3>
+<h3 id="locateanything-data-数据引擎">LocateAnything-Data 数据引擎</h3>
 <p><strong>12M 图 / 138M 查询 / 785M 标注框</strong>。六任务域（按查询占比）：通用检测 66.9%（框监督占 83.1%）、UI grounding 16.5%、指代 7.3%、文字定位/OCR 3.6%、版面 3.5%、点定位 2.2%。含多模型协作从无标签图自动产高质量定位数据（Multi-Targets Grounding Data Engine，细节在附录）。</p>
-<h3>底座</h3>
+<h3 id="底座">底座</h3>
 <p>原生分辨率 VLM：<strong>Moon-ViT（Kimi Team 2025）视觉编码器 + Qwen2.5 语言解码器 + MLP 投影</strong>。模型总规模 ~3B。</p>
 </section>
 <section class="note-sec" id="evidence"><h2>结果与代价</h2><p><strong>主表（默认 Hybrid，H100 batch 1 测 BPS）</strong>，对比主要对手 Rex-Omni-3B（同为 3B、量化坐标、统一检测/grounding VLM）：</p>
@@ -117,13 +117,13 @@
 <td>LVIS mean F1</td>
 <td>50.7</td>
 <td>46.9（+3.8）</td>
-<td><a href="mailto:F1@0.95">F1@0.95</a> <strong>31.1</strong> vs 20.7（Qwen3-VL-8B 20.2）</td>
+<td><a href="mailto:&#x46;&#x31;&#64;&#48;&#46;&#57;&#53;">&#x46;&#x31;&#64;&#48;&#46;&#57;&#53;</a> <strong>31.1</strong> vs 20.7（Qwen3-VL-8B 20.2）</td>
 </tr>
 <tr>
 <td>COCO mean F1</td>
 <td>54.7</td>
 <td>52.9（+1.8）</td>
-<td><a href="mailto:F1@0.95">F1@0.95</a> 19.3 vs 15.9</td>
+<td><a href="mailto:&#x46;&#x31;&#x40;&#48;&#x2e;&#57;&#x35;">&#x46;&#x31;&#x40;&#48;&#x2e;&#57;&#x35;</a> 19.3 vs 15.9</td>
 </tr>
 <tr>
 <td>VisDrone mean F1</td>
@@ -135,7 +135,7 @@
 <td>Dense200 mean F1</td>
 <td>58.7</td>
 <td>58.3</td>
-<td><a href="mailto:F1@0.95">F1@0.95</a> 18.5 vs 10.3</td>
+<td><a href="mailto:&#x46;&#x31;&#64;&#48;&#46;&#57;&#53;">&#x46;&#x31;&#64;&#48;&#46;&#57;&#53;</a> 18.5 vs 10.3</td>
 </tr>
 <tr>
 <td>ScreenSpot-Pro</td>
@@ -159,7 +159,7 @@
 <td>HumanRef / RefCOCOg(val,test)</td>
 <td>78.7 / 76.7 / 77.6</td>
 <td>79.9 / 73.6 / 74.3</td>
-<td>高 IoU 段反超：<a href="mailto:HumanRef@0.95">HumanRef@0.95</a> 68.8 vs 65.4</td>
+<td>高 IoU 段反超：<a href="mailto:&#72;&#117;&#x6d;&#97;&#110;&#x52;&#x65;&#102;&#x40;&#x30;&#46;&#57;&#x35;">&#72;&#117;&#x6d;&#97;&#110;&#x52;&#x65;&#102;&#x40;&#x30;&#46;&#57;&#x35;</a> 68.8 vs 65.4</td>
 </tr>
 </tbody></table>
 <p><strong>消融（COCO-only，剥离 138M 数据影响）</strong>：</p>
@@ -172,7 +172,7 @@
 <p><strong>成本/局限</strong>：</p>
 <ul>
 <li>纯 Fast 在复杂场景掉精度（49.6 &lt; Slow 52.1），Hybrid 回退仍留极小残余损失（51.6 &lt; 52.1）。最高精度场景（离线评估/清洗）应选 Slow，Hybrid 不是免费午餐。</li>
-<li><strong>两腿走路</strong>：方法本体在 COCO-only 增益只有 +1.5~2.0，加 138M 数据后 COCO 54.7（自行对比 +~3）——没有数据引擎撑不起这个结论。方法贡献有限，别神化解码范式。</li>
+<li><strong>两腿走路</strong>：方法本体在 COCO-only 增益只有 +1.5<del>2.0，加 138M 数据后 COCO 54.7（自行对比 +</del>3）——没有数据引擎撑不起这个结论。方法贡献有限，别神化解码范式。</li>
 <li>以 SFT 为主训练（AI 预读笔记提及 RL 是论文指明的下一步，正文 Conclusion 未通读核验）。</li>
 <li>触发器双阈值（0.7 / 80）是经验值，跨场景迁移可能需重调。</li>
 <li>消融只在 COCO 单基准；BPS 口径 H100 batch 1；与下游具体领域（GUI/版面）的纯度消融未见。</li>
@@ -200,12 +200,13 @@
 </section>
 <section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><div class="qa" id="qa-token-walkthrough"><p class="qa-q">Q：第一版讲解看完说&quot;还是没看懂具体怎么做的&quot;，卡在哪？</p><div class="qa-a"><p>卡在机制没落到 token 级操作。重讲的三步走通：① 原材料：框 = 一串词（结构词 + 坐标词），旧法一个 forward 蹦一个；② Transformer 天生&quot;每个位置都预测下一词&quot;，只是自回归只取最后一个——PBD 把浪费的位置用起来，训练时专出&quot;填空题&quot;（块留首格、后 5 格 [MASK]、一次填）；③ 推理 = 只做填空，一段段填。<strong>教训：这篇的机制必须讲到 token 级演算才能建立直觉，纯架构图讲不通。</strong></p>
 </div></div><div class="qa" id="qa-constraint"><p class="qa-q">Q：坐标并行出、没有先后，凭什么&quot;互相约束&quot;？</p><div class="qa-a"><p>不是先生成 x1 再传给 x2。四个 mask 位置共享上下文，在块内双向交互，并同时接受各位置的 token 交叉熵监督。共享权重由此学习框结构。实际目标没有额外的“整框合法才得分”判卷器，位置也读不到尚未生成的真实坐标。并行预测减少串行错误传递，但不保证四个预测统计独立或每个框都合法。</p>
-</div></div><div class="qa" id="qa-trigger"><p class="qa-q">Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了）</p><div class="qa-a"><p>先澄清：条件 2 的&quot;top-5 极差 &gt; 80&quot;指 5 个候选坐标词在 [0,1000] 坐标轴上<strong>互相差多远</strong>，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测：<strong>候选分布是否&quot;撕裂&quot;</strong>。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有&quot;不自信 + 候选在几何上严重分裂&quot;（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。</p>
+</div></div><div class="qa" id="qa-trigger"><p class="qa-q">Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了）</p><div class="qa-a"><p>先澄清：条件 2 的&quot;top-5 极差 &gt; 80&quot;指 5 个候选坐标词在 [0,1000] 坐标轴上<strong>互相差多远</strong>，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测：**候选分布是否&quot;撕裂&quot;**。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有&quot;不自信 + 候选在几何上严重分裂&quot;（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。</p>
 </div></div><div class="qa" id="qa-slow-plus2"><p class="qa-q">Q：PBD-Slow 也是 NTP 解码，凭啥比旧 Quantized-NTP 高 +2？（消融归因）</p><div class="qa-a"><p>初答&quot;两种形式互相促进&quot;太泛、抓不到点。决定性数据点是 Table 6c 第一行：<strong>只训 Lntp（表征已经块对齐）→ Slow 50.1，跟旧 Quantized-NTP 分毫不差</strong>——只把坐标包成块、不加填空监督，零增益。所以 +2 只有一个来源：<strong>Lblk 这条块级填空损失</strong>。它的作用不是&quot;教并行&quot;（Slow 不并行），而是用&quot;同块各位置共同接受 token 交叉熵监督&quot;把几何联合约束压进共享权重，x1 的分布不再孤立被评、和 y1/x2/y2 绑一起评；这份结构化监督在权重里沉淀后，换回 NTP 推理依然生效。这就是论文 &quot;box-aligned formulation provides stronger supervision than 1D serialization, <strong>without sacrificing throughput</strong>&quot; 的意思：精度收益从&quot;必须靠并行&quot;里解放出来了。</p>
 </div></div><div class="qa" id="qa-generic-mtp"><p class="qa-q">Q：通用 MTP（SDLM/BlockDiff）为什么又慢又差？</p><div class="qa-a"><p>结构无关切块让块边界大概率落在无意义处，一个块同时装&quot;上一框尾巴坐标 + 下一类别的开头词&quot;，模型被迫拟合横跨框边界、横跨类别的虚假相关（共现统计，非真实规律），纯消耗容量还错误传播。加速弱是因为块内容不连贯，实际可用性差（SDLM 只到 ~5.5 BPS）。PBD 用&quot;块 = 框&quot;把这个伪模式源头拆掉。</p>
 <p>2026-10-04 核对原文 §3.2：历史问答中「整块全对才拿分」「合法框约束直接入 loss」是过强类比。实际为两种序列的 token 交叉熵联合训练。Table 6 的增益支持结构化训练有效，不证明增加了硬几何损失。</p>
+<p>2026-10-07 第二次复测纠偏：复测中一度将 L_blk 的约束通道归因为目标检测式的连续坐标回归损失（L1/GIoU），核对原文 §3.2 确认目标只有 L_ntp + L_blk 两个序列的 token 交叉熵联合训练。约束通道本质是：块对齐 + 块内双向注意力 + 同块多位置 token CE 联合优化逼共享权重学到四坐标联合分布。Fast 也非推测解码的草稿验证机制，而是一次并行前向直接产出提交。门控信号来自并行步自身的置信统计，非额外运行 NTP 检验。</p>
 </div></div></section>
-<section class="note-sec" id="open"><h2>还没搞懂</h2><p><em>无</em>——检验题全部补齐，无残留漏洞。「块内双向注意力在单步并行预测中的确切信息论作用」存疑（mask 占位在一步预测中互见的信息量有限，论文与通用 MTP 文献均未展开），留待 DiffusionVL/Block Diffusion 入库时对照，暂不立为问题。</p>
+<section class="note-sec" id="open"><h2>还没搞懂</h2><p>_无_——检验题全部补齐，无残留漏洞。「块内双向注意力在单步并行预测中的确切信息论作用」存疑（mask 占位在一步预测中互见的信息量有限，论文与通用 MTP 文献均未展开），留待 DiffusionVL/Block Diffusion 入库时对照，暂不立为问题。</p>
 </section>
 <section class="note-sec" id="relations"><h2>关联</h2><ul>
 <li><a href="2026-vst.html">VST</a> — 同主题&quot;系统延迟&quot;的两个<strong>正交解法</strong>：VST 把推理切碎塞进视频播放空档（把延迟藏起来，查询即答），LocateAnything 把几何输出块化、一步出一个框（把解码步数本身减掉）。组合设想（待验证）：视频交互系统用 VST 的推理时机 + 本文的快速低层感知。</li>

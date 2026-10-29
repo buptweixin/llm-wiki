@@ -55,7 +55,7 @@
 <ul>
 <li>每域单独蒸馏再组合（RouteOPD，三个学生模型，仅作上界参考）：总分 31.55；</li>
 <li>naive M-OPD 一个学生：28.05，差 3.50 分；</li>
-<li>用回收率衡量（SFT 25.67 → RouteRL 32.35 为 100% headroom），naive M-OPD 只拿回 <strong>35.6%</strong>；</li>
+<li>用回收率衡量（SFT 25.67 → RouteRL 32.35 为 100% headroom），naive M-OPD 只拿回 **35.6%**；</li>
 <li>掉分极不均匀：IF 域掉 6.16 分（是 math 1.89 的 3.3 倍），训练中期 IF 分数还倒降 11%、最早停滞。</li>
 </ul>
 <figure class="paper-fig"><img src="../../assets/figures/2026-open-mopd/fig1.png" alt="Naive M-OPD 的整合差距（Integration Gap）与不对称掉分" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 1）：(a) 柱状图直观展现差距，IF 领域掉分 6.16 远大于 math 的 1.89；(b) 训练轨迹显示 IF 在中期甚至发生性能倒退；(c) 理论回收率对比中，IF 恢复最少（绿线仅约 28%）。</figcaption></figure>
@@ -63,7 +63,7 @@
 <section class="note-sec" id="intuition"><h2>大白话讲解</h2><p><strong>先枪毙一个流行嫌疑人：teacher conflict（教师冲突）。</strong> 三个 teacher 同源（都从同一个混合域 SFT checkpoint 分叉），共享格式词、连接词、推理模板——看起来很容易打架。三重检验支持它不是该设置的主要瓶颈：</p>
 <ol>
 <li>token 级教师分歧 c_t（各教师对该 token logprob 的最大差）全程均值仅 <strong>0.126 nat</strong>，从没超过 0.27 nat——冲突判据是 1 nat（最支持与最反对的教师概率比 e≈2.7），差一个数量级；</li>
-<li>c_t &gt; 1 nat 的高冲突 token 全程只占 <strong>0.62%</strong>（分歧最大的 IF 域也才 3.9%）；</li>
+<li>c_t &gt; 1 nat 的高冲突 token 全程只占 **0.62%**（分歧最大的 IF 域也才 3.9%）；</li>
 <li><strong>该设置中的干预检验</strong>：把 top 1%/5%/20% 高冲突 token 从 loss 里 mask 掉、或换成三教师平均的 consensus target——结果全部<strong>降分</strong>（−0.52~−0.83）。高分歧 token 不是噪声，反而可能携带领域信息。</li>
 </ol>
 <p><strong>真凶：预算错配，有三层。</strong> 关键认知：OPD 的 loss 按 <strong>token 平均</strong>聚合，所以每个域真正得到的优化量不取决于你喂了多少 prompt，而取决于：</p>
@@ -128,7 +128,7 @@
 <td>+0.81</td>
 </tr>
 </tbody></table>
-<p>总回收率 <strong>35.6% → 83.4%</strong>，距三模型上界 RouteOPD（31.55，88%）只剩一步。</p>
+<p>总回收率 **35.6% → 83.4%**，距三模型上界 RouteOPD（31.55，88%）只剩一步。</p>
 <p><strong>baseline 对比</strong>：RFT（离线蒸馏，exposure bias）最差 12.6%；单模型混合域 RL π_mixrl 49.3%；参数合并 ParamMerge-Avg 32.9% / ParamMerge-TA 71.7%（同源 teachers 才能合并，仍低于 Open-MOPD）。</p>
 <p><strong>代价/局限</strong>：仅 3B 规模、三个域、oracle 真实标签路由——<strong>路由有误/域标签不可知的场景未验证</strong>（hard routing 和 gap 分配都建立在正确 teacher 信号上，错了可能放大错误）；论文自设无 limitation 章节。</p>
 <p><strong>可复现性主张</strong>（「Open」的含义）：全流程在单节点 8×A100-80GB 上可反复跑完整 pipeline + 消融，端到端 recipe/训练轨迹/评测套件全开源。基座选型本身是个取舍示范：Qwen3-1.7B 太小（SFT 后截断率 69~80%，轨迹闭不了合，失败无法归因）、Qwen2.5-7B 太贵（消融跑不起），SmolLM3-3B 在「能力够」与「可反复跑」之间取平衡。</p>
@@ -161,7 +161,7 @@
 <li><strong>仍然旧的是什么？</strong>：生成轨迹和前缀仍来自 rollout 时的学生。刷新奖励不等于重新采样；K=1 时也没有多轮奖励陈旧可修。</li>
 </ul>
 </div></div></section>
-<section class="note-sec" id="open"><h2>还没搞懂</h2><p><em>无</em>——检验题与两道补漏小检验全部收敛，无残留漏洞。</p>
+<section class="note-sec" id="open"><h2>还没搞懂</h2><p>_无_——检验题与两道补漏小检验全部收敛，无残留漏洞。</p>
 </section>
 <section class="note-sec" id="relations"><h2>关联</h2><ul>
 <li><p><a href="2026-s2vopd.html">S²VOPD</a> — OPD 家族第三页：「单教师信号从哪来」的视觉域答案（把学生输入图退化构造不对称，减学生而非加教师）。散度注记第三数据点：视觉不对称蒸馏里 JSD &gt; reverse KL &gt; forward KL，排序与 U-OPSD 完全颠倒（信息可恢复性的解释待验证），三框架对照（U-OPSD 直接 loss / 本文 PPO reward 槽位 / S²VOPD 生成式 JSD）待 DistiLLM 系列统一沉淀。</p>
