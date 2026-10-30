@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SAO · llm-wiki 速览</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+</head>
+<body>
+<div class="page">
+  <a class="skip-link" href="#deck">跳到正文</a>
+
+  <header class="topbar">
+    <a class="topbar-home" href="../index.html">← 知识库</a>
+    <span class="topbar-title">SAO</span>
+    <nav class="topbar-nav"></nav>
+    <span class="topbar-count">连续阅读</span>
+    <div class="topbar-progress"></div>
+  </header>
+
+  <main class="deck" id="deck">
+
+    <!-- ① 核心直觉 -->
+    <section class="slide" id="slide-1" data-section="essence">
+      <div class="slide-inner cover">
+        <p class="cover-eyebrow">PAPER · 2026</p>
+        <h1>SAO</h1>
+        <p class="cover-full">Single-Rollout Asynchronous Optimization for Agentic Reinforcement Learning</p>
+        <p class="cover-essence">SAO 用单 rollout 采样替代组采样消除长时程智能体异步训练的木桶等待瓶颈，配合冻结注意力的强 Critic、Skip-Observation GAE 与双侧硬门控裁剪（DIS），实现兼顾吞吐与千步稳训的智能体异步强化学习。</p>
+        <dl class="cover-meta">
+          <dt>机构</dt><dd>清华大学, Z.AI（Zhenyu Hou, Yujiang Li, Jie Tang, Yuxiao Dong 等）</dd>
+          <dt>入库</dt><dd>2026-10-30</dd>
+          <dt>原文</dt><dd><a href="zotero://select/items/P25H254B">Zotero</a> · <a href="http://arxiv.org/abs/2607.07508">arXiv</a></dd>
+        </dl>
+        <div class="tagrow"><span class="tag">策略梯度</span><span class="tag">裁剪代理目标</span><span class="tag">GAE</span><span class="tag">工具调用</span><span class="tag">提高训练预算利用率</span><span class="tag">提高训练稳定性</span><span class="tag">提高推理深度</span></div>
+      </div>
+    </section>
+
+    <!-- ② 五分钟重建 -->
+    <section class="slide" id="read-rebuild" data-section="rebuild">
+      <div class="slide-inner">
+        <div class="slide-head"><h2>五分钟重建</h2></div>
+        <div class="learning-guide" id="guide-2026-sao">
+          <p class="guide-problem">GRPO 的组采样在长时程多轮智能体任务中面临严重的木桶等待瓶颈与版本交叉污染，而异步更新又常因策略滞后（Policy Lag）在百余步内迅速崩溃。SAO 废弃组采样，改用单轨迹即采即训，并引入双侧硬裁剪抵御离线偏差。</p>
+          <ol class="guide-path" aria-label="机制路径">
+            <li><h3>单轨迹异步回传</h3><p>每个 Prompt 仅生成一条轨迹（$G=1$），推理引擎逐 Token 记录行为概率 $\log \pi_{\text{rollout}}$，轨迹一旦完成立即回传训练队列，无需等待整组其他样本。</p></li>
+            <li><h3>双频强价值估计</h3><p>Critic 预先在大规模回报数据上预训练冷启动，冻结自注意力层仅微调 MoE 参数，并以 $K=2$ 倍于策略的频率快更新；跨过环境反馈 Token 计算 Skip-Observation GAE。</p></li>
+            <li><h3>双侧硬门控更新</h3><p>计算当前策略与生成时行为概率的比值 $r_t(\theta)$；若落在非对称宽信任区间 $[1-\epsilon_l, 1+\epsilon_h]$ 内则正常更新，一旦越界直接硬置零阻断梯度，避免陈旧轨迹毁坏模型。</p></li>
+          </ol>
+          <p class="guide-example"><strong>具体例子（教学假设）</strong>：一条异步回传的轨迹中，某个 Token 经过若干步参数迭代后，概率比值漂移为 $r_t = 8.0$（$\epsilon_h = 5.0$）。在标准 PPO 下该 Token 被软截断为 $1+\epsilon$ 依然推动正向更新；而在 SAO 中由于 $8.0 > 1+5.0$，该 Token 门控直接置零，不产生任何梯度污染。</p>
+          <p class="guide-boundary"><strong>边界</strong>：依赖高并发推理引擎提供逐 Token 的生成对数概率；需要额外维护独立的 Critic 模型（显存开销与 PPO 相当，高于 GRPO）；若 Critic 缺乏充分的回报预训练冷启动，单 Rollout 的高方差会导致收敛困难。</p>
+          <div class="guide-case">
+            <h3>换个条件看机制</h3>
+            <p>如果去除 Skip-Observation 设计，把终端返回的 500 行编译器报错也纳入 GAE 链条计算，会发生什么？</p>
+            <p class="guide-explanation">Critic 会被迫尝试去预测外部随机环境的状态转移价值，导致优势估计被无关的环境噪声严重污染，破坏模型自身动作的信用分配。</p>
+          </div>
+          <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后解释：为什么单 Rollout 的单题方差明显大于组采样，在固定训练时间内却能在复杂推理基准上全面反超 GRPO？</p></aside>
+          <p class="guide-status">2026-10-30：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ 一页看懂 -->
+    <section class="slide" id="slide-2" data-section="overview">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>一页看懂</h2>
+          <span class="slide-no">02</span>
+        </div>
+        <div class="flow">
+          <div class="flow-step">
+            <h3>痛点</h3>
+            <p>GRPO 组采样在智能体多轮长轨迹中遭遇严重的木桶等待瓶颈；异步更新又因策略滞后在百余步崩溃；外部环境回包更会严重污染 GAE 优势计算。</p>
+          </div>
+          <div class="flow-step" data-hi>
+            <h3>方法</h3>
+            <p>SAO 废除组采样改用单 Rollout（G=1）即采即训，以强 Critic 压制方差；配合 Skip-Observation GAE 跨过环境回包，并引入 DIS 双侧硬门控置零，宁可不学绝不学歪。</p>
+          </div>
+          <div class="flow-step">
+            <h3>结果</h3>
+            <p>实现长时程智能体异步 RL 超 1000 步极限稳训；在 AIME2025（97.3%）、SWE-Bench Verified（29.8%）等基准大幅超越 GRPO，并成功赋能开源 750B 大模型 GLM-5.2。</p>
+          </div>
+        </div>
+        <figure class="paper-fig"><img src="../assets/figures/2026-sao/fig2.png" alt="SAO 整体单 Rollout 异步架构与 GRPO 组采样对比" loading="lazy"><figcaption>图 1 费曼图解（论文 Figure 2）：GRPO 在异步系统中必须等待同一 Prompt 的整组样本就绪（Waiting for Group），存在严重的木桶等待与跨版本混杂；SAO 采用单 Rollout 设计，每条轨迹生成完毕立即送入训练队列（Ready for Training），消除同步屏障并通过 DIS 限制在信任域内。</figcaption></figure>
+        <p class="takeaway">SAO 用单 rollout 采样替代组采样消除长时程智能体异步训练的木桶等待瓶颈，配合冻结注意力的强 Critic、Skip-Observation GAE 与双侧硬门控裁剪（DIS），实现兼顾吞吐与千步稳训的智能体异步强化学习。</p>
+      </div>
+    </section>
+
+    <!-- ④ 关键机制：单 Rollout 与双侧硬门控 DIS -->
+    <section class="slide" id="slide-3" data-section="mechanism">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关键机制：单 Rollout 与双侧硬门控 DIS</h2>
+          <span class="slide-no">03</span>
+        </div>
+        <p>直接利用推理引擎记录的生成对数概率，省去旧策略前向推理并施行硬门控：</p>
+        <div class="codeblock"><pre><code>r_t(θ) = exp( log π_θ(a_t | s_t) - log π_rollout(a_t | s_t) )
+f(x)   = x  (若 1 - ε_l &lt; x &lt; 1 + ε_h),  否则 0 (梯度直接置零)</code></pre></div>
+        <table class="dtable">
+          <thead><tr><th>对比维度</th><th>GRPO 组采样</th><th>标准 PPO / VAPO</th><th data-hi>SAO（本篇）</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>采样结构</td>
+              <td>同题采一组（G≥8）</td>
+              <td>批次采样或异步队列</td>
+              <td data-hi>单轨迹即采即训（G=1）</td>
+            </tr>
+            <tr>
+              <td>基线模型</td>
+              <td>无需 Critic（组内均值）</td>
+              <td>全参数 Critic</td>
+              <td data-hi>冻结自注意力强 Critic + 快更新（K=2）</td>
+            </tr>
+            <tr>
+              <td>越界处理</td>
+              <td>组相对优势裁剪</td>
+              <td>软截断（仍提供同向梯度推进）</td>
+              <td data-hi>双侧硬门控置零（梯度完全阻断）</td>
+            </tr>
+            <tr>
+              <td>异步稳定性</td>
+              <td>约 160 步崩溃</td>
+              <td>约 90 步崩溃</td>
+              <td data-hi>极限稳训 1000 步以上</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ⑤ 机制深入：环境反馈隔离与价值模型双频更新 -->
+    <section class="slide" id="slide-4" data-section="mechanism-2">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>机制深入：环境反馈隔离与价值模型双频更新</h2>
+          <span class="slide-no">04</span>
+        </div>
+        <figure class="paper-fig"><img src="../assets/figures/2026-sao/fig4.png" alt="异步单 Rollout 训练动态与消融特征分析" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 4）：(a) 更快价值更新（$K=2$）显著提高 Critic 的解释方差（Explained Variance）；(b) 冻结注意力层（Frozen Attention）将 Critic 梯度范数压制在低位平稳区间，全参数训练则发生梯度激增；(c) DIS 的 Token 级裁剪率稳定在千分之几，从根源上剔除发散更新。</figcaption></figure>
+        <div class="cards-grid">
+          <div class="card">
+            <h3>Skip-Observation GAE 阻断外部噪声</h3>
+            <p>智能体轨迹中终端回传的几百行报错并非模型生成。SAO 在时序差分中直接跨过观测区间，仅连接模型的前后动作边界，保证优势估计不受环境随机性干扰。</p>
+          </div>
+          <div class="card">
+            <h3>Frozen Attention 压死梯度范数</h3>
+            <p>消融证实冻结 Critic 的自注意力层是稳训最关键的一环（去掉性能骤降 6.7 分）。既复用了语言先验，又将 Critic 梯度的狂暴方差锁死在平稳区间。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑥ 证据与边界：基准评测与在线适应 -->
+    <section class="slide" id="slide-5" data-section="evidence">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>证据与边界：基准评测与千步稳训</h2>
+          <span class="slide-no">05</span>
+        </div>
+        <figure class="paper-fig"><img src="../assets/figures/2026-sao/fig1.png" alt="SAO 在数学推理与编码智能体基准上的性能评测" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 1）：在 Qwen3-30B-A3B 骨干上，SAO 在 AIME2025（97.3% vs 84.2%）、BeyondAIME（74.8% vs 54.8%）、IMOAnswerBench（74.0% vs 55.8%）与 SWE-Bench Verified（29.8% vs 23.0%）等长时程基准上全面大幅超越同步 GRPO 基线。</figcaption></figure>
+        <figure class="paper-fig"><img src="../assets/figures/2026-sao/fig3.png" alt="SAO 与 GRPO 变体在训练千步过程中的性能与稳定性对比" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 3）：在 AIME2025、BeyondAIME 与 HMMT 训练步进曲线中，Vanilla GRPO 在约 160 步发生灾难性崩溃（Collapse）；GRPO (w/ DIS) 虽维持稳定但在 400 步后停滞；SAO 凭借单 Rollout 更高的样本多样性持续攀升，稳定训练超 1000 步。</figcaption></figure>
+        <div class="limits">
+          <p><strong>边界与权衡</strong>：</p>
+          <ul>
+            <li><strong>显存开销</strong>：恢复独立 Critic 带来双倍显存占用，与标准 PPO 相当，高于 GRPO。</li>
+            <li><strong>冷启动要求</strong>：依赖海量回报数据进行 Critic 预训练，若冷启动不足则单 Rollout 无法收敛。</li>
+            <li><strong>推理引擎侵入</strong>：必须要求分布式推理集群导出逐 Token 的真实采样对数概率。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑦ 卡壳点与解答 -->
+    <section class="slide" id="slide-6" data-section="pitfalls">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>卡壳点与解答</h2>
+          <span class="slide-no">06</span>
+        </div>
+        <div class="qa" id="qa-dis-vs-ppo-clip">
+          <p class="qa-q">Q1：DIS 的双侧硬门控和 PPO 的 Clip 截断到底有什么本质区别？为什么异步下必须置零？</p>
+          <div class="qa-a">
+            <ul>
+              <li><strong>PPO 的饱和截断</strong>：当比值越界时，强行以边界值 $1+\epsilon$ 计算，梯度依然存在且持续推动更新。在同步同分布下这能提供稳定的保守更新；但在异步集群中，严重越界的比值代表数据产生自极为陈旧的模型快照，该动作在当前策略下已经被认定为不可信。若继续以 $1+\epsilon$ 强推，累积的 Off-policy 伪梯度会在百余步内直接撕裂分布。</li>
+              <li><strong>DIS 的硬门控置零</strong>：DIS 采取硬门控置零（$f=0$），直接关闭该 Token 的梯度流，宁可不学、绝不学歪。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="qa" id="qa-single-rollout-variance">
+          <p class="qa-q">Q2：单 Rollout 的单题方差天然高于组采样，为什么长时程智能体整体训练效果反而大幅超越 GRPO？</p>
+          <div class="qa-a">
+            <ul>
+              <li><strong>核心矛盾转换</strong>：长时程多轮智能体任务在固定算力预算下的核心矛盾是「木桶等待造成的算力空转」与「Prompt 覆盖多样性严重匮乏」。</li>
+              <li><strong>多样性带来质变</strong>：GRPO 同一题采 8 条，不仅导致快节点苦等慢节点，而且见到的题目种类只有 1/8。SAO 凭借预训练充分且冻结注意力的 Critic 吸收掉了单题方差，同时将 Prompt 探索空间拓宽了 8 倍，因而在复杂推理与工程编码等考验知识广度与深度探索的基准上达成全面领先。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="qa" id="qa-skip-observation-noise">
+          <p class="qa-q">Q3：智能体多轮轨迹中的环境观测（Terminal 输出）为什么不能顺次参与 GAE 时序差分？</p>
+          <div class="qa-a">
+            <ul>
+              <li><strong>非策略生成内容</strong>：外部观测 Token（例如 500 行编译器报错或 Bash 执行结果）并非模型策略生成，其文本分布由外部编译器、解释器或沙盒物理环境决定。</li>
+              <li><strong>物理隔离噪声</strong>：若不跨过这些 Token，Critic 网络会强行去建模外部环境的状态转移概率，导致时序差分误差被外界随机性严重污染，无法为模型前后的真实动作进行正确的信用分配。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑧ 关联与来源 -->
+    <section class="slide" id="slide-7" data-section="relations">
+      <div class="slide-inner">
+        <div class="slide-head">
+          <h2>关联与来源</h2>
+          <span class="slide-no">07</span>
+        </div>
+        <div class="rel-cards">
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">范式对比</span><h3>DeepSeekMath</h3></div>
+            <p>去 Critic 的组相对优势范式：GRPO 在短推理中极简高效，但在长时程异步环境中暴露出木桶同步屏障；SAO 重构了单 Rollout 与强 Critic 架构。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">算法演进</span><h3>PPO</h3></div>
+            <p>从三模型软截断到单 Rollout 硬门控：SAO 继承了 Actor-Critic 与 GAE 体系，但废除旧模型推理，改用推理端 log-prob 与双侧硬置零门控 DIS。</p>
+          </div>
+          <div class="rel-card">
+            <div class="rel-card-head"><span class="rel-tag">异曲同工</span><h3>GSPO</h3></div>
+            <p>长轨迹稳定性的另一维度演进：GSPO 采用序列级几何平均似然比抵抗 MoE 路由跳变；SAO 则立足异步流水线，以单 Rollout 与 DIS 稳训千步。</p>
+          </div>
+        </div>
+        <dl class="cover-meta" style="margin-top:1.5rem">
+          <dt>完整笔记</dt><dd><a href="../notes/papers/2026-sao.html">notes/papers/2026-sao.html</a></dd>
+          <dt>源文件</dt><dd><code>wiki/papers/2026-sao.md</code></dd>
+          <dt>Zotero 深链接</dt><dd><a href="zotero://select/items/P25H254B">zotero://select/items/P25H254B</a>（citekey: <code>Hou2026</code>）</dd>
+        </dl>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+</body>
+</html>

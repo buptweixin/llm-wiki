@@ -196,6 +196,7 @@ Zotero AI Butler 预读笔记 `8CYDI7ER`（AI 总结）与 `RK4Y6U8L`（文献�
 
 ## 关联
 
+- [SAO](2026-sao.md) — 异步长时程智能体对 GRPO 的反思与演进：SAO 揭示了 GRPO 组采样在长轨迹、多轮交互任务中的木桶同步等待屏障（Straggler 瓶颈）与跨版本数据污染，在异步架构中重构了单 Rollout 即采即训、强 Critic（冻结注意力）与双侧硬门控（DIS），实现超千步稳训。
 - [DAPO](2025-dapo.md) — GRPO 在长思维链（Long-CoT）下的直接工业级演进：针对朴素 GRPO 在长逻辑场景下暴露的四大病根（对称裁剪导致的熵坍缩、全对/全错样本造成的有效批次萎缩、样本级平均导致的长度被稀释、超长硬截断噪声），提出非对称 Clip-Higher、动态重采样、Token-level 损失与软惩罚，将 Qwen2.5-32B 在 AIME 2024 上拉升至 50 分。
 - [PPO](2017-ppo.md) — GRPO 的直接理论前身：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略过激更新，但 GRPO 彻底剪除了 Critic 模型与 GAE，改用组内相对优势估计，并将 KL 惩罚从奖励解耦到外层损失。
 - [GeoAnchor](2026-geoanchor.md) — 空间推理下游应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化模型对不同空间潜变量模式的选择策略。

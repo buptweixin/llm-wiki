@@ -25,6 +25,7 @@ _暂无_
 - [DeepSeekMath](wiki/papers/2024-deepseekmath.md) — DeepSeekMath 用数学数据预训练、监督微调和 GRPO 提升数学推理；GRPO 用同题多次作答的相对奖励代替独立 Critic。2026-10-25 复测补充评分/价值分工、KL 与 PPO 边界及有限采样的证据限定。
 - [DAPO](wiki/papers/2025-dapo.md) — DAPO 用四项改动改善长推理 RL：保住探索、补充有区分的题、按 token 分配损失权重，并缓和接近长度上限时的惩罚。2026-10-25 复测补充长短回答权重表、正负优势 min 分支与软长度扣分边界。
 - [GSPO](wiki/papers/2025-gspo.md) — GSPO 把策略比率与裁剪从逐 token 提升到整条序列长度归一化似然，消除粒度错位，使 MoE 与长推理 RL 无需 Routing Replay 即可稳定收敛。
+- [SAO](wiki/papers/2026-sao.md) — SAO 用单 rollout 采样替代组采样消除异步等待瓶颈，配合冻结注意力的强 Critic、Skip-Observation GAE 与双侧硬门控裁剪（DIS），实现长时程智能体异步 RL 的千步稳定训练。
 
 ## 代码 Code
 

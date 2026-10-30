@@ -502,3 +502,10 @@
 - 阿里巴巴 Qwen 团队 2025 年 7 月论文入库（arXiv:2507.18071）。提出 Group Sequence Policy Optimization（GSPO），将重要性采样与裁剪从逐 token 升华至整条序列几何平均似然比，根除强化学习中结果奖励与逐 token 优化的粒度错位，使 MoE 模型无需高开销 Routing Replay 即可稳定收敛。
 - 完整走完费曼 Phase 0→1→2→3：3 道检验题（长序列连乘数值下溢与几何平均机制、MoE 路由跳变与全局平滑稀释、结果奖励下的因果妥协边界）一次性满分过关；保留用户原话与两大经典卡壳点（Routing Replay 高开销本质、Token 级方差缺陷通俗解释）。
 - 提取 3 张重点论文原图（训练曲线、裁剪比例两阶反差、Routing Replay 关键作用），同步建立 Markdown 真源、速览页、完整笔记投影与静态索引；`review.md` 排入首轮复测（+3 天至 2026-11-01）。
+
+
+## [2026-10-30] ingest | SAO: 单 Rollout 异步强化学习优化
+
+- 清华大学与 Z.AI 团队 2026 年 7 月论文入库（arXiv:2607.07508）。提出 Single-Rollout Asynchronous Optimization（SAO），废除 GRPO 组采样改用单轨迹即采即训，配合冻结注意力的强 Critic、Skip-Observation GAE 与双侧硬门控裁剪（DIS），彻底解决长时程多轮智能体在异步流水线中的木桶等待与策略滞后崩溃瓶颈，并已部署于开源 750B-A40B 大模型 GLM-5.2。
+- 完整走完费曼 Phase 0→1→2→3：3 道检验题（请回 Critic 的方差与 Prompt 多样性权衡、DIS 双侧硬门控置零与 PPO 软截断本质差异、Skip-Observation 隔离环境回包噪声）全部精准作答收敛；保留用户原话与三大核心卡壳点。
+- 提取 4 张重点论文原图（系统架构对比、基准表现、千步稳训曲线、训练动态与消融特征），同步建立 Markdown 真源、速览页、完整笔记投影与静态索引；`review.md` 排入首轮复测（+3 天至 2026-11-02）。
