@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Open-MOPD · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -184,7 +184,7 @@
 </div></div>
           <div class="qa" id="qa-reward-refresh"><p class="qa-q">Q：reward refresh：第一轮完全没理解，全文最大卡壳点。（09-07 费曼复测二次深化）</p><div class="qa-a"><p><strong>大白话直觉版（老师、学生与发霉的分数）</strong>：</p>
 <ul>
-<li><strong>场景</strong>：大模型生成太慢（占 46.5% 耗时），所以学生写完一份作业草稿，要连续复用 4 轮内更新（$K=4$）来学，而不是每步重新写。</li>
+<li><strong>场景</strong>：大模型生成太慢（占 46.5% 耗时），所以学生写完一份作业草稿，要连续复用 4 轮内更新（<code>K=4</code>）来学，而不是每步重新写。</li>
 <li><strong>病根</strong>：同一批 rollout 更新多轮后，学生已经变了，奖励里却仍用 rollout 时的学生 logprob。这个旧差值不能反映当前师生差。论文在 K=4 时报告约 75.8% 的 clip fraction，显示复用中的策略偏移较大。</li>
 <li><strong>Clip 的边界</strong>：clip fraction 通常统计比率落到阈值外的比例，不能直接说 75.8% 的全部网络梯度被冻结。裁剪目标是否变平还取决于优势符号；其他样本与损失仍可改变共享参数。</li>
 <li><strong>为什么几乎没有额外开销？</strong>：教师冻结，其 logprob 已缓存；PPO 每次更新为了算 ratio，本来就计算当前学生 logprob。refresh 用这些已有值重建奖励，不加教师或学生 forward，也不重新生成。论文计时差异在步间波动内。</li>
@@ -228,7 +228,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-4"></script>
-<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

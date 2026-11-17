@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GSPO · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -95,8 +95,7 @@
           <span class="slide-no">03</span>
         </div>
         <p>不再对每个 token 独立计算重要性比率，改用整条序列联合概率比的几何平均值：</p>
-        <div class="codeblock"><pre><code>s_i(θ) = [ π_θ(y_i | x) / π_old(y_i | x) ] ^ (1 / |y_i|)
-       = exp( (1 / |y_i|) * Σ log( π_θ(y_i,t) / π_old(y_i,t) ) )</code></pre></div>
+        <div class="note-math-block" data-tex="s_i(\theta) = \left[ \frac{\pi_\theta(y_i \mid x)}{\pi_{\text{old}}(y_i \mid x)} \right]^{\frac{1}{|y_i|}} = \exp\left( \frac{1}{|y_i|} \sum_{t=1}^{|y_i|} \log \frac{\pi_\theta(y_{i,t} \mid x, y_{i,&lt;t})}{\pi_{\text{old}}(y_{i,t} \mid x, y_{i,&lt;t})} \right)"><math display="block" class="tml-display"><mrow><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><msup><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mfrac><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mi>i</mi></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><mtext>old</mtext></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mi>i</mi></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><mo fence="true" form="postfix" stretchy="true">]</mo></mrow><mfrac><mn scriptlevel="2" class="tml-depth-2">1</mn><mrow scriptlevel="2" class="tml-depth-2"><mi>|</mi><msub><mi>y</mi><mi scriptlevel="2">i</mi></msub><mi>|</mi></mrow></mfrac></msup><mo>=</mo><mrow><mi>exp</mi><mo>⁡</mo></mrow><mrow><mo fence="true" form="prefix" stretchy="true">(</mo><mfrac><mn>1</mn><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></munderover></mrow><mrow><mi>log</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><mfrac><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo separator="true">,</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mo>&lt;</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><mtext>old</mtext></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo separator="true">,</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mo>&lt;</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><mo fence="true" form="postfix" stretchy="true">)</mo></mrow></mrow></math></div>
         <table class="dtable">
           <thead><tr><th>对比维度</th><th>朴素 GRPO 做法</th><th data-hi>GSPO 序列级重构</th><th>核心收益</th></tr></thead>
           <tbody>
@@ -131,7 +130,7 @@
           <span class="slide-no">04</span>
         </div>
         <figure class="paper-fig"><img src="../assets/figures/2025-gspo/fig2.png" alt="GSPO 与 GRPO 训练期间被裁剪 token 比例对比" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：GSPO 采用整序列裁剪，被截断丢弃的 token 比例在数值上高出 GRPO 两个数量级（GSPO 约 15%，GRPO 仅 0.13%）；但留下的样本提供了高度可靠的梯度信号，反而实现了更高的训练利用效率。</figcaption></figure>
-        <div class="cards-grid">
+        <div class="cards">
           <div class="card">
             <h3>反直觉发现：裁剪多 100 倍却更高效</h3>
             <p>GRPO 仅截断 0.13% 的 token，把海量充满伪方差与噪声的 token 送入反向传播，导致严重内耗；GSPO 严格截断偏离过大的整条序列（剔除 15% token），保留高度纯净的学习信号。</p>
@@ -152,13 +151,11 @@
           <span class="slide-no">05</span>
         </div>
         <figure class="paper-fig"><img src="../assets/figures/2025-gspo/fig3.png" alt="Routing Replay 对 MoE 模型 GRPO 训练收敛的关键作用" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 3）：在 48 层的深层 MoE 模型中，单步参数更新会导致约 10% 的专家分配发生漂移。GRPO 缺乏该机制时训练奖励瞬间崩盘（w/o Routing Replay）；GSPO 凭借序列级似然对局部跳变的天然容忍，彻底丢弃 Routing Replay 依然稳定收敛。</figcaption></figure>
-        <div class="limits">
-          <p><strong>边界与权衡</strong>：</p>
-          <ul>
-            <li><strong>结果奖励假定</strong>：GSPO 假设仅在解题结束时获得标量反馈。若有精准的过程奖励（PRM），序列级平摊会抑制步骤级的因果奖惩。</li>
-            <li><strong>短文本局限</strong>：在单步动作或短文本生成中，Token 级方差积累本就不严重，GSPO 带来的稳定性收益相对有限。</li>
-          </ul>
-        </div>
+        <p><strong>边界与权衡</strong>：</p>
+        <ul>
+          <li><strong>结果奖励假定</strong>：GSPO 假设仅在解题结束时获得标量反馈。若有精准的过程奖励（PRM），序列级平摊会抑制步骤级的因果奖惩。</li>
+          <li><strong>短文本局限</strong>：在单步动作或短文本生成中，Token 级方差积累本就不严重，GSPO 带来的稳定性收益相对有限。</li>
+        </ul>
       </div>
     </section>
 
@@ -169,6 +166,7 @@
           <h2>卡壳点与解答</h2>
           <span class="slide-no">06</span>
         </div>
+        <div class="qa-list">
         <div class="qa" id="qa-routing-replay">
           <p class="qa-q">Q1：为什么说 Routing Replay 是高开销的工程包袱？</p>
           <div class="qa-a">
@@ -189,6 +187,7 @@
             </ul>
           </div>
         </div>
+        </div>
       </div>
     </section>
 
@@ -199,30 +198,27 @@
           <h2>关联与来源</h2>
           <span class="slide-no">07</span>
         </div>
-        <div class="rel-cards">
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">架构继承</span><h3>DeepSeekMath</h3></div>
-            <p>砍掉 Critic 的组相对优势范式：GRPO 奠定了无独立价值网络的低成本推理 RL，GSPO 继承其组内标准化优势架构，并根治其 Token 级方差顽疾。</p>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2024-deepseekmath.html">DeepSeekMath：继承去 Critic 的组内标准化优势架构，根治结果奖励下的逐 token 比率方差与撕裂问题。</a></div>
+            <div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2017-ppo.html">PPO：将经典信任域裁剪粒度从单步动作提升至整条序列的长度归一化几何平均似然比。</a></div>
+            <div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2025-dapo.html">DAPO：DAPO 采用 Clip-Higher 与全批 token 归约改进逐 token 目标；GSPO 在数学粒度上重塑为序列似然比。</a></div>
+            <div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-sao.html">SAO：GSPO 解决同步组采样下的 MoE 路由漂移，SAO 面向异步长时程智能体采用单 Rollout 与双侧硬门控 DIS。</a></div>
           </div>
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">理论根基</span><h3>PPO</h3></div>
-            <p>裁剪代理目标的边界演进：PPO 确立了经典 [1-ε, 1+ε] 信任域单步裁剪，GSPO 证明了在长思维链自回归生成中，裁剪粒度应当升华至序列级别。</p>
-          </div>
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">同源探索</span><h3>DAPO</h3></div>
-            <p>长推理 RL 稳定性的两条路线：DAPO 采用不对称 Clip-Higher 与 Token-level loss weight 启发式调优，GSPO 则在数学粒度上更彻底地重塑为序列似然比。</p>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item"><span class="link-rel">完整笔记</span><span><a href="../notes/papers/2025-gspo.html">notes/papers/2025-gspo.html</a>（markdown 的完整静态投影）</span></div>
+            <div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/papers/2025-gspo.md">wiki/papers/2025-gspo.md</a></span></div>
+            <div class="link-item"><span class="link-rel">原文</span><span><a href="zotero://select/items/K3FZ7X74">Zotero</a>（zhengGroupSequencePolicy2025）· AI Butler 预读笔记 itemKey <code>JS69TIZA</code> / <code>VEEZCGDC</code></span></div>
           </div>
         </div>
-        <dl class="cover-meta" style="margin-top:1.5rem">
-          <dt>完整笔记</dt><dd><a href="../notes/papers/2025-gspo.html">notes/papers/2025-gspo.html</a></dd>
-          <dt>源文件</dt><dd><code>wiki/papers/2025-gspo.md</code></dd>
-          <dt>Zotero 深链接</dt><dd><a href="zotero://select/items/K3FZ7X74">zotero://select/items/K3FZ7X74</a>（citekey: <code>zhengGroupSequencePolicy2025</code>）</dd>
-        </dl>
       </div>
     </section>
 
   </main>
 </div>
-<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

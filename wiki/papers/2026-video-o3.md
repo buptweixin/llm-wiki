@@ -172,5 +172,7 @@ A：VST 的"查询即答"和 Video-o3 的"多轮探索后才答"在**响应时�
 - [VST](2026-vst.md) — **同属长视频推理但路线不同**。VST 是"推理前置"（播放期边看边想，FIFO 文本记忆），Video-o3 是"推理时主动检索"（动态裁剪视频，工具调用）。VST 解决实时性（0.56s），Video-o3 解决多跳精度（46.5% VideoHolmes）。组合设想（待验证）：VST 的文本记忆 + Video-o3 的工具裁剪；但"查询即答"vs"多轮探索"在响应时机上逻辑冲突，需统一调度。
 - [GeoAnchor](2026-geoanchor.md) — **同打破"纯文本 CoT"的两条对立路线**：Video-o3 把中间推理外化成工具调用（可见可审计、工具可插拔），GeoAnchor 内化成连续潜变量（保几何保真度、教师烧进权重）。本文 Related Works 2.2 自己把"think with images"工具流与 latent reasoning 对立。路线对照（库内综合）：前者中间步骤可审计，后者直接表达连续量；未验证两者在同任务下的通用优劣。
 - [VideoChat3](2026-videochat3.md) — **视觉策略互补**。VideoChat3 靠编码器压缩+状态机决定看多少像素，Video-o3 靠推理时工具调用决定看哪里。一个管感知效率，一个管检索精度。
+- [TSPO](2026-tspo.md) — **稀疏证据获取的两种时机**。TSPO 在回答前训练轻量 temporal agent 一次性选出关键帧，推理路径短但受限于 1 FPS 候选池；本文拿到问题后在共享上下文里多轮调用工具搜索回看，更灵活但延迟更高（库内对照）。
+- [LocateAnything](2026-locateanything.md) — **感知定位底座与多轮检索推理对照**。LocateAnything 用框对齐块并行解码加速单帧 2D 框定位，本文负责长视频跨时间片段的多跳线索搜寻。
 - 同领域可对比：Video-R1（文本 CoT，视觉固定）、VideoChat-R1.5/Video-RTS（解耦迭代推理）、VideoZoomer、LOVE-R1。
 - 待建概念页：`multi-hop reasoning` / `tool invocation` / `attention masking` / `GRPO` / `KV cache` / `test-time scaling`

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DAPO · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -65,28 +65,28 @@
 <section class="note-sec" id="problem"><h2>解决什么问题</h2><p>在 OpenAI o1 与 DeepSeek-R1 引爆推理时间缩放（Test-time Scaling）革命后，开源社区在复现长思考链强化学习（Long-CoT RL）时普遍遭遇断崖式挫败：直接在 Qwen2.5-32B 基座上跑朴素 <a href="2024-deepseekmath.html">GRPO</a> 仅能取得 30 分，远落后于官方报告的 47 分。深层原因在于开源报告隐藏了关键工程细节，导致大规模长推理 RL 训练深陷四大暗礁：</p>
 <ol>
 <li><strong>探索动力快速衰竭：熵坍缩（Entropy Collapse）</strong>：<ul>
-<li>传统 PPO/GRPO 的 clip 项使用对称阈值（<span class="note-math">$\epsilon = 0.2$</span>，上下阈值为 0.8 与 1.2），实际概率比不被硬性限定在该区间；</li>
+<li>传统 PPO/GRPO 的 clip 项使用对称阈值（<span class="note-math" data-tex="\epsilon = 0.2"><math><mrow><mi>ϵ</mi><mo>=</mo><mn>0.2</mn></mrow></math></span>，上下阈值为 0.8 与 1.2），实际概率比不被硬性限定在该区间；</li>
 <li>在长思维链探索中，关键的推导转折与创新解法在训练初期概率极低，理应成倍放大其发生概率；但正优势样本的目标在概率比超过上侧阈值后变平，减弱进一步提高低概率有用 token 概率的激励。论文在其训练设置下观察到策略熵快速下降；裁剪阈值不是实际概率的硬边界，也不保证任意设置都出现相同熵变化。</li>
 </ul>
 </li>
 <li><strong>有效梯度大幅稀释：全对/全错零优势题目吞噬有效 Batch Size</strong>：<ul>
-<li><a href="2024-deepseekmath.html">GRPO</a> 依赖同题组内均值计算优势，若一组 16 个采样回答全部做对或全部做错，组内优势 <span class="note-math">$\hat{A}_{i,t} \equiv 0$</span>，该题的任务奖励 surrogate 没有梯度；DAPO 去掉了参考模型 KL 项，而原版 GRPO 仍可能有 KL 梯度；</li>
+<li><a href="2024-deepseekmath.html">GRPO</a> 依赖同题组内均值计算优势，若一组 16 个采样回答全部做对或全部做错，组内优势 <span class="note-math" data-tex="\hat{A}_{i,t} \equiv 0"><math><mrow><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo>≡</mo><mn>0</mn></mrow></math></span>，该题的任务奖励 surrogate 没有梯度；DAPO 去掉了参考模型 KL 项，而原版 GRPO 仍可能有 KL 梯度；</li>
 <li>随着模型变聪明，全对题目的比例从 10% 飙升到 60% 以上。固定 Batch 内绝大多数题目沦为放空炮的“僵尸样本”，有效批次大小急剧缩水，梯度方差与噪声激增。</li>
 </ul>
 </li>
 <li><strong>样本级归一化的长度扭曲：长逻辑被稀释，复读废话却不受罚</strong>：<ul>
-<li>朴素 GRPO 采用样本级归一化（先在单样本内除以长度 <span class="note-math">$|o_i|$</span>，再求样本间均值）；</li>
-<li>导致一篇长达 16,000 token 的精妙长证明，每个 token 分摊到的梯度权重仅为 500 token 短解法的 <span class="note-math">$1/32$</span>，优质逻辑无法被充分强化；</li>
+<li>朴素 GRPO 采用样本级归一化（先在单样本内除以长度 <span class="note-math" data-tex="|o_i|"><math><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></math></span>，再求样本间均值）；</li>
+<li>导致一篇长达 16,000 token 的精妙长证明，每个 token 分摊到的梯度权重仅为 500 token 短解法的 <span class="note-math" data-tex="1/32"><math><mrow><mn>1</mn><mi>/</mi><mn>32</mn></mrow></math></span>，优质逻辑无法被充分强化；</li>
 <li>反过来，若模型出现病态复读与胡言乱语导致长度激增，负优势同样被庞大的长度分母稀释，模型得不到应有的惩罚，导致输出长度与无意义熵失控膨胀。</li>
 </ul>
 </li>
 <li><strong>超长截断样本的粗暴硬惩罚引入严重假负例噪声</strong>：<ul>
-<li>为防止显存爆炸通常设有最大生成长度（如 16K）。若对所有未完成截断的样本直接按做错打 <span class="note-math">$-1$</span> 惩罚，会误伤那些正在进行正确严密论证、仅差最后一步收尾的高质量思考，混淆策略模型的学习信号。</li>
+<li>为防止显存爆炸通常设有最大生成长度（如 16K）。若对所有未完成截断的样本直接按做错打 <span class="note-math" data-tex="-1"><math><mrow><mo form="prefix" stretchy="false">−</mo><mn>1</mn></mrow></math></span> 惩罚，会误伤那些正在进行正确严密论证、仅差最后一步收尾的高质量思考，混淆策略模型的学习信号。</li>
 </ul>
 </li>
 </ol>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="类比：给长跑选手配上四项护具">类比：给长跑选手配上四项护具</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：给长跑选手配上四项护具</h3>
 <p>在只有几百字的短问答里，<a href="2024-deepseekmath.html">GRPO</a> 就像穿轻便跑鞋在操场慢跑，小修小补就能跑通；但当任务变成 20,000 字竞赛级高强度长跑（Long-CoT 极长推导）时，旧机制的关节就会全部卡死。DAPO 为选手装上了四块关键护具：</p>
 <ul>
 <li><strong>护具一：向上放开剪刀口（Clip-Higher）</strong>：<ul>
@@ -107,39 +107,39 @@
 </li>
 </ul>
 </section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="1-非对称解耦裁剪（clip-higher）：抑制熵坍缩">1. 非对称解耦裁剪（Clip-Higher）：抑制熵坍缩</h3>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>1. 非对称解耦裁剪（Clip-Higher）：抑制熵坍缩</h3>
 <p>DAPO 去掉参考模型 KL 项，并将概率比 clip 项的上侧与下侧阈值解耦。裁剪的是目标函数中的比率项，不是直接裁剪参数梯度：</p>
-<pre class="note-pre">$$\text{clip}(r_t(\theta), 1 - \varepsilon_{low}, 1 + \varepsilon_{high})$$</pre>
-<p>其中将下界保持为 <span class="note-math">$\varepsilon_{low} = 0.2$</span>（保留下侧裁剪阈值，不代表概率被硬性锁在边界内），而将上界放宽至 <span class="note-math">$\varepsilon_{high} = 0.28$</span>。</p>
+<div class="note-math-block" data-tex="\text{clip}(r_t(\theta), 1 - \varepsilon_{low}, 1 + \varepsilon_{high})"><math display="block" class="tml-display"><mrow><mtext>clip</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>r</mi><mi>t</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo separator="true">,</mo><mn>1</mn><mo>−</mo><msub><mi>ε</mi><mrow><mi>l</mi><mi>o</mi><mi>w</mi></mrow></msub><mo separator="true">,</mo><mn>1</mn><mo>+</mo><msub><mi>ε</mi><mrow><mi>h</mi><mi>i</mi><mi>g</mi><mi>h</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></div>
+<p>其中将下界保持为 <span class="note-math" data-tex="\varepsilon_{low} = 0.2"><math><mrow><msub><mi>ε</mi><mrow><mi>l</mi><mi>o</mi><mi>w</mi></mrow></msub><mo>=</mo><mn>0.2</mn></mrow></math></span>（保留下侧裁剪阈值，不代表概率被硬性锁在边界内），而将上界放宽至 <span class="note-math" data-tex="\varepsilon_{high} = 0.28"><math><mrow><msub><mi>ε</mi><mrow><mi>h</mi><mi>i</mi><mi>g</mi><mi>h</mi></mrow></msub><mo>=</mo><mn>0.28</mn></mrow></math></span>。</p>
 <figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig2.png" alt="Clip-Higher 对 AIME 准确率与策略熵的改善" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：(a) AIME 准确率随训练显著提升；(b) 策略模型生成熵对比——无 Clip-Higher 时熵在 1000 步内急剧暴跌（熵坍缩），而引入 Clip-Higher 后策略熵平稳保持在健康区间，模型探索活力得以持续维系。</figcaption></figure>
-<h3 id="2-动态采样（dynamic-sampling）：剔除零梯度样本">2. 动态采样（Dynamic Sampling）：剔除零梯度样本</h3>
-<p>在训练流程中设立动态缓冲池（Dynamic Sampling Buffer）。对于每个采样题目 <span class="note-math">$q$</span> 生成的 <span class="note-math">$G$</span> 个候选回答 <span class="note-math">$\{o_i\}_{i=1}^G$</span>，只有满足以下非平凡条件的题目才被允许进入反向传播批次：</p>
-<pre class="note-pre">$$0 &lt; \sum_{i=1}^G \mathbb{I}(\text{is\_equivalent}(a, o_i)) &lt; G$$</pre>
+<h3>2. 动态采样（Dynamic Sampling）：剔除零梯度样本</h3>
+<p>在训练流程中设立动态缓冲池（Dynamic Sampling Buffer）。对于每个采样题目 <span class="note-math" data-tex="q"><math><mi>q</mi></math></span> 生成的 <span class="note-math" data-tex="G"><math><mi>G</mi></math></span> 个候选回答 <span class="note-math" data-tex="\{o_i\}_{i=1}^G"><math><msubsup><mrow><mo fence="true" form="prefix" stretchy="false">{</mo><msub><mi>o</mi><mi>i</mi></msub><mo fence="true" form="postfix" stretchy="false">}</mo></mrow><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></msubsup></math></span>，只有满足以下非平凡条件的题目才被允许进入反向传播批次：</p>
+<div class="note-math-block" data-tex="0 &lt; \sum_{i=1}^G \mathbb{I}(\text{is\_equivalent}(a, o_i)) &lt; G"><math display="block" class="tml-display"><mrow><mn>0</mn><mo>&lt;</mo><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></munderover></mrow><mi>𝕀</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mtext>is_equivalent</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>a</mi><mo separator="true">,</mo><msub><mi>o</mi><mi>i</mi></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>&lt;</mo><mi>G</mi></mrow></math></div>
 <ul>
-<li><strong>机制逻辑</strong>：若准确率为 0（全错）或 1（全对），在相对优势公式 <span class="note-math">$\hat{A}_{i,t} = \frac{R_i - \text{mean}(\mathbf{R})}{\text{std}(\mathbf{R})}$</span> 中分子或标准差归零，整道题产生零有效梯度。</li>
+<li><strong>机制逻辑</strong>：若准确率为 0（全错）或 1（全对），在相对优势公式 <span class="note-math" data-tex="\hat{A}_{i,t} = \frac{R_i - \text{mean}(\mathbf{R})}{\text{std}(\mathbf{R})}"><math><mrow><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo>=</mo><mfrac><mrow><msub><mi>R</mi><mi>i</mi></msub><mo>−</mo><mtext>mean</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>𝐑</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><mtext>std</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>𝐑</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac></mrow></math></span> 中分子或标准差归零，整道题产生零有效梯度。</li>
 <li><strong>动态补满</strong>：系统持续异步采样，直到批次完全由具备正负对比信号的有效题目填满后才执行参数更新。虽然采样量增加，但由于并行 rollout 耗时通常被最长长尾样本阻塞，且有效批次补满后再更新，论文报告该实验收敛更快；DAPO 全套系统的更新步数差异不能单独归因于动态采样；额外采样仍有成本，更新步数的减少不能单独保证所有机器的墙钟时间更短。</li>
 </ul>
-<h3 id="3-逐-token-策略梯度损失（token-level-policy-gradient-loss）">3. 逐 Token 策略梯度损失（Token-Level Policy Gradient Loss）</h3>
+<h3>3. 逐 Token 策略梯度损失（Token-Level Policy Gradient Loss）</h3>
 <p>重构多样本与多步骤的累加归约顺序：</p>
 <ul>
-<li><strong>朴素 GRPO（样本级归约）</strong>：<span class="note-math">$\mathbb{E}\left[ \frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} L_{clip} \right]$</span>（各样本权重平等，长样本 token 被除以更大分母 <span class="note-math">$|o_i|$</span>）；</li>
-<li><strong>DAPO（Token 级归约）</strong>：<pre class="note-pre">$$\mathcal{J}_{DAPO}(\theta) = \mathbb{E}\left[ \frac{1}{\sum_{i=1}^G |o_i|} \sum_{i=1}^G \sum_{t=1}^{|o_i|} \min\left( r_{i,t}(\theta)\hat{A}_{i,t}, \text{clip}(r_{i,t}(\theta), 1-\varepsilon_{low}, 1+\varepsilon_{high})\hat{A}_{i,t} \right) \right]$$</pre>
+<li><strong>朴素 GRPO（样本级归约）</strong>：<span class="note-math" data-tex="\mathbb{E}\left[ \frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} L_{clip} \right]"><math><mrow><mi>𝔼</mi><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mfrac><mn>1</mn><mi>G</mi></mfrac><msubsup><mo movablelimits="false">∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></msubsup><mfrac><mn>1</mn><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac><msubsup><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></msubsup><msub><mi>L</mi><mrow><mi>c</mi><mi>l</mi><mi>i</mi><mi>p</mi></mrow></msub><mo fence="true" form="postfix" stretchy="true">]</mo></mrow></mrow></math></span>（各样本权重平等，长样本 token 被除以更大分母 <span class="note-math" data-tex="|o_i|"><math><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></math></span>）；</li>
+<li><strong>DAPO（Token 级归约）</strong>：<div class="note-math-block" data-tex="\mathcal{J}_{DAPO}(\theta) = \mathbb{E}\left[ \frac{1}{\sum_{i=1}^G |o_i|} \sum_{i=1}^G \sum_{t=1}^{|o_i|} \min\left( r_{i,t}(\theta)\hat{A}_{i,t}, \text{clip}(r_{i,t}(\theta), 1-\varepsilon_{low}, 1+\varepsilon_{high})\hat{A}_{i,t} \right) \right]"><math display="block" class="tml-display"><mrow><msub><mi class="mathcal">𝒥</mi><mrow><mi>D</mi><mi>A</mi><mi>P</mi><mi>O</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><mi>𝔼</mi><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mfrac><mn>1</mn><mrow><msubsup><mo movablelimits="false">∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></msubsup><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></munderover></mrow><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></munderover></mrow><mrow><mi>min</mi><mo>⁡</mo></mrow><mrow><mo fence="true" form="prefix" stretchy="true">(</mo><msub><mi>r</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo separator="true">,</mo><mtext>clip</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>r</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo separator="true">,</mo><mn>1</mn><mo>−</mo><msub><mi>ε</mi><mrow><mi>l</mi><mi>o</mi><mi>w</mi></mrow></msub><mo separator="true">,</mo><mn>1</mn><mo>+</mo><msub><mi>ε</mi><mrow><mi>h</mi><mi>i</mi><mi>g</mi><mi>h</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="true">)</mo></mrow><mo fence="true" form="postfix" stretchy="true">]</mo></mrow></mrow></math></div>
 </li>
 </ul>
 <figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig4.png" alt="Token-level 损失对生成熵与平均响应长度的控制" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 4）：无 Token-level 损失时，样本级归一化对长篇复读废话惩罚不足，导致生成熵畸高（异常混乱）且输出长度恶性膨胀；Token-level 损失通过字字均等计责，使策略熵维持在正常收敛轨迹，响应长度以健康节奏平稳增长。</figcaption></figure>
-<h3 id="4-软超长奖励塑形（soft-overlong-punishment）">4. 软超长奖励塑形（Soft Overlong Punishment）</h3>
-<p>在预设的目标最大长度 <span class="note-math">$L_{max} - L_{cache} = 16,384$</span> 与显存硬截断上限 <span class="note-math">$L_{max} = 20,480$</span> 之间引入线性衰减惩罚函数：</p>
-<pre class="note-pre">$$R_{length}(y) = \begin{cases}
-0, &amp; |y| \le L_{max} - L_{cache} \\
-\frac{(L_{max} - L_{cache}) - |y|}{L_{cache}}, &amp; L_{max} - L_{cache} &lt; |y| \le L_{max} \\
--1, &amp; L_{max} &lt; |y|
-\end{cases}$$</pre>
-<p>最终奖励由正确性奖励与长度软惩罚相加：<span class="note-math">$R = R_{rule} + R_{length}$</span>。长度扣分提示模型控制过长输出，不是对中间步骤正确性的逐步判定。论文还验证了 Overlong Filtering：屏蔽截断样本的损失，减少将未完成推导直接当错误处理的奖励噪声；不能保证任何情况下都消除噪声。</p>
+<h3>4. 软超长奖励塑形（Soft Overlong Punishment）</h3>
+<p>在预设的目标最大长度 <span class="note-math" data-tex="L_{max} - L_{cache} = 16,384"><math><mrow><msub><mi>L</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>−</mo><msub><mi>L</mi><mrow><mi>c</mi><mi>a</mi><mi>c</mi><mi>h</mi><mi>e</mi></mrow></msub><mo>=</mo><mn>16,384</mn></mrow></math></span> 与显存硬截断上限 <span class="note-math" data-tex="L_{max} = 20,480"><math><mrow><msub><mi>L</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>=</mo><mn>20,480</mn></mrow></math></span> 之间引入线性衰减惩罚函数：</p>
+<div class="note-math-block" data-tex="R_{length}(y) = \begin{cases} 
+0, &amp; |y| \le L_{max} - L_{cache} \\ 
+\frac{(L_{max} - L_{cache}) - |y|}{L_{cache}}, &amp; L_{max} - L_{cache} &lt; |y| \le L_{max} \\ 
+-1, &amp; L_{max} &lt; |y| 
+\end{cases}"><math display="block" class="tml-display"><mrow><msub><mi>R</mi><mrow><mi>l</mi><mi>e</mi><mi>n</mi><mi>g</mi><mi>t</mi><mi>h</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>y</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><mrow><mo fence="true" form="prefix" stretchy="true">{</mo><mtable><mtr><mtd class="tml-left tml-pad-0"><mrow><mn>0</mn><mo separator="true">,</mo></mrow></mtd><mtd class="tml-left tml-pad-l1"><mrow><mi>|</mi><mi>y</mi><mi>|</mi><mo>≤</mo><msub><mi>L</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>−</mo><msub><mi>L</mi><mrow><mi>c</mi><mi>a</mi><mi>c</mi><mi>h</mi><mi>e</mi></mrow></msub></mrow></mtd></mtr><mtr><mtd class="tml-left tml-pad-0"><mrow><mfrac><mrow><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>L</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>−</mo><msub><mi>L</mi><mrow><mi>c</mi><mi>a</mi><mi>c</mi><mi>h</mi><mi>e</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>−</mo><mi>|</mi><mi>y</mi><mi>|</mi></mrow><msub><mi>L</mi><mrow><mi>c</mi><mi>a</mi><mi>c</mi><mi>h</mi><mi>e</mi></mrow></msub></mfrac><mo separator="true">,</mo></mrow></mtd><mtd class="tml-left tml-pad-l1"><mrow><msub><mi>L</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>−</mo><msub><mi>L</mi><mrow><mi>c</mi><mi>a</mi><mi>c</mi><mi>h</mi><mi>e</mi></mrow></msub><mo>&lt;</mo><mi>|</mi><mi>y</mi><mi>|</mi><mo>≤</mo><msub><mi>L</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow></mtd></mtr><mtr><mtd class="tml-left tml-pad-0"><mrow><mo form="prefix" stretchy="false">−</mo><mn>1</mn><mo separator="true">,</mo></mrow></mtd><mtd class="tml-left tml-pad-l1"><mrow><msub><mi>L</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>&lt;</mo><mi>|</mi><mi>y</mi><mi>|</mi></mrow></mtd></mtr></mtable><mo fence="true" form="postfix" stretchy="true"></mo></mrow></mrow></math></div>
+<p>最终奖励由正确性奖励与长度软惩罚相加：<span class="note-math" data-tex="R = R_{rule} + R_{length}"><math><mrow><mi>R</mi><mo>=</mo><msub><mi>R</mi><mrow><mi>r</mi><mi>u</mi><mi>l</mi><mi>e</mi></mrow></msub><mo>+</mo><msub><mi>R</mi><mrow><mi>l</mi><mi>e</mi><mi>n</mi><mi>g</mi><mi>t</mi><mi>h</mi></mrow></msub></mrow></math></span>。长度扣分提示模型控制过长输出，不是对中间步骤正确性的逐步判定。论文还验证了 Overlong Filtering：屏蔽截断样本的损失，减少将未完成推导直接当错误处理的奖励噪声；不能保证任何情况下都消除噪声。</p>
 <figure class="paper-fig"><img src="../../assets/figures/2025-dapo/fig5.png" alt="超长样本过滤对 AIME 性能与熵的稳定作用" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 5）：论文 Figure 5 比较截断样本默认惩罚与 Overlong Filtering。屏蔽截断样本损失后，该实验的准确率与熵曲线更稳定，支持减少截断奖励噪声；软长度惩罚是进一步的长度控制机制，不能把过滤消融等同于软惩罚的独立效果。</figcaption></figure>
-<h3 id="5-整数标准化数据集：dapo-math-17k">5. 整数标准化数据集：DAPO-Math-17K</h3>
-<p>数学答案的形式多样（如分数、根号、代数式 <span class="note-math">$a+\frac{\sqrt{b}}{c}$</span>）极易导致规则判卷器出现解析误判（Reward Hacking 或假错判）。DAPO 启发自 AIME 竞赛规范，通过 CoT 提示词指导 LLM 将题目重新改写为要求输出整数（例如将求 <span class="note-math">$a+\frac{\sqrt{b}}{c}$</span> 改写为求 <span class="note-math">$a+b+c$</span>），构建了包含 17K 题目且完全由纯整数答案验证的 <code>DAPO-Math-17K</code>，减少答案解析歧义；规则验证仍依赖题目改写与答案标注正确。</p>
+<h3>5. 整数标准化数据集：DAPO-Math-17K</h3>
+<p>数学答案的形式多样（如分数、根号、代数式 <span class="note-math" data-tex="a+\frac{\sqrt{b}}{c}"><math><mrow><mi>a</mi><mo>+</mo><mfrac><msqrt><mi>b</mi></msqrt><mi>c</mi></mfrac></mrow></math></span>）极易导致规则判卷器出现解析误判（Reward Hacking 或假错判）。DAPO 启发自 AIME 竞赛规范，通过 CoT 提示词指导 LLM 将题目重新改写为要求输出整数（例如将求 <span class="note-math" data-tex="a+\frac{\sqrt{b}}{c}"><math><mrow><mi>a</mi><mo>+</mo><mfrac><msqrt><mi>b</mi></msqrt><mi>c</mi></mfrac></mrow></math></span> 改写为求 <span class="note-math" data-tex="a+b+c"><math><mrow><mi>a</mi><mo>+</mo><mi>b</mi><mo>+</mo><mi>c</mi></mrow></math></span>），构建了包含 17K 题目且完全由纯整数答案验证的 <code>DAPO-Math-17K</code>，减少答案解析歧义；规则验证仍依赖题目改写与答案标注正确。</p>
 </section>
-<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3 id="1-递进消融实验数据（qwen25-32b-基座）">1. 递进消融实验数据（Qwen2.5-32B 基座）</h3>
+<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3>1. 递进消融实验数据（Qwen2.5-32B 基座）</h3>
 <p>在竞赛级 AIME 2024 测试基准（avg@32）上的技术叠加贡献：</p>
 <table class="dtable">
 <thead>
@@ -193,9 +193,9 @@
 <td>官方闭源报告成绩（DAPO 步数仅需其 50%）</td>
 </tr>
 </tbody></table>
-<h3 id="2-涌现能力与反思行为">2. 涌现能力与反思行为</h3>
-<p>在经过充足步数的强化学习后，模型在不依赖任何 SFT 人类反思演示的前提下，自发涌现出了自主反思（Self-reflection）与多角度重算行为（如在四面体几何求体积中途出现：“*Wait a moment, let&#39;s rethink about the dihedral angle involving planes in a more thoughtful geometric way...*”），验证了纯规则 RL 在大模型长思维链上的自主演进力量。</p>
-<h3 id="3-代价与局限性">3. 代价与局限性</h3>
+<h3>2. 涌现能力与反思行为</h3>
+<p>在经过充足步数的强化学习后，模型在不依赖任何 SFT 人类反思演示的前提下，自发涌现出了自主反思（Self-reflection）与多角度重算行为（如在四面体几何求体积中途出现：“<em>Wait a moment, let&#39;s rethink about the dihedral angle involving planes in a more thoughtful geometric way...</em>”），验证了纯规则 RL 在大模型长思维链上的自主演进力量。</p>
+<h3>3. 代价与局限性</h3>
 <ul>
 <li><strong>Rollout 采样算力开销略增</strong>：动态采样需要过滤掉全对/全错样本，在训练后期（模型变聪明后）需要比静态批次采样更多的环境生成交互，对推理引擎（如 vLLM / SGLang）的高并发与批处理吞吐提出了更高要求；</li>
 <li><strong>任务形式依赖纯净的规则判定</strong>：DAPO-Math-17K 的成功高度依赖“将复杂数学改写为整数答案”的数据工程，在难以自动化精准判对错的开放式任务（如创意写作、代码架构设计）中较难直接套用。</li>
@@ -204,8 +204,8 @@
 <section class="note-sec" id="ai-notes"><h2>AI 预读备注</h2><p>Zotero AI Butler 预读笔记 <code>NXVAD9J7</code> 提取了长篇目录和分段概述。经费曼校验，对 AI 预读提炼并补齐三处核心技术深度：</p>
 <ol>
 <li><strong>明确 Dynamic Sampling 的收敛效率反直觉因果</strong>：AI 笔记仅描述了动态采样的流程，遗漏了“为什么过滤后补满有效批次可能减少无效更新”的机制；总体耗时仍取决于额外 rollout 成本与系统并行情况；</li>
-<li><strong>公式维度的损失归约重构</strong>：将 Sample-level 与 Token-level Loss 的分母位置改变（将除以 <span class="note-math">$|o_i|$</span> 移至外层除以总 token 数 <span class="note-math">$\sum |o_i|$</span>）彻底公式化呈现；</li>
-<li><strong>Clip-Higher 解决熵坍缩的非对称机制</strong>：清晰梳理为何只抬高上界（<span class="note-math">$\epsilon_{high}=0.28$</span>）而不放松下界（保持 <span class="note-math">$\epsilon_{low}=0.2$</span>）的保护逻辑。</li>
+<li><strong>公式维度的损失归约重构</strong>：将 Sample-level 与 Token-level Loss 的分母位置改变（将除以 <span class="note-math" data-tex="|o_i|"><math><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></math></span> 移至外层除以总 token 数 <span class="note-math" data-tex="\sum |o_i|"><math><mrow><mo movablelimits="false">∑</mo><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></math></span>）彻底公式化呈现；</li>
+<li><strong>Clip-Higher 解决熵坍缩的非对称机制</strong>：清晰梳理为何只抬高上界（<span class="note-math" data-tex="\epsilon_{high}=0.28"><math><mrow><msub><mi>ϵ</mi><mrow><mi>h</mi><mi>i</mi><mi>g</mi><mi>h</mi></mrow></msub><mo>=</mo><mn>0.28</mn></mrow></math></span>）而不放松下界（保持 <span class="note-math" data-tex="\epsilon_{low}=0.2"><math><mrow><msub><mi>ϵ</mi><mrow><mi>l</mi><mi>o</mi><mi>w</mi></mrow></msub><mo>=</mo><mn>0.2</mn></mrow></math></span>）的保护逻辑。</li>
 </ol>
 </section>
 <section class="note-sec" id="restatement"><h2>我的复述</h2><p><em>费曼检验时 XinLi 自己的原话：</em></p>
@@ -216,7 +216,7 @@
 <li>因为移除的是不带来优势的样本加入训练也没有梯度对模型来说是没有意义的，移除之后每次的样本都是有效的，代价只是增加一点 rollout 时间甚至不增加，因为并行 rollout 本身就会被最长的那条阻塞。</li>
 </ol>
 </blockquote>
-<h3 id="2026-10-25-首轮复测原话">2026-10-25 首轮复测原话</h3>
+<h3>2026-10-25 首轮复测原话</h3>
 <p>首次独立重讲：</p>
 <blockquote class="note-quote">
 <p>主要是对 GRPO 的优化。优化点主要是对 GRPO 梯度 clip 的上下界进行了非平衡的切割，将上界提高，这样能够给模型更大的探索空间。其他的我记不太清楚了。</p>
@@ -233,13 +233,13 @@
 <li>Clip 之后的 ratio 变小了，但是由于优势是负的，所以选项会选 R，a 目标会继续惩罚，快动作概率升高。2. 即使最终答对了，还是会被扣长度分，这个扣分和中间推理被判错无关。</li>
 </ol>
 </blockquote>
-<p>核对限定：「惩罚一样大」指归一化系数相同，实际梯度未必相同；固定的是过滤后用于训练的有效题目数。最后一轮第一句按题意核对为 min 选未裁剪的 <span class="note-math">$rA$</span>，继续惩罚坏动作概率升高。原话保留，不润色转写。</p>
+<p>核对限定：「惩罚一样大」指归一化系数相同，实际梯度未必相同；固定的是过滤后用于训练的有效题目数。最后一轮第一句按题意核对为 min 选未裁剪的 <span class="note-math" data-tex="rA"><math><mrow><mi>r</mi><mi>A</mi></mrow></math></span>，继续惩罚坏动作概率升高。原话保留，不润色转写。</p>
 </section>
 <section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><p>2026-10-25 复测记录：首次独立重讲只想起 Clip-Higher，误称为梯度裁剪；其他机制遗忘。场景首答把样本级平均的长短权重方向说反，动态采样与长度约束能按直觉重建。用 2/6 token 权重表补讲，再换 3/9 token 的负优势条件复验，权重方向答对；过滤补满和时间不保证也答对。随后纠正「实际概率比被截断」的表述，负优势 min 分支与答对仍扣长度分的变式复验均通过。本次记为补讲后收敛，下一轮优先独立重建 token 权重和裁剪平台边界。</p>
 <div class="qa" id="qa-clip-higher"><p class="qa-q">Q1：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？</p><div class="qa-a"><ul>
 <li><strong>正优势的目标平台</strong>：对正优势 token，概率比超过上侧阈值后，该样本目标不再奖励继续提高概率。低概率但有用的 token 需要更大的相对增幅，放宽上侧阈值可延后平台。论文消融支持本设置下保住更多策略熵，不保证任意任务都出现相同变化。</li>
-<li><strong>实际概率不被硬截断</strong>：clip 只改变目标中一个候选项，再由外层 min 选较小者。给定 <span class="note-math">$A=1,r=1.25$</span>，上阈值从 1.2 提到 1.28 后，未裁剪项为 1.25，目标不再处于上侧平台；实际比率仍可超过 1.28。</li>
-<li><strong>改变优势符号的反例（教学假设）</strong>：令 <span class="note-math">$A=-1,r=1.4$</span>，clip 区间为 [0.8,1.28]。未裁剪项 <span class="note-math">$rA=-1.4$</span>，裁剪项为 -1.28，min 选 -1.4。坏动作概率升高时，目标继续提供惩罚，不会因为超过上阈值就变平。</li>
+<li><strong>实际概率不被硬截断</strong>：clip 只改变目标中一个候选项，再由外层 min 选较小者。给定 <span class="note-math" data-tex="A=1,r=1.25"><math><mrow><mi>A</mi><mo>=</mo><mn>1</mn><mo separator="true">,</mo><mi>r</mi><mo>=</mo><mn>1.25</mn></mrow></math></span>，上阈值从 1.2 提到 1.28 后，未裁剪项为 1.25，目标不再处于上侧平台；实际比率仍可超过 1.28。</li>
+<li><strong>改变优势符号的反例（教学假设）</strong>：令 <span class="note-math" data-tex="A=-1,r=1.4"><math><mrow><mi>A</mi><mo>=</mo><mo form="prefix" stretchy="false">−</mo><mn>1</mn><mo separator="true">,</mo><mi>r</mi><mo>=</mo><mn>1.4</mn></mrow></math></span>，clip 区间为 [0.8,1.28]。未裁剪项 <span class="note-math" data-tex="rA=-1.4"><math><mrow><mi>r</mi><mi>A</mi><mo>=</mo><mo form="prefix" stretchy="false">−</mo><mn>1.4</mn></mrow></math></span>，裁剪项为 -1.28，min 选 -1.4。坏动作概率升高时，目标继续提供惩罚，不会因为超过上阈值就变平。</li>
 <li><strong>2026-10-25 补讲与表现</strong>：首次记得提高上界，但混称梯度裁剪。补讲概率比与目标平台后，正优势变式答对；进一步澄清实际概率不被硬截断后，负优势变式正确选未裁剪项。</li>
 </ul>
 </div></div><div class="qa" id="qa-token-loss"><p class="qa-q">Q2：样本级平均（Sample-level）与 Token 级平均（Token-level）在长思考链下的根本分歧是什么？</p><div class="qa-a"><ul>
@@ -286,14 +286,17 @@
 </section>
 <section class="note-sec" id="relations"><h2>关联</h2><ul>
 <li><a href="2024-deepseekmath.html">DeepSeekMath</a> — 理论演进与痛点定向修复：DeepSeekMath 首创了丢弃 Critic 的 GRPO 算法，但在长思维链（Long-CoT，上万 token）场景下暴露了四大暗礁（熵坍缩、策略代理目标无区分的题占比升高、长度被稀释、超长假负例）；DAPO 则是针对 GRPO 在大规模长推理落地时的直接升级演进版。</li>
-<li><a href="2017-ppo.html">PPO</a> — 裁剪边界的非对称改造：PPO 确立了重要的对称截断代理目标（<span class="note-math">$1\pm\varepsilon$</span>），DAPO 在其长推理实验中检验了非对称解耦裁剪（Clip-Higher, <span class="note-math">$\varepsilon_{low}=0.2, \varepsilon_{high}=0.28$</span>）在防范策略熵崩溃上的关键价值。</li>
+<li><a href="2017-ppo.html">PPO</a> — 裁剪边界的非对称改造：PPO 确立了重要的对称截断代理目标（<span class="note-math" data-tex="1\pm\varepsilon"><math><mrow><mn>1</mn><mo>±</mo><mi>ε</mi></mrow></math></span>），DAPO 在其长推理实验中检验了非对称解耦裁剪（Clip-Higher, <span class="note-math" data-tex="\varepsilon_{low}=0.2, \varepsilon_{high}=0.28"><math><mrow><msub><mi>ε</mi><mrow><mi>l</mi><mi>o</mi><mi>w</mi></mrow></msub><mo>=</mo><mn>0.2</mn><mo separator="true">,</mo><msub><mi>ε</mi><mrow><mi>h</mi><mi>i</mi><mi>g</mi><mi>h</mi></mrow></msub><mo>=</mo><mn>0.28</mn></mrow></math></span>）在防范策略熵崩溃上的关键价值。</li>
+<li><a href="2025-gspo.html">GSPO</a> — 长推理 GRPO 稳定性的另一演进方向：DAPO 仍保留逐 token 重要性比率并调优 Clip-Higher 与全批 token 归约；GSPO 则在结果奖励下直接将比率与裁剪提升至整条序列的长度归一化几何平均似然比，并免除 MoE 的 Routing Replay。</li>
+<li><a href="2026-sao.html">SAO</a> — 同步批次补满 vs 异步单轨迹流水线：DAPO 在同步组采样下靠 Dynamic Sampling 过滤零方差题并补满批次；SAO 针对多轮工具智能体的严重长尾同步等待，改为单 Rollout 即采即训，配合强 Critic 与双侧硬门控 DIS 抵御异步策略滞后。</li>
 <li><a href="2026-open-mopd.html">Open-MOPD</a> — 训练预算与长度失衡的同源对照：Open-MOPD 揭示了在多教师蒸馏中，25× 的长短回答长度差会导致短域 token 梯度被严重剥夺；DAPO 的 Token-level Loss 同样也是在处理长短序列之间 token 梯度的公正分配与防稀释问题。</li>
 <li><a href="2026-geoanchor.html">GeoAnchor</a> — GRPO 落地演进对照：GeoAnchor 在 3D 潜变量模式选择中直接套用 GRPO + pattern reward，而 DAPO 则代表了纯语言符号长思维链在极高推理难度（AIME 竞赛级）下的工业级对齐前沿。</li>
 </ul>
 </section>
 <footer class="note-foot"><a href="../../papers/2025-dapo.html">← 返回阅读页</a><a href="../../../wiki/papers/2025-dapo.md">markdown 源文件（唯一真源）</a><span>本页是完整笔记的静态投影，保留原话、限定与假说标记。</span></footer>
-</main>
+  </main>
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

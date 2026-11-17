@@ -317,6 +317,18 @@ window.WIKI_INDEX = [
         "status": "reported"
       },
       {
+        "type": "complement",
+        "to": "2026-video-o3",
+        "reason": "本文控制每窗口看多少像素，Video-o3 在查询后决定去哪段裁剪证据。",
+        "status": "synthesis"
+      },
+      {
+        "type": "compare",
+        "to": "2026-tspo",
+        "reason": "TSPO 在进 MLLM 前按问题筛关键帧，本文在视觉编码器内部做时空压缩。",
+        "status": "synthesis"
+      },
+      {
         "type": "possible-combination",
         "to": "2026-genlip",
         "reason": "研究把 GenLIP 预训练的 ViT 接入 I3D-ViT；需要验证结构、输入与训练适配，本库无替换实验。",
@@ -392,7 +404,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关联",
         "a": "notes/papers/2026-videochat3.html#relations",
-        "t": "关联 VST ： 思路正交、可互补。VideoChat3 管「视觉编码器里压 token + 状态机自适应分辨率/响应时机」=感知效率；VST 管「推理时机前移 + 文本长期记忆」=认知时机。VST 的文本记忆「与视觉记忆机制正交」（VST 论文 limitation 自述），组合是未来方向。 GenLIP ： 正交。VideoChat3 的 I3D-ViT 是把图像 ViT「撑成 3D」处理视频，但没讨论 ViT 本身怎么预训练；GenLIP 回答的正是「这个 ViT 怎么训」：让 ViT 直接做生成式预训练（Prefix-LM + Gated Attention）。将 GenLIP 的 ViT 接入 I3D-ViT 是组合设想（待验证），本库没有该替换实验。 待建概念页：visual tokenizer / ViT / self-attention（二次方开销） / Video MLLM / streaming video understanding / inflate（2D→3D，致敬 I3D CNN） 同领域可对比的 Video MLLM：Qwen3-VL-4B、Molmo2-4B、VideoChat-Flash-7B、InternVideo2.5-8B（均为此文主要 baseline） 同系列前作：VideoChat-Flash（层级压缩）、VideoChat-R1（RL 微调）"
+        "t": "关联 VST ： 思路正交、可互补。VideoChat3 管「视觉编码器里压 token + 状态机自适应分辨率/响应时机」=感知效率；VST 管「推理时机前移 + 文本长期记忆」=认知时机。VST 的文本记忆「与视觉记忆机制正交」（VST 论文 limitation 自述），组合是未来方向。 GenLIP ： 正交。VideoChat3 的 I3D-ViT 是把图像 ViT「撑成 3D」处理视频，但没讨论 ViT 本身怎么预训练；GenLIP 回答的正是「这个 ViT 怎么训」：让 ViT 直接做生成式预训练（Prefix-LM + Gated Attention）。将 GenLIP 的 ViT 接入 I3D-ViT 是组合设想（待验证），本库没有该替换实验。 Video-o3 ： 视觉策略互补。本文靠编码器内时空压缩与状态机决定「看多少像素」，Video-o3 靠查询后多轮工具调用决定「看哪里」；一个管感知效率，一个管检索精度（库内对照，无联合实验）。 TSPO ： 选择时间点 vs 压缩视觉 token 的不同维度。TSPO 在进入冻结 MLLM 前按 query 概率化选择关键帧，本文在视觉编码器内部做 16× 时空压缩并控制下一窗口预算；两者组合尚无实验。 待建概念页：visual tokenizer / ViT / self-attention（二次方开销） / Video MLLM / streaming video understanding / inflate（2D→3D，致敬 I3D CNN） 同领域可对比的 Video MLLM：Qwen3-VL-4B、Molmo2-4B、VideoChat-Flash-7B、InternVideo2.5-8B（均为此文主要 baseline） 同系列前作：VideoChat-Flash（层级压缩）、VideoChat-R1（RL 微调）"
       }
     ]
   },
@@ -435,6 +447,18 @@ window.WIKI_INDEX = [
         "type": "compare",
         "to": "2026-video-o3",
         "reason": "VST 在查询前写记忆；Video-o3 在查询后多轮裁剪找证据。文中计时来自各自实验，不能直接当作同任务速度排名。",
+        "status": "synthesis"
+      },
+      {
+        "type": "compare",
+        "to": "2026-tspo",
+        "reason": "VST 面向流式播放期前置思考，TSPO 拿到查询后一次性选出相关关键帧。",
+        "status": "synthesis"
+      },
+      {
+        "type": "complement",
+        "to": "2026-locateanything",
+        "reason": "VST 把思考分摊进播放空档藏延迟，LocateAnything 用框块并行减少解码步数。",
         "status": "synthesis"
       }
     ],
@@ -512,7 +536,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关联",
         "a": "notes/papers/2026-vst.html#relations",
-        "t": "关联 VideoChat3 ： 思路正交、可互补。VideoChat3 管「视觉编码器里压 token + 状态机自适应分辨率/响应时机」=感知效率；VST 管「推理时机前移 + 文本长期记忆」=认知时机。组合设想（待验证）：视觉记忆保细节 + 文本记忆保逻辑链；但 VideoChat3 的状态 token（管响应时机）和 VST 的「查询即答」在时机上逻辑冲突，需设计统一调度，且双轨记忆要决定「回答时谁优先、冲突信谁的」。 Video-o3 ： 同属长视频推理但路线不同。VST 是\"推理前置\"（播放期边看边想，FIFO 文本记忆，查询即答 0.56s），Video-o3 是\"推理时主动检索\"（拿到问题后多轮裁剪视频找线索，10.2s）。VST 解决实时性，Video-o3 解决多跳精度。组合设想（待验证）：VST 文本记忆 + Video-o3 工具裁剪；但\"查询即答\"vs\"多轮探索\"在响应时机上逻辑冲突，需统一调度。 同领域可对比：Video-R1（query 后长 CoT，重推理高延迟）、LongVILA-R1、StreamForest、TimeChatOnline、Streamo、Dispider。 待建概念页：streaming video understanding / CoT (Chain-of-Thought) / test-time scaling / GRPO / KV cache / dual-memory system"
+        "t": "关联 VideoChat3 ： 思路正交、可互补。VideoChat3 管「视觉编码器里压 token + 状态机自适应分辨率/响应时机」=感知效率；VST 管「推理时机前移 + 文本长期记忆」=认知时机。组合设想（待验证）：视觉记忆保细节 + 文本记忆保逻辑链；但 VideoChat3 的状态 token（管响应时机）和 VST 的「查询即答」在时机上逻辑冲突，需设计统一调度，且双轨记忆要决定「回答时谁优先、冲突信谁的」。 Video-o3 ： 同属长视频推理但路线不同。VST 是\"推理前置\"（播放期边看边想，FIFO 文本记忆，查询即答 0.56s），Video-o3 是\"推理时主动检索\"（拿到问题后多轮裁剪视频找线索，10.2s）。VST 解决实时性，Video-o3 解决多跳精度。组合设想（待验证）：VST 文本记忆 + Video-o3 工具裁剪；但\"查询即答\"vs\"多轮探索\"在响应时机上逻辑冲突，需统一调度。 TSPO ： 查询前文本记忆与查询后关键帧选择的对照。本文把思考前置到流式播放空档以换取低查询延迟；TSPO 必须拿到 query 后才能一次性选择相关关键帧交给冻结 MLLM。 LocateAnything ： 系统延迟的两个正交切面。本文把推理分摊进视频片段等待空档（把延迟藏起来），LocateAnything 把几何框对齐成固定长块并行解码（把解码步数减掉）。 同领域可对比：Video-R1（query 后长 CoT，重推理高延迟）、LongVILA-R1、StreamForest、TimeChatOnline、Streamo、Dispider。 待建概念页：streaming video understanding / CoT (Chain-of-Thought) / test-time scaling / GRPO / KV cache / dual-memory system"
       }
     ]
   },
@@ -784,10 +808,22 @@ window.WIKI_INDEX = [
         "status": "synthesis"
       },
       {
+        "type": "compare",
+        "to": "2026-tspo",
+        "reason": "TSPO 在回答前一次性选关键帧，本文在查询后多轮调用工具回看；路径长度与灵活性取舍不同。",
+        "status": "synthesis"
+      },
+      {
         "type": "complement",
         "to": "2026-videochat3",
         "reason": "编码器控制感知成本；工具调用选择证据位置。环节不同，不能据此断言组合增益。",
         "status": "synthesis"
+      },
+      {
+        "type": "compare",
+        "to": "2026-geoanchor",
+        "reason": "可见工具调用与连续潜变量是打破纯文本 CoT 的两条对立路线，可审计性与几何保真度取舍相反。",
+        "status": "reported"
       }
     ],
     "entries": [
@@ -844,7 +880,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：共享上下文带来的两个核心问题分别是什么？各对应什么解法？（Q1 漏掉的半问）",
         "a": "notes/papers/2026-video-o3.html#qa-two-problems",
-        "t": "Q：共享上下文带来的两个核心问题分别是什么？各对应什么解法？（Q1 漏掉的半问） (1) 注意力分散 （全局/局部混杂 + Fake Thinking）→ TDAM（10% 掩码）。(2) 上下文效率 （每调一次工具 token 膨胀 + 不知何时停）→ VTGR（ $S_{clue}$ 奖励裁得准 + $\\gamma$ 惩罚轮数多）。两个问题两个解法是配对的。"
+        "t": "Q：共享上下文带来的两个核心问题分别是什么？各对应什么解法？（Q1 漏掉的半问） (1) 注意力分散 （全局/局部混杂 + Fake Thinking）→ TDAM（10% 掩码）。(2) 上下文效率 （每调一次工具 token 膨胀 + 不知何时停）→ VTGR（ S c l u e 奖励裁得准 + γ 惩罚轮数多）。两个问题两个解法是配对的。"
       },
       {
         "h": "全文问答 · Q：VST 和 Video-o3 的推理时机分别放在哪里？（Q3 漏掉的半问）",
@@ -864,7 +900,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关联",
         "a": "notes/papers/2026-video-o3.html#relations",
-        "t": "关联 VST ： 同属长视频推理但路线不同。VST 是\"推理前置\"（播放期边看边想，FIFO 文本记忆），Video-o3 是\"推理时主动检索\"（动态裁剪视频，工具调用）。VST 解决实时性（0.56s），Video-o3 解决多跳精度（46.5% VideoHolmes）。组合设想（待验证）：VST 的文本记忆 + Video-o3 的工具裁剪；但\"查询即答\"vs\"多轮探索\"在响应时机上逻辑冲突，需统一调度。 GeoAnchor ： 同打破\"纯文本 CoT\"的两条对立路线：Video-o3 把中间推理外化成工具调用（可见可审计、工具可插拔），GeoAnchor 内化成连续潜变量（保几何保真度、教师烧进权重）。本文 Related Works 2.2 自己把\"think with images\"工具流与 latent reasoning 对立。路线对照（库内综合）：前者中间步骤可审计，后者直接表达连续量；未验证两者在同任务下的通用优劣。 VideoChat3 ： 视觉策略互补。VideoChat3 靠编码器压缩+状态机决定看多少像素，Video-o3 靠推理时工具调用决定看哪里。一个管感知效率，一个管检索精度。 同领域可对比：Video-R1（文本 CoT，视觉固定）、VideoChat-R1.5/Video-RTS（解耦迭代推理）、VideoZoomer、LOVE-R1。 待建概念页：multi-hop reasoning / tool invocation / attention masking / GRPO / KV cache / test-time scaling"
+        "t": "关联 VST ： 同属长视频推理但路线不同。VST 是\"推理前置\"（播放期边看边想，FIFO 文本记忆），Video-o3 是\"推理时主动检索\"（动态裁剪视频，工具调用）。VST 解决实时性（0.56s），Video-o3 解决多跳精度（46.5% VideoHolmes）。组合设想（待验证）：VST 的文本记忆 + Video-o3 的工具裁剪；但\"查询即答\"vs\"多轮探索\"在响应时机上逻辑冲突，需统一调度。 GeoAnchor ： 同打破\"纯文本 CoT\"的两条对立路线：Video-o3 把中间推理外化成工具调用（可见可审计、工具可插拔），GeoAnchor 内化成连续潜变量（保几何保真度、教师烧进权重）。本文 Related Works 2.2 自己把\"think with images\"工具流与 latent reasoning 对立。路线对照（库内综合）：前者中间步骤可审计，后者直接表达连续量；未验证两者在同任务下的通用优劣。 VideoChat3 ： 视觉策略互补。VideoChat3 靠编码器压缩+状态机决定看多少像素，Video-o3 靠推理时工具调用决定看哪里。一个管感知效率，一个管检索精度。 TSPO ： 稀疏证据获取的两种时机。TSPO 在回答前训练轻量 temporal agent 一次性选出关键帧，推理路径短但受限于 1 FPS 候选池；本文拿到问题后在共享上下文里多轮调用工具搜索回看，更灵活但延迟更高（库内对照）。 LocateAnything ： 感知定位底座与多轮检索推理对照。LocateAnything 用框对齐块并行解码加速单帧 2D 框定位，本文负责长视频跨时间片段的多跳线索搜寻。 同领域可对比：Video-R1（文本 CoT，视觉固定）、VideoChat-R1.5/Video-RTS（解耦迭代推理）、VideoZoomer、LOVE-R1。 待建概念页：multi-hop reasoning / tool invocation / attention masking / GRPO / KV cache / test-time scaling"
       }
     ]
   },
@@ -962,7 +998,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：Q1 上下文谁看 y+/y⁻，最初答反了\"学生看到 y+\"。",
         "a": "notes/papers/2026-u-opsd.html#qa-context",
-        "t": "Q：Q1 上下文谁看 y+/y⁻，最初答反了\"学生看到 y+\"。 纠正后：教师 x + y+ + y⁻<t （看 y+），学生 x + y⁻<t （**不看 y+**）。两者共享 x + y⁻<t ，教师多出的只有 y+。学生若也看 y+，则教师=学生 KL 恒 0 无信号；学习信号正是从\"教师知答案、学生不知\"的差里长出来。后确认是手误打反（原意为学生见 y⁻）。"
+        "t": "Q：Q1 上下文谁看 y+/y⁻，最初答反了\"学生看到 y+\"。 纠正后：教师 x + y+ + y⁻<t （看 y+），学生 x + y⁻<t （ 不看 y+ ）。两者共享 x + y⁻<t ，教师多出的只有 y+。学生若也看 y+，则教师=学生 KL 恒 0 无信号；学习信号正是从\"教师知答案、学生不知\"的差里长出来。后确认是手误打反（原意为学生见 y⁻）。"
       },
       {
         "h": "全文问答 · Q：13.3% 的错标签为什么没把模型带偏？",
@@ -1102,7 +1138,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：reward refresh：第一轮完全没理解，全文最大卡壳点。（09-07 费曼复测二次深化）",
         "a": "notes/papers/2026-open-mopd.html#qa-reward-refresh",
-        "t": "Q：reward refresh：第一轮完全没理解，全文最大卡壳点。（09-07 费曼复测二次深化） 大白话直觉版（老师、学生与发霉的分数） ： 场景 ：大模型生成太慢（占 46.5% 耗时），所以学生写完一份作业草稿，要连续复用 4 轮内更新（ $K=4$ ）来学，而不是每步重新写。 病根 ：同一批 rollout 更新多轮后，学生已经变了，奖励里却仍用 rollout 时的学生 logprob。这个旧差值不能反映当前师生差。论文在 K=4 时报告约 75.8% 的 clip fraction，显示复用中的策略偏移较大。 Clip 的边界 ：clip fraction 通常统计比率落到阈值外的比例，不能直接说 75.8% 的全部网络梯度被冻结。裁剪目标是否变平还取决于优势符号；其他样本与损失仍可改变共享参数。 为什么几乎没有额外开销？ ：教师冻结，其 logprob 已缓存；PPO 每次更新为了算 ratio，本来就计算当前学生 logprob。refresh 用这些已有值重建奖励，不加教师或学生 forward，也不重新生成。论文计时差异在步间波动内。 仍然旧的是什么？ ：生成轨迹和前缀仍来自 rollout 时的学生。刷新奖励不等于重新采样；K=1 时也没有多轮奖励陈旧可修。"
+        "t": "Q：reward refresh：第一轮完全没理解，全文最大卡壳点。（09-07 费曼复测二次深化） 大白话直觉版（老师、学生与发霉的分数） ： 场景 ：大模型生成太慢（占 46.5% 耗时），所以学生写完一份作业草稿，要连续复用 4 轮内更新（ K = 4 ）来学，而不是每步重新写。 病根 ：同一批 rollout 更新多轮后，学生已经变了，奖励里却仍用 rollout 时的学生 logprob。这个旧差值不能反映当前师生差。论文在 K=4 时报告约 75.8% 的 clip fraction，显示复用中的策略偏移较大。 Clip 的边界 ：clip fraction 通常统计比率落到阈值外的比例，不能直接说 75.8% 的全部网络梯度被冻结。裁剪目标是否变平还取决于优势符号；其他样本与损失仍可改变共享参数。 为什么几乎没有额外开销？ ：教师冻结，其 logprob 已缓存；PPO 每次更新为了算 ratio，本来就计算当前学生 logprob。refresh 用这些已有值重建奖励，不加教师或学生 forward，也不重新生成。论文计时差异在步间波动内。 仍然旧的是什么？ ：生成轨迹和前缀仍来自 rollout 时的学生。刷新奖励不等于重新采样；K=1 时也没有多轮奖励陈旧可修。"
       },
       {
         "h": "全文 · 还没搞懂",
@@ -1289,6 +1325,12 @@ window.WIKI_INDEX = [
         "to": "2026-video-o3",
         "reason": "本文生成定位坐标；Video-o3 调用视频裁剪工具找证据。任务与输出接口不同。",
         "status": "synthesis"
+      },
+      {
+        "type": "compare",
+        "to": "2026-geoanchor",
+        "reason": "本文把框坐标对齐为离散 token 块并行解码，GeoAnchor 让几何量不经词表进入连续潜空间。",
+        "status": "synthesis"
       }
     ],
     "entries": [
@@ -1355,7 +1397,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了）",
         "a": "notes/papers/2026-locateanything.html#qa-trigger",
-        "t": "Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了） 先澄清：条件 2 的\"top-5 极差 > 80\"指 5 个候选坐标词在 [0,1000] 坐标轴上 互相差多远 ，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测：**候选分布是否\"撕裂\"**。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有\"不自信 + 候选在几何上严重分裂\"（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。"
+        "t": "Q：歧义触发器为什么要求两个条件同时满足？（初答把极差理解成框大小，偏了） 先澄清：条件 2 的\"top-5 极差 > 80\"指 5 个候选坐标词在 [0,1000] 坐标轴上 互相差多远 ，是模型内心动摇的范围，不是框尺寸。双条件合成一种检测： 候选分布是否\"撕裂\" 。单边情形都是正常尾巴：top-1 低但候选挤一团（极差小）= 边界像素级犹豫、落在同一物体内，NTP 也不会更好；top-1 高但候选散布开 = 有明确首选、尾巴长无关紧要。只有\"不自信 + 候选在几何上严重分裂\"（比如同时往 200 和 800 两个位置探头）才说明模型真不知道框边贴哪、可能滑进两物体中间（Spatial Ambiguity），NTP 慢工才有救。"
       },
       {
         "h": "全文问答 · Q：PBD-Slow 也是 NTP 解码，凭啥比旧 Quantized-NTP 高 +2？（消融归因）",
@@ -1406,11 +1448,35 @@ window.WIKI_INDEX = [
       "next": "2026-09-17",
       "last": "2026-09-10",
       "count": 1,
-      "result": ""
+      "result": "pass"
     },
     "relations": [
       {
-        "type": "applied-in",
+        "type": "extends",
+        "to": "2024-deepseekmath",
+        "reason": "GRPO 继承 PPO 裁剪代理目标，丢弃独立 Critic 改用同题组内标准化奖励作基线。",
+        "status": "reported"
+      },
+      {
+        "type": "extends",
+        "to": "2025-dapo",
+        "reason": "DAPO 将对称裁剪解耦为非对称 Clip-Higher，在长推理 RL 中延后正优势平台。",
+        "status": "reported"
+      },
+      {
+        "type": "extends",
+        "to": "2025-gspo",
+        "reason": "GSPO 将逐 token 重要性比率与裁剪提升至整条序列的长度归一化几何平均似然比。",
+        "status": "reported"
+      },
+      {
+        "type": "compare",
+        "to": "2026-sao",
+        "reason": "SAO 继承 Actor-Critic 与 GAE，针对异步长尾场景改用推理端行为概率与双侧硬门控 DIS。",
+        "status": "synthesis"
+      },
+      {
+        "type": "prerequisite",
         "to": "2026-open-mopd",
         "reason": "Open-MOPD 在 PPO 多轮复用轨迹时刷新奖励，以缓解奖励陈旧；刷新不重新采样轨迹。",
         "status": "reported"
@@ -1490,7 +1556,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关联",
         "a": "notes/papers/2017-ppo.html#relations",
-        "t": "关联 SAO ： 异步长时程智能体下的重要性采样演进：SAO 继承了 PPO 的 Actor-Critic 范式与 GAE 优势估计，但针对异步分布式下旧策略模型不可追踪与 Policy Lag 崩溃问题，直接利用推理端行为概率，将 PPO 的软截断改为双侧硬门控置零（DIS），并提出跳过环境观测的 Skip-Observation GAE。 DeepSeekMath ： GRPO（Group Relative Policy Optimization）的提出者：直接继承了 PPO-Clip 截断代理目标（clipping objective）以减弱过激更新的激励，但彻底丢弃了 Critic 价值模型与 GAE，改用组内采样输出的相对归一化打分估计优势，并将 token 级 KL 散度解耦至外层损失，大幅削减显存开销。 DAPO ： 非对称裁剪与长思考链 RL：DAPO 针对 Long-CoT 中对称 Clip 导致的严重熵坍缩，打破了 PPO 的对称区间，提出非对称放宽裁剪上界（Clip-Higher, $\\varepsilon_{low}=0.2, \\varepsilon_{high}=0.28$），减弱正优势方向的裁剪限制，释放低概率关键探索 token 的增长空间。 Open-MOPD ： Open-MOPD 揭示的 M-OPD 多教师蒸馏中第三层时序失衡（K 次更新内 Reward 陈旧发霉），其根本物理载体正是 PPO 的 Clip 机制：当学生策略能力在 K 次内大幅提升后仍用旧 Reward 评分，导致概率比 $r_t$ 过冲增大 clip fraction；论文 K=4 报告约 75.8%，不能直接等同于全部网络梯度或算力被冻结。 U-OPSD / S²VOPD ： 强化学习稀疏标量 Reward 信号与 On-Policy 蒸馏逐 Token 稠密教师分布信号（KL 散度）的演进对比。 GeoAnchor ： GRPO（PPO 的组相对变体：组内均值当 baseline、去 value 网络）的下游应用锚点：Stage 4 用 GRPO + pattern reward 学「local-only vs local+global」推理模式的自适应选择，bandit 式奖励「用对模式」而非「答对」。"
+        "t": "关联 SAO ： 异步长时程智能体下的重要性采样演进：SAO 继承了 PPO 的 Actor-Critic 范式与 GAE 优势估计，但针对异步分布式下旧策略模型不可追踪与 Policy Lag 崩溃问题，直接利用推理端行为概率，将 PPO 的软截断改为双侧硬门控置零（DIS），并提出跳过环境观测的 Skip-Observation GAE。 DeepSeekMath ： GRPO（Group Relative Policy Optimization）的提出者：直接继承了 PPO-Clip 截断代理目标（clipping objective）以减弱过激更新的激励，但彻底丢弃了 Critic 价值模型与 GAE，改用组内采样输出的相对归一化打分估计优势，并将 token 级 KL 散度解耦至外层损失，大幅削减显存开销。 DAPO ： 非对称裁剪与长思考链 RL：DAPO 针对 Long-CoT 中对称 Clip 导致的严重熵坍缩，打破了 PPO 的对称区间，提出非对称放宽裁剪上界（Clip-Higher, $\\varepsilon_{low}=0.2, \\varepsilon_{high}=0.28$），减弱正优势方向的裁剪限制，释放低概率关键探索 token 的增长空间。 GSPO ： 裁剪粒度从单步到整序列的演进：GSPO 针对结果奖励（Outcome Reward）与 PPO 逐 token 裁剪的粒度错位，将重要性比率与裁剪边界整体提升为整条序列的长度归一化几何平均似然比，免除 MoE 训练中的 Routing Replay。 Open-MOPD ： Open-MOPD 揭示的 M-OPD 多教师蒸馏中第三层时序失衡（K 次更新内 Reward 陈旧发霉），其根本物理载体正是 PPO 的 Clip 机制：当学生策略能力在 K 次内大幅提升后仍用旧 Reward 评分，导致概率比 $r_t$ 过冲增大 clip fraction；论文 K=4 报告约 75.8%，不能直接等同于全部网络梯度或算力被冻结。 U-OPSD / S²VOPD ： 强化学习稀疏标量 Reward 信号与 On-Policy 蒸馏逐 Token 稠密教师分布信号（KL 散度）的演进对比。 GeoAnchor ： GRPO（PPO 的组相对变体：组内均值当 baseline、去 value 网络）的下游应用锚点：Stage 4 用 GRPO + pattern reward 学「local-only vs local+global」推理模式的自适应选择，bandit 式奖励「用对模式」而非「答对」。"
       }
     ]
   },
@@ -1567,7 +1633,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关键机制",
         "a": "notes/papers/2026-tspo.html#mechanism",
-        "t": "关键机制 TSPO 框架总览 *图 2 费曼图解（论文 Figure 2）：TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。* 1. Event-aware Temporal Agent 对长视频先按 1 FPS 得到候选帧 $V_c$。冻结的 CLIP-Large 分别提取帧特征 $F_f$ 和 query 特征 $F_t$。Temporal Agent 对帧特征施加长度为 12 的局部窗口注意力、正弦位置编码和 MLP，得到带局部事件上下文的 $F_e$。 它把两种相似度相加： $$S = \\operatorname{Sim}_{event}(F_e,F_t) + \\operatorname{Sim}_{frame}(F_f,F_t)$$ 帧级相似度更像是在问「画面里有没有 query 提到的人或物」，事件级相似度则尝试回答「这段局部时间上下文是否对应 query 描述的事件关系」。 2. Gumbel-Softmax Top-K 选帧 训练时在分数上加入 Gumbel 噪声： $$P,I = \\operatorname{TopK}\\left(\\operatorname{Softmax}(S/\\tau + \\gamma)\\right), \\quad \\gamma \\sim \\operatorname{Gumbel}(0,1)$$ 其中 $I$ 是被选中的帧索引，$P$ 是相应概率。噪声让训练可以探索不同的帧组合；温度 $ au$ 从 0.025 退火到 0.01，代表从「多探索」逐渐转向「更确定地选高分帧」。推理时去掉 Gumbel 噪声，得到确定性的选帧结果。 3. 把选帧和回答建模成联合决策 对一个问题 $q$，训练时采样 $G$ 组关键帧，分别送入冻结的 LLaVA-Video-7B，得到 $G$ 个回答。联合策略可以写成： $$\\pi(o,V_s\\mid q,V_c)=\\pi_l(o\\mid q,V_s,V_c)\\,\\pi_{ts}(V_s\\mid q,V_c)$$ 这比普通 GRPO 多了一层「选哪些视觉输入」的动作。由于语言模型冻结，论文令语言策略的新旧概率比为 1，最终只用组内相对优势更新 temporal sampling policy： $$J^*_{tspo} \\propto \\sum_i \\frac{\\pi_{ts}(V_{s_i}\\mid q,V_c)}{\\pi_{ts,old}(V_{s_i}\\mid q,V_c)}A_i$$ 因此，TSPO 不是先固定帧再优化语言模型，而是让语言任务的奖励反过来筛选和塑造帧选择策略。 4. 双风格数据与双奖励 TSPO 双数据构建流程 *图 3 费曼图解（论文 Figure 4）：双风格训练数据。Comprehensive Temporal Data 过滤过易/过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱，保留目标片段伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。* 论文构造 TSPO-10K： Comprehensive Temporal Data：从已有 1 到 3 分钟视频 QA 中过滤掉 4 帧就能答对的过易样本，以及 64 帧仍答不出的过难样本，保留需要多帧联合理解的样本。 Video Needle-in-a-Haystack Data：把目标视频与无关视频按片段拼接、打乱，形成 10 到 60 分钟的长视频，并保留目标片段的伪标签，用来训练长程定位。 答案奖励为： $$R_A=\\mathbb{1}(\\hat y=y)$$ needle 数据额外使用时间定位奖励： $$R_T=\\frac{T_t}{T_a}$$ $T_t$ 是选中且落在目标视频片段内的帧数，$T_a$ 是总选帧数。它更接近「选中帧的目标片段 precision」，不是完整的 IoU，也不是精确事件边界标注。 Comprehensive 数据的总奖励是 $R_A+1$，needle 数据的总奖励是 $R_A+R_T$。前者让采样器学会服务于最终回答，后者进一步区分「同样答对但冗余更多」和「答对且集中命中目标片段」的采样方案。 5. 为什么冻结 MLLM 论文依赖一个前提：LLaVA-Video 已经用均匀 32 帧做过 SFT，模型本身有足够强的语言和视频问答能力；只要选到正确关键帧，它就有机会答对。 冻结 MLLM 有三个直接好处：保留语言模型的强先验，避免 RL 同时改变回答器和采样器导致奖励难以归因，并把训练显存与可学习参数压到很小。代价是，如果 MLLM 即使看到了正确帧也答不对，$R_A$ 就不再是可靠的选帧监督。"
+        "t": "关键机制 TSPO 框架总览 *图 2 费曼图解（论文 Figure 2）：TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。* 1. Event-aware Temporal Agent 对长视频先按 1 FPS 得到候选帧 $V_c$。冻结的 CLIP-Large 分别提取帧特征 $F_f$ 和 query 特征 $F_t$。Temporal Agent 对帧特征施加长度为 12 的局部窗口注意力、正弦位置编码和 MLP，得到带局部事件上下文的 $F_e$。 它把两种相似度相加： $$S = \\operatorname{Sim}_{event}(F_e,F_t) + \\operatorname{Sim}_{frame}(F_f,F_t)$$ 帧级相似度更像是在问「画面里有没有 query 提到的人或物」，事件级相似度则尝试回答「这段局部时间上下文是否对应 query 描述的事件关系」。 2. Gumbel-Softmax Top-K 选帧 训练时在分数上加入 Gumbel 噪声： $$P,I = \\operatorname{TopK}\\left(\\operatorname{Softmax}(S/\\tau + \\gamma)\\right), \\quad \\gamma \\sim \\operatorname{Gumbel}(0,1)$$ 其中 $I$ 是被选中的帧索引，$P$ 是相应概率。噪声让训练可以探索不同的帧组合；温度 $\\tau$ 从 0.025 退火到 0.01，代表从「多探索」逐渐转向「更确定地选高分帧」。推理时去掉 Gumbel 噪声，得到确定性的选帧结果。 3. 把选帧和回答建模成联合决策 对一个问题 $q$，训练时采样 $G$ 组关键帧，分别送入冻结的 LLaVA-Video-7B，得到 $G$ 个回答。联合策略可以写成： $$\\pi(o,V_s\\mid q,V_c)=\\pi_l(o\\mid q,V_s,V_c)\\,\\pi_{ts}(V_s\\mid q,V_c)$$ 这比普通 GRPO 多了一层「选哪些视觉输入」的动作。由于语言模型冻结，论文令语言策略的新旧概率比为 1，最终只用组内相对优势更新 temporal sampling policy： $$J^*_{tspo} \\propto \\sum_i \\frac{\\pi_{ts}(V_{s_i}\\mid q,V_c)}{\\pi_{ts,old}(V_{s_i}\\mid q,V_c)}A_i$$ 因此，TSPO 不是先固定帧再优化语言模型，而是让语言任务的奖励反过来筛选和塑造帧选择策略。 4. 双风格数据与双奖励 TSPO 双数据构建流程 *图 3 费曼图解（论文 Figure 4）：双风格训练数据。Comprehensive Temporal Data 过滤过易/过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱，保留目标片段伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。* 论文构造 TSPO-10K： Comprehensive Temporal Data：从已有 1 到 3 分钟视频 QA 中过滤掉 4 帧就能答对的过易样本，以及 64 帧仍答不出的过难样本，保留需要多帧联合理解的样本。 Video Needle-in-a-Haystack Data：把目标视频与无关视频按片段拼接、打乱，形成 10 到 60 分钟的长视频，并保留目标片段的伪标签，用来训练长程定位。 答案奖励为： $$R_A=\\mathbb{1}(\\hat y=y)$$ needle 数据额外使用时间定位奖励： $$R_T=\\frac{T_t}{T_a}$$ $T_t$ 是选中且落在目标视频片段内的帧数，$T_a$ 是总选帧数。它更接近「选中帧的目标片段 precision」，不是完整的 IoU，也不是精确事件边界标注。 Comprehensive 数据的总奖励是 $R_A+1$，needle 数据的总奖励是 $R_A+R_T$。前者让采样器学会服务于最终回答，后者进一步区分「同样答对但冗余更多」和「答对且集中命中目标片段」的采样方案。 5. 为什么冻结 MLLM 论文依赖一个前提：LLaVA-Video 已经用均匀 32 帧做过 SFT，模型本身有足够强的语言和视频问答能力；只要选到正确关键帧，它就有机会答对。 冻结 MLLM 有三个直接好处：保留语言模型的强先验，避免 RL 同时改变回答器和采样器导致奖励难以归因，并把训练显存与可学习参数压到很小。代价是，如果 MLLM 即使看到了正确帧也答不对，$R_A$ 就不再是可靠的选帧监督。"
       },
       {
         "h": "全文 · 结果与代价",
@@ -1592,7 +1658,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q：答对的那组帧是否就意味着每一帧都真正有用？（2026-09-14 首测）",
         "a": "notes/papers/2026-tspo.html#qa-signal",
-        "t": "Q：答对的那组帧是否就意味着每一帧都真正有用？（2026-09-14 首测） 不意味着。 $R_A$ 只说明这组帧整体足以让冻结 MLLM 答对，而且不同帧组合可能都包含了足够证据。组内相对奖励只能偏好「更容易得到正确答案」的采样方案，不能把功劳精确分配到某一帧。needle 数据的 $R_T$ 用目标片段内选帧比例进一步偏好更集中的方案，但它是粗粒度的 precision-like 信号，不是 IoU。"
+        "t": "Q：答对的那组帧是否就意味着每一帧都真正有用？（2026-09-14 首测） 不意味着。 R A 只说明这组帧整体足以让冻结 MLLM 答对，而且不同帧组合可能都包含了足够证据。组内相对奖励只能偏好「更容易得到正确答案」的采样方案，不能把功劳精确分配到某一帧。needle 数据的 R T 用目标片段内选帧比例进一步偏好更集中的方案，但它是粗粒度的 precision-like 信号，不是 IoU。"
       },
       {
         "h": "全文问答 · Q：Video-MME 上 TSPO 是否失效？",
@@ -1762,7 +1828,7 @@ window.WIKI_INDEX = [
       "next": "2026-11-01",
       "last": "2026-10-25",
       "count": 1,
-      "result": "2026-10-25 首轮复测补讲后收敛；角色分工、KL 边界与低概率反例复验答对。PPO 对比未做独立迁移检验，能力证据限定仍待巩固。"
+      "result": "pass"
     },
     "relations": [
       {
@@ -1773,15 +1839,27 @@ window.WIKI_INDEX = [
       },
       {
         "type": "extends",
-        "to": "2026-geoanchor",
-        "reason": "GeoAnchor Stage 4 使用 GRPO 与 pattern reward 学习空间潜变量模式选择。",
+        "to": "2025-dapo",
+        "reason": "DAPO 针对朴素 GRPO 在长思维链下的熵坍缩、零方差组与样本级长度稀释做四项升级。",
+        "status": "reported"
+      },
+      {
+        "type": "extends",
+        "to": "2025-gspo",
+        "reason": "GSPO 继承组内相对优势，把逐 token 比率与裁剪提升为序列级几何平均似然比，免除 MoE Routing Replay。",
         "status": "reported"
       },
       {
         "type": "compare",
-        "to": "2026-u-opsd",
-        "reason": "自投票上下文提供逐 token 蒸馏分布；GRPO 用同题采样组内的相对奖励优化策略。",
-        "status": "synthesis"
+        "to": "2026-sao",
+        "reason": "SAO 揭示组采样在异步长时程智能体中的木桶等待屏障，改用单 Rollout 与冻结注意力强 Critic。",
+        "status": "reported"
+      },
+      {
+        "type": "extends",
+        "to": "2026-geoanchor",
+        "reason": "GeoAnchor Stage 4 使用 GRPO 与 pattern reward 学习空间潜变量模式选择。",
+        "status": "reported"
       }
     ],
     "entries": [
@@ -1808,7 +1886,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 大白话讲解",
         "a": "notes/papers/2024-deepseekmath.html#intuition",
-        "t": "大白话讲解 类比：开除特聘名师，改成班级自评 传统 PPO 的做法：请了一位极其昂贵的特聘名师（Critic 价值模型）。学生（Actor）每写下一个公式、每推导一步，名师都必须在旁边打一个绝对预估分（估算当前状态的长期期望回报 $V(s_t)$）。 痛点：雇名师的开销（显存）跟学生自己一样大；而且题目还没做完前，名师往往也只能瞎猜，打出来的中间分噪声极大，反而带偏了学生。 GRPO 的做法：把特聘名师直接开除。面对同一道数学难题，让学生自己连续做 64 遍（生成 $G=64$ 份不同的解题草稿）。 做完后，判卷人（规则或奖励模型）给每份草稿评一个最终分数。 计算这 64 份草稿的平均分与标准差； 高于平均分的草稿算「优秀变体」，赋予正优势值（向此轨迹学习）；低于平均分的草稿算「劣质变体」，赋予负优势值（抑制该推导路径）； 用组内相对奖励代替独立价值基线，省去独立 Critic 的成本，并以组内相对奖励减少对绝对价值基线的依赖；总体显存收益取决于实现，奖励噪声仍会保留。 PPO 与 GRPO 架构对比 *图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 $G$ 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。*"
+        "t": "大白话讲解 类比：开除特聘名师，改成班级自评 传统 PPO 的做法：请了一位极其昂贵的特聘名师（Critic 价值模型）。学生（Actor）每写下一个公式、每推导一步，名师都必须在旁边打一个绝对预估分（估算当前状态的长期期望回报 $V(s_t)$）。 痛点：雇名师的开销（显存）跟学生自己一样大；而且题目还没做完前，名师往往也只能瞎猜，打出来的中间分噪声极大，反而带偏了学生。 GRPO 的做法：把特聘名师直接开除。面对同一道数学难题，让学生自己连续做 64 遍（生成 $G=64$ 份不同的解题草稿）。 做完后，判卷人（规则或奖励模型）给每份草稿评一个最终分数。 计算这 64 份草稿的平均分与标准差； 高于平均分的草稿算「优秀变体」，赋予正优势值（向此轨迹学习）；低于平均分的草稿算「劣质变体」，赋予负优势值（抑制该推导路径）； 用组内相对奖励代替独立价值基线，省去独立 Critic 的成本，并以组内相对奖励减少对绝对价值基线的依赖；总体显存收益取决于实现，奖励噪声仍会保留。 PPO 与 GRPO 架构对比 *图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 G 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。*"
       },
       {
         "h": "全文 · 关键机制",
@@ -1838,12 +1916,12 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q1：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？",
         "a": "notes/papers/2024-deepseekmath.html#qa-grpo-advantage",
-        "t": "Q1：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？ 评分与预测的分工 ：Reward Model 或程序规则给已生成的回答评分；Outcome 模式可以读完整答案后返回 0 或 1，Process 模式也可以逐推理步骤评分。Critic 则读取当前前缀，预测从这里继续生成的预期回报 $V(s_t)$ 。它预测价值，优势由奖励与价值基线进一步计算。区别不在于局部 token 与整条轨迹。 GRPO 替代的是基线估计 ：用同题回答的奖励均值作基线，再除以组标准差得到优势；它省掉独立 Critic，仍需要评分来源。程序能判分时，不需要神经奖励模型。 显存与奖励尺度 ：省去 Critic 的参数、优化器与反向图成本，实际总显存收益取决于实现。组相对比较与同题候选偏好评分相契合，但奖励噪声仍会存在，不能说组内标准化消除一切校准误差。 2026-10-25 补讲方法与表现 ：用「完整答案判卷」对照「半截推导预测得分」。第一次迁移回答仍把两者混在一起；第二次给组件识别题，正确区分评分与 Critic，并指出 GRPO 省掉后者。"
+        "t": "Q1：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？ 评分与预测的分工 ：Reward Model 或程序规则给已生成的回答评分；Outcome 模式可以读完整答案后返回 0 或 1，Process 模式也可以逐推理步骤评分。Critic 则读取当前前缀，预测从这里继续生成的预期回报 V ( s t ) 。它预测价值，优势由奖励与价值基线进一步计算。区别不在于局部 token 与整条轨迹。 GRPO 替代的是基线估计 ：用同题回答的奖励均值作基线，再除以组标准差得到优势；它省掉独立 Critic，仍需要评分来源。程序能判分时，不需要神经奖励模型。 显存与奖励尺度 ：省去 Critic 的参数、优化器与反向图成本，实际总显存收益取决于实现。组相对比较与同题候选偏好评分相契合，但奖励噪声仍会存在，不能说组内标准化消除一切校准误差。 2026-10-25 补讲方法与表现 ：用「完整答案判卷」对照「半截推导预测得分」。第一次迁移回答仍把两者混在一起；第二次给组件识别题，正确区分评分与 Critic，并指出 GRPO 省掉后者。"
       },
       {
         "h": "全文问答 · Q2：在 Outcome 模式下全对或全错时，GRPO 与传统 PPO 的梯度行为有何不同？",
         "a": "notes/papers/2024-deepseekmath.html#qa-zero-variance",
-        "t": "Q2：在 Outcome 模式下全对或全错时，GRPO 与传统 PPO 的梯度行为有何不同？ GRPO ：组内奖励全相同时， $r_i-\\mathrm{mean}(\\mathbf r)=0$ 。实现用微小稳定项避免除零后，优势全为零。该组的任务奖励 surrogate 没有梯度；原版 GRPO 的 KL 正则仍可能产生梯度。若关闭 KL 且没有其他损失，这组回答才没有该训练目标的更新信号。所有回答都得 0.6 分时同理，不限于全对或全错。 PPO ：优势依赖奖励与 Critic 预测，不直接以本组奖励均值作比较。因此，组内回报相同不会强制其优势归零；也不能反过来说 PPO 总有非零梯度。 终止步骤例子（教学简化） ：忽略额外奖励、优势归一化和裁剪，终止后的价值为零，最后一步优势可写成 $A=R-V(s)$ 。两条回答都错， $R=0$ ；若 Critic 在最后动作前预测为 0.8 和 0.2，优势分别为 -0.8 和 -0.2。若 Critic 准确预测二者回报为零，优势也可以为零。实际 PPO 通常用 GAE 汇总多步 TD 误差；价值估计非零不保证每步 TD 误差、最终优势或参数梯度都非零，也不保证更新有益。 2026-10-25 补讲方法与表现 ：用上述终止步骤例子解释「结果一样，仍可能低于预期」。用户随后在全得 0.6 分的迁移题中正确区分关闭 KL 与开启 KL 的行为。PPO 对比已讲解，尚未单独做无提示迁移检验。"
+        "t": "Q2：在 Outcome 模式下全对或全错时，GRPO 与传统 PPO 的梯度行为有何不同？ GRPO ：组内奖励全相同时， r i − mean ( 𝐫 ) = 0 。实现用微小稳定项避免除零后，优势全为零。该组的任务奖励 surrogate 没有梯度；原版 GRPO 的 KL 正则仍可能产生梯度。若关闭 KL 且没有其他损失，这组回答才没有该训练目标的更新信号。所有回答都得 0.6 分时同理，不限于全对或全错。 PPO ：优势依赖奖励与 Critic 预测，不直接以本组奖励均值作比较。因此，组内回报相同不会强制其优势归零；也不能反过来说 PPO 总有非零梯度。 终止步骤例子（教学简化） ：忽略额外奖励、优势归一化和裁剪，终止后的价值为零，最后一步优势可写成 A = R − V ( s ) 。两条回答都错， R = 0 ；若 Critic 在最后动作前预测为 0.8 和 0.2，优势分别为 -0.8 和 -0.2。若 Critic 准确预测二者回报为零，优势也可以为零。实际 PPO 通常用 GAE 汇总多步 TD 误差；价值估计非零不保证每步 TD 误差、最终优势或参数梯度都非零，也不保证更新有益。 2026-10-25 补讲方法与表现 ：用上述终止步骤例子解释「结果一样，仍可能低于预期」。用户随后在全得 0.6 分的迁移题中正确区分关闭 KL 与开启 KL 的行为。PPO 对比已讲解，尚未单独做无提示迁移检验。"
       },
       {
         "h": "全文问答 · Q3：如何看待「Pass@K 几乎没变，Maj@K 大幅跃升」这一现象？",
@@ -1858,7 +1936,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关联",
         "a": "notes/papers/2024-deepseekmath.html#relations",
-        "t": "关联 SAO ： 异步长时程智能体对 GRPO 的反思与演进：SAO 揭示了 GRPO 组采样在长轨迹、多轮交互任务中的木桶同步等待屏障（Straggler 瓶颈）与跨版本数据污染，在异步架构中重构了单 Rollout 即采即训、强 Critic（冻结注意力）与双侧硬门控（DIS），实现超千步稳训。 DAPO ： GRPO 在长思维链（Long-CoT）下的直接工业级演进：针对朴素 GRPO 在长逻辑场景下暴露的四大病根（对称裁剪导致的熵坍缩、全对/全错样本造成的有效批次萎缩、样本级平均导致的长度被稀释、超长硬截断噪声），提出非对称 Clip-Higher、动态重采样、Token-level 损失与软惩罚，将 Qwen2.5-32B 在 AIME 2024 上拉升至 50 分。 PPO ： GRPO 的直接理论前身：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略过激更新，但 GRPO 彻底剪除了 Critic 模型与 GAE，改用组内相对优势估计，并将 KL 惩罚从奖励解耦到外层损失。 GeoAnchor ： 空间推理下游应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化模型对不同空间潜变量模式的选择策略。 U-OPSD ： 自生成监督的另一演进路线：U-OPSD 是在自蒸馏训练阶段通过采样 8 遍做多数投票构建伪解教师进行前向 KL 蒸馏，而 GRPO 是直接在在线采样组内用相对奖励计算优势进行策略梯度强化。 S²VOPD ： 零特权自对齐：探讨在无外部高阶标注的前提下，如何通过模型自身的多视角/多采样构建不对称信息差进行能力对齐。"
+        "t": "关联 SAO ： 异步长时程智能体对 GRPO 的反思与演进：SAO 揭示了 GRPO 组采样在长轨迹、多轮交互任务中的木桶同步等待屏障（Straggler 瓶颈）与跨版本数据污染，在异步架构中重构了单 Rollout 即采即训、强 Critic（冻结注意力）与双侧硬门控（DIS），实现超千步稳训。 DAPO ： GRPO 在长思维链（Long-CoT）下的直接工业级演进：针对朴素 GRPO 在长逻辑场景下暴露的四大病根（对称裁剪导致的熵坍缩、全对/全错样本造成的有效批次萎缩、样本级平均导致的长度被稀释、超长硬截断噪声），提出非对称 Clip-Higher、动态重采样、Token-level 损失与软惩罚，将 Qwen2.5-32B 在 AIME 2024 上拉升至 50 分。 GSPO ： GRPO 比率粒度的序列级重构：继承本文去 Critic 的组内相对优势架构，将逐 token 重要性比率与逐 token 裁剪提升为整条序列的长度归一化几何平均似然比，消除长链条逐字撕裂并使 MoE 训练无需 Routing Replay 稳定收敛。 PPO ： GRPO 的直接理论前身：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略过激更新，但 GRPO 彻底剪除了 Critic 模型与 GAE，改用组内相对优势估计，并将 KL 惩罚从奖励解耦到外层损失。 GeoAnchor ： 空间推理下游应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化模型对不同空间潜变量模式的选择策略。 U-OPSD ： 自生成监督的另一演进路线：U-OPSD 是在自蒸馏训练阶段通过采样 8 遍做多数投票构建伪解教师进行前向 KL 蒸馏，而 GRPO 是直接在在线采样组内用相对奖励计算优势进行策略梯度强化。 S²VOPD ： 零特权自对齐：探讨在无外部高阶标注的前提下，如何通过模型自身的多视角/多采样构建不对称信息差进行能力对齐。"
       }
     ]
   },
@@ -1890,7 +1968,7 @@ window.WIKI_INDEX = [
       "next": "2026-11-01",
       "last": "2026-10-25",
       "count": 1,
-      "result": "2026-10-25 首轮复测补讲后收敛；权重方向经表格纠正，动态采样成本、正负优势裁剪分支和答对仍扣长度分的变式复验通过。下次独立重建 token 系数与目标平台。"
+      "result": "pass"
     },
     "relations": [
       {
@@ -1904,6 +1982,18 @@ window.WIKI_INDEX = [
         "to": "2017-ppo",
         "reason": "Clip-Higher 放宽正优势方向的裁剪阈值；它调整目标平台，不是硬概率限制。",
         "status": "reported"
+      },
+      {
+        "type": "compare",
+        "to": "2025-gspo",
+        "reason": "DAPO 保留逐 token 比率并做全批 token 归约；GSPO 直接将比率与裁剪提升至整条序列几何平均似然比。",
+        "status": "synthesis"
+      },
+      {
+        "type": "compare",
+        "to": "2026-sao",
+        "reason": "DAPO 在同步组采样下动态补满批次；SAO 改为单 Rollout 异步即采即训并用强 Critic 与 DIS 控滞后。",
+        "status": "synthesis"
       },
       {
         "type": "compare",
@@ -1966,7 +2056,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文问答 · Q1：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？",
         "a": "notes/papers/2025-dapo.html#qa-clip-higher",
-        "t": "Q1：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？ 正优势的目标平台 ：对正优势 token，概率比超过上侧阈值后，该样本目标不再奖励继续提高概率。低概率但有用的 token 需要更大的相对增幅，放宽上侧阈值可延后平台。论文消融支持本设置下保住更多策略熵，不保证任意任务都出现相同变化。 实际概率不被硬截断 ：clip 只改变目标中一个候选项，再由外层 min 选较小者。给定 $A=1,r=1.25$ ，上阈值从 1.2 提到 1.28 后，未裁剪项为 1.25，目标不再处于上侧平台；实际比率仍可超过 1.28。 改变优势符号的反例（教学假设） ：令 $A=-1,r=1.4$ ，clip 区间为 [0.8,1.28]。未裁剪项 $rA=-1.4$ ，裁剪项为 -1.28，min 选 -1.4。坏动作概率升高时，目标继续提供惩罚，不会因为超过上阈值就变平。 2026-10-25 补讲与表现 ：首次记得提高上界，但混称梯度裁剪。补讲概率比与目标平台后，正优势变式答对；进一步澄清实际概率不被硬截断后，负优势变式正确选未裁剪项。"
+        "t": "Q1：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？ 正优势的目标平台 ：对正优势 token，概率比超过上侧阈值后，该样本目标不再奖励继续提高概率。低概率但有用的 token 需要更大的相对增幅，放宽上侧阈值可延后平台。论文消融支持本设置下保住更多策略熵，不保证任意任务都出现相同变化。 实际概率不被硬截断 ：clip 只改变目标中一个候选项，再由外层 min 选较小者。给定 A = 1 , r = 1.25 ，上阈值从 1.2 提到 1.28 后，未裁剪项为 1.25，目标不再处于上侧平台；实际比率仍可超过 1.28。 改变优势符号的反例（教学假设） ：令 A = − 1 , r = 1.4 ，clip 区间为 [0.8,1.28]。未裁剪项 r A = − 1.4 ，裁剪项为 -1.28，min 选 -1.4。坏动作概率升高时，目标继续提供惩罚，不会因为超过上阈值就变平。 2026-10-25 补讲与表现 ：首次记得提高上界，但混称梯度裁剪。补讲概率比与目标平台后，正优势变式答对；进一步澄清实际概率不被硬截断后，负优势变式正确选未裁剪项。"
       },
       {
         "h": "全文问答 · Q2：样本级平均（Sample-level）与 Token 级平均（Token-level）在长思考链下的根本分歧是什么？",
@@ -1986,7 +2076,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关联",
         "a": "notes/papers/2025-dapo.html#relations",
-        "t": "关联 DeepSeekMath ： 理论演进与痛点定向修复：DeepSeekMath 首创了丢弃 Critic 的 GRPO 算法，但在长思维链（Long-CoT，上万 token）场景下暴露了四大暗礁（熵坍缩、策略代理目标无区分的题占比升高、长度被稀释、超长假负例）；DAPO 则是针对 GRPO 在大规模长推理落地时的直接升级演进版。 PPO ： 裁剪边界的非对称改造：PPO 确立了重要的对称截断代理目标（$1\\pm\\varepsilon$），DAPO 在其长推理实验中检验了非对称解耦裁剪（Clip-Higher, $\\varepsilon_{low}=0.2, \\varepsilon_{high}=0.28$）在防范策略熵崩溃上的关键价值。 Open-MOPD ： 训练预算与长度失衡的同源对照：Open-MOPD 揭示了在多教师蒸馏中，25× 的长短回答长度差会导致短域 token 梯度被严重剥夺；DAPO 的 Token-level Loss 同样也是在处理长短序列之间 token 梯度的公正分配与防稀释问题。 GeoAnchor ： GRPO 落地演进对照：GeoAnchor 在 3D 潜变量模式选择中直接套用 GRPO + pattern reward，而 DAPO 则代表了纯语言符号长思维链在极高推理难度（AIME 竞赛级）下的工业级对齐前沿。"
+        "t": "关联 DeepSeekMath ： 理论演进与痛点定向修复：DeepSeekMath 首创了丢弃 Critic 的 GRPO 算法，但在长思维链（Long-CoT，上万 token）场景下暴露了四大暗礁（熵坍缩、策略代理目标无区分的题占比升高、长度被稀释、超长假负例）；DAPO 则是针对 GRPO 在大规模长推理落地时的直接升级演进版。 PPO ： 裁剪边界的非对称改造：PPO 确立了重要的对称截断代理目标（$1\\pm\\varepsilon$），DAPO 在其长推理实验中检验了非对称解耦裁剪（Clip-Higher, $\\varepsilon_{low}=0.2, \\varepsilon_{high}=0.28$）在防范策略熵崩溃上的关键价值。 GSPO ： 长推理 GRPO 稳定性的另一演进方向：DAPO 仍保留逐 token 重要性比率并调优 Clip-Higher 与全批 token 归约；GSPO 则在结果奖励下直接将比率与裁剪提升至整条序列的长度归一化几何平均似然比，并免除 MoE 的 Routing Replay。 SAO ： 同步批次补满 vs 异步单轨迹流水线：DAPO 在同步组采样下靠 Dynamic Sampling 过滤零方差题并补满批次；SAO 针对多轮工具智能体的严重长尾同步等待，改为单 Rollout 即采即训，配合强 Critic 与双侧硬门控 DIS 抵御异步策略滞后。 Open-MOPD ： 训练预算与长度失衡的同源对照：Open-MOPD 揭示了在多教师蒸馏中，25× 的长短回答长度差会导致短域 token 梯度被严重剥夺；DAPO 的 Token-level Loss 同样也是在处理长短序列之间 token 梯度的公正分配与防稀释问题。 GeoAnchor ： GRPO 落地演进对照：GeoAnchor 在 3D 潜变量模式选择中直接套用 GRPO + pattern reward，而 DAPO 则代表了纯语言符号长思维链在极高推理难度（AIME 竞赛级）下的工业级对齐前沿。"
       }
     ]
   },
@@ -2017,29 +2107,32 @@ window.WIKI_INDEX = [
       "next": "2026-11-01",
       "last": "2026-10-29",
       "count": 0,
-      "result": "首测已通过：三题全过，准确理解长序列似然比几何平均（1/L 指数次方）防下溢、MoE 稀疏路由震荡被整序列似然平滑抵消而免除 Routing Replay，以及结果奖励下前序正确步骤平摊负奖励的因果妥协边界；待首轮复测。"
+      "result": ""
     },
     "relations": [
       {
         "type": "extends",
         "to": "2024-deepseekmath",
-        "title": "DeepSeekMath",
-        "claim": "继承 GRPO 的无 Critic 组相对优势估计架构，将重要性采样与裁剪从逐 token 升级至整序列似然比",
+        "reason": "继承 GRPO 的无 Critic 组相对优势估计架构，将重要性采样与裁剪从逐 token 升级至整序列似然比。",
+        "status": "reported"
+      },
+      {
+        "type": "extends",
+        "to": "2017-ppo",
+        "reason": "将单步信任域代理裁剪扩展为自回归长序列级别的几何平均似然比裁剪。",
         "status": "reported"
       },
       {
         "type": "compare",
         "to": "2025-dapo",
-        "title": "DAPO",
-        "claim": "共同解决长推理 RL 稳定性痛点：DAPO 采用非对称裁剪与 Token-level 权重调优，GSPO 采用长度归一化序列比率根除方差",
+        "reason": "共同解决长推理 RL 稳定性：DAPO 采用非对称裁剪与全批 token 归约，GSPO 采用长度归一化序列比率。",
         "status": "synthesis"
       },
       {
-        "type": "extends",
-        "to": "2017-ppo",
-        "title": "PPO",
-        "claim": "将单步信任域代理裁剪扩展为自回归长序列级别的几何平均似然比裁剪",
-        "status": "reported"
+        "type": "compare",
+        "to": "2026-sao",
+        "reason": "GSPO 用序列几何平滑抵抗同步 MoE 路由跳变；SAO 面向异步高吞吐采用单 Rollout 与双侧硬门控 DIS。",
+        "status": "synthesis"
       }
     ],
     "entries": [
@@ -2148,22 +2241,25 @@ window.WIKI_INDEX = [
       {
         "type": "compare",
         "to": "2024-deepseekmath",
-        "title": "DeepSeekMath",
-        "claim": "揭示 GRPO 组采样在异步长时程任务下的木桶同步屏障与离线崩溃，废除组采样改用单 Rollout 与强 Critic",
+        "reason": "揭示 GRPO 组采样在异步长时程任务下的木桶同步屏障与离线崩溃，废除组采样改用单 Rollout 与强 Critic。",
         "status": "reported"
       },
       {
         "type": "extends",
         "to": "2017-ppo",
-        "title": "PPO",
-        "claim": "继承 Actor-Critic 与 GAE 体系，但废除旧模型推理，改用推理端行为概率与双侧硬门控置零（DIS）",
+        "reason": "继承 Actor-Critic 与 GAE 体系，废除旧模型重算，改用推理端行为概率与双侧硬门控置零（DIS）。",
         "status": "reported"
       },
       {
         "type": "compare",
         "to": "2025-gspo",
-        "title": "GSPO",
-        "claim": "长轨迹优化另一路线：GSPO 采用序列似然几何平滑抵抗路由跳变，SAO 立足异步高吞吐以单 Rollout 与 DIS 稳训千步",
+        "reason": "GSPO 用序列似然几何平滑抵抗同步 MoE 路由跳变；SAO 立足异步流水线以单 Rollout 与 DIS 稳训千步。",
+        "status": "synthesis"
+      },
+      {
+        "type": "compare",
+        "to": "2025-dapo",
+        "reason": "DAPO 在同步组采样下动态补满批次；SAO 采用 G=1 即采即训以释放异步吞吐与题目多样性。",
         "status": "synthesis"
       }
     ],
@@ -2171,17 +2267,17 @@ window.WIKI_INDEX = [
       {
         "h": "速览 · 五分钟重建",
         "a": "papers/2026-sao.html#rebuild",
-        "t": "GRPO 的组采样在长时程多轮智能体任务中面临严重的木桶等待瓶颈与版本交叉污染，而异步更新又常因策略滞后（Policy Lag）在百余步内迅速崩溃。SAO 废弃组采样，改用单轨迹即采即训，并引入双侧硬裁剪抵御离线偏差。 单轨迹异步回传 每个 Prompt 仅生成一条轨迹（$G=1$），推理引擎逐 Token 记录行为概率 $\\log \\pi_{\\text{rollout}}$，轨迹一旦完成立即回传训练队列，无需等待整组其他样本。 双频强价值估计 Critic 预先在大规模回报数据上预训练冷启动，冻结自注意力层仅微调 MoE 参数，并以 $K=2$ 倍于策略的频率快更新；跨过环境反馈 Token 计算 Skip-Observation GAE。 双侧硬门控更新 计算当前策略与生成时行为概率的比值 $r_t(\\theta)$；若落在非对称宽信任区间 $[1-\\epsilon_l, 1+\\epsilon_h]$ 内则正常更新，一旦越界直接硬置零阻断梯度，避免陈旧轨迹毁坏模型。 具体例子（教学假设） ：一条异步回传的轨迹中，某个 Token 经过若干步参数迭代后，概率比值漂移为 $r_t = 8.0$（$\\epsilon_h = 5.0$）。在标准 PPO 下该 Token 被软截断为 $1+\\epsilon$ 依然推动正向更新；而在 SAO 中由于 $8.0 > 1+5.0$，该 Token 门控直接置零，不产生任何梯度污染。 边界 ：依赖高并发推理引擎提供逐 Token 的生成对数概率；需要额外维护独立的 Critic 模型（显存开销与 PPO 相当，高于 GRPO）；若 Critic 缺乏充分的回报预训练冷启动，单 Rollout 的高方差会导致收敛困难。 换个条件看机制 如果去除 Skip-Observation 设计，把终端返回的 500 行编译器报错也纳入 GAE 链条计算，会发生什么？ Critic 会被迫尝试去预测外部随机环境的状态转移价值，导致优势估计被无关的环境噪声严重污染，破坏模型自身动作的信用分配。"
+        "t": "GRPO 的组采样在长时程多轮智能体任务中面临严重的木桶等待瓶颈与版本交叉污染，而异步更新又常因策略滞后（Policy Lag）在百余步内迅速崩溃。SAO 废弃组采样，改用单轨迹即采即训，并引入双侧硬裁剪抵御离线偏差。 单轨迹异步回传 每个 Prompt 仅生成一条轨迹（G=1），推理引擎逐 Token 记录行为概率 log π_rollout，轨迹一旦完成立即回传训练队列，无需等待整组其他样本。 双频强价值估计 Critic 预先在大规模回报数据上预训练冷启动，冻结自注意力层仅微调 MoE 参数，并以 K=2 倍于策略的频率快更新；跨过环境反馈 Token 计算 Skip-Observation GAE。 双侧硬门控更新 计算当前策略与生成时行为概率的比值 r_t(θ)；若落在非对称宽信任区间 [1-ε_l, 1+ε_h] 内则正常更新，一旦越界直接硬置零阻断梯度，避免陈旧轨迹毁坏模型。 具体例子（教学假设） ：一条异步回传的轨迹中，某个 Token 经过若干步参数迭代后，概率比值漂移为 r_t = 8.0（ε_h = 5.0）。在截断重要性采样下该 Token 被截断为 1+ε 依然推动同向更新；而在 SAO 中由于 8.0 > 1+5.0，该 Token 门控直接置零，不产生任何梯度污染。 边界 ：依赖高并发推理引擎提供逐 Token 的生成对数概率；需要额外维护独立的 Critic 模型（显存开销与 PPO 相当，高于 GRPO）；若 Critic 缺乏充分的回报预训练冷启动，单 Rollout 的高方差会导致收敛困难。 换个条件看机制 如果去除 Skip-Observation 设计，把终端返回的 500 行编译器报错也纳入 GAE 链条计算，会发生什么？ Critic 会被迫尝试去预测外部随机环境的状态转移价值，导致优势估计被无关的环境噪声严重污染，破坏模型自身动作的信用分配。"
       },
       {
         "h": "全文 · 五分钟重建",
         "a": "notes/papers/2026-sao.html#rebuild",
-        "t": "五分钟重建 GRPO 的组采样在长时程多轮智能体任务中面临严重的木桶等待瓶颈与版本交叉污染，而异步更新又常因策略滞后（Policy Lag）在百余步内迅速崩溃。SAO 废弃组采样，改用单轨迹即采即训，并引入双侧硬裁剪抵御离线偏差。 单轨迹异步回传 每个 Prompt 仅生成一条轨迹（$G=1$），推理引擎逐 Token 记录行为概率 $\\log \\pi_{\\text{rollout}}$，轨迹一旦完成立即回传训练队列，无需等待整组其他样本。 双频强价值估计 Critic 预先在大规模回报数据上预训练冷启动，冻结自注意力层仅微调 MoE 参数，并以 $K=2$ 倍于策略的频率快更新；跨过环境反馈 Token 计算 Skip-Observation GAE。 双侧硬门控更新 计算当前策略与生成时行为概率的比值 $r_t(\\theta)$；若落在非对称宽信任区间 $[1-\\epsilon_l, 1+\\epsilon_h]$ 内则正常更新，一旦越界直接硬置零阻断梯度，避免陈旧轨迹毁坏模型。 具体例子（教学假设） ：一条异步回传的轨迹中，某个 Token 经过若干步参数迭代后，概率比值漂移为 $r_t = 8.0$（$\\epsilon_h = 5.0$）。在标准 PPO 下该 Token 被软截断为 $1+\\epsilon$ 依然推动正向更新；而在 SAO 中由于 $8.0 > 1+5.0$，该 Token 门控直接置零，不产生任何梯度污染。 边界 ：依赖高并发推理引擎提供逐 Token 的生成对数概率；需要额外维护独立的 Critic 模型（显存开销与 PPO 相当，高于 GRPO）；若 Critic 缺乏充分的回报预训练冷启动，单 Rollout 的高方差会导致收敛困难。 换个条件看机制 如果去除 Skip-Observation 设计，把终端返回的 500 行编译器报错也纳入 GAE 链条计算，会发生什么？ Critic 会被迫尝试去预测外部随机环境的状态转移价值，导致优势估计被无关的环境噪声严重污染，破坏模型自身动作的信用分配。 可选自测 关掉提示后解释：为什么单 Rollout 的单题方差明显大于组采样，在固定训练时间内却能在复杂推理基准上全面反超 GRPO？ 2026-10-30：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。"
+        "t": "五分钟重建 GRPO 的组采样在长时程多轮智能体任务中面临严重的木桶等待瓶颈与版本交叉污染，而异步更新又常因策略滞后（Policy Lag）在百余步内迅速崩溃。SAO 废弃组采样，改用单轨迹即采即训，并引入双侧硬裁剪抵御离线偏差。 单轨迹异步回传 每个 Prompt 仅生成一条轨迹（G=1），推理引擎逐 Token 记录行为概率 log π_rollout，轨迹一旦完成立即回传训练队列，无需等待整组其他样本。 双频强价值估计 Critic 预先在大规模回报数据上预训练冷启动，冻结自注意力层仅微调 MoE 参数，并以 K=2 倍于策略的频率快更新；跨过环境反馈 Token 计算 Skip-Observation GAE。 双侧硬门控更新 计算当前策略与生成时行为概率的比值 r_t(θ)；若落在非对称宽信任区间 [1-ε_l, 1+ε_h] 内则正常更新，一旦越界直接硬置零阻断梯度，避免陈旧轨迹毁坏模型。 具体例子（教学假设） ：一条异步回传的轨迹中，某个 Token 经过若干步参数迭代后，概率比值漂移为 r_t = 8.0（ε_h = 5.0）。在截断重要性采样下该 Token 被截断为 1+ε 依然推动同向更新；而在 SAO 中由于 8.0 > 1+5.0，该 Token 门控直接置零，不产生任何梯度污染。 边界 ：依赖高并发推理引擎提供逐 Token 的生成对数概率；需要额外维护独立的 Critic 模型（显存开销与 PPO 相当，高于 GRPO）；若 Critic 缺乏充分的回报预训练冷启动，单 Rollout 的高方差会导致收敛困难。 换个条件看机制 如果去除 Skip-Observation 设计，把终端返回的 500 行编译器报错也纳入 GAE 链条计算，会发生什么？ Critic 会被迫尝试去预测外部随机环境的状态转移价值，导致优势估计被无关的环境噪声严重污染，破坏模型自身动作的信用分配。 可选自测 关掉提示后解释：为什么单 Rollout 的单题方差明显大于组采样，在固定训练时间内却能在复杂推理基准上全面反超 GRPO？ 2026-10-30：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。"
       },
       {
         "h": "全文 · 论文图解",
         "a": "notes/papers/2026-sao.html#figures",
-        "t": "论文图解 SAO 整体单 Rollout 异步架构与 GRPO 组采样对比 *图 1 费曼图解（论文 Figure 2）：GRPO 在异步系统中必须等待同一 Prompt 的整组样本就绪（Waiting for Group），存在严重的木桶等待与跨版本混杂；SAO 采用单 Rollout 设计，每条轨迹生成完毕立即送入训练队列（Ready for Training），消除同步屏障并通过 DIS 限制在信任域内。* SAO 在数学推理与编码智能体基准上的性能评测 *图 2 费曼图解（论文 Figure 1）：在 Qwen3-30B-A3B 骨干上，SAO 在 AIME2025（97.3% vs 84.2%）、BeyondAIME（74.8% vs 54.8%）、IMOAnswerBench（74.0% vs 55.8%）与 SWE-Bench Verified（29.8% vs 23.0%）等长时程基准上全面大幅超越同步 GRPO 基线。* SAO 与 GRPO 变体在训练千步过程中的性能与稳定性对比 *图 3 费曼图解（论文 Figure 3）：在 AIME2025、BeyondAIME 与 HMMT 训练步进曲线中，Vanilla GRPO 在约 160 步发生灾难性崩溃（Collapse）；GRPO (w/ DIS) 虽维持稳定但在 400 步后停滞；SAO 凭借单 Rollout 更高的样本多样性持续攀升，稳定训练超 1000 步。* 异步单 Rollout 训练动态与消融特征分析 *图 4 费曼图解（论文 Figure 4）：(a) 更快价值更新（$K=2$）显著提高 Critic 的解释方差（Explained Variance）；(b) 冻结注意力层（Frozen Attention）将 Critic 梯度范数压制在低位平稳区间，全参数训练则发生梯度激增；(c) DIS 的 Token 级裁剪率稳定在千分之几，从根源上剔除发散更新。*"
+        "t": "论文图解 SAO 整体单 Rollout 异步架构与 GRPO 组采样对比 *图 1 费曼图解（论文 Figure 2）：GRPO 在异步系统中必须等待同一 Prompt 的整组样本就绪（Waiting for Group），存在严重的木桶等待与跨版本混杂；SAO 采用单 Rollout 设计，每条轨迹生成完毕立即送入训练队列（Ready for Training），消除同步屏障并通过 DIS 限制在信任域内。* SAO 在数学推理与编码智能体基准上的性能评测 *图 2 费曼图解（论文 Figure 1）：在 Qwen3-30B-A3B 骨干上，SAO 在 AIME2025（97.3% vs 84.2%）、BeyondAIME（74.8% vs 54.8%）、IMOAnswerBench（74.0% vs 55.8%）与 SWE-Bench Verified（29.8% vs 23.0%）等长时程基准上全面大幅超越同步 GRPO 基线。* SAO 与 GRPO 变体在训练千步过程中的性能与稳定性对比 *图 3 费曼图解（论文 Figure 3）：在 AIME2025、BeyondAIME 与 HMMT 训练步进曲线中，Vanilla GRPO 在约 160 步发生灾难性崩溃（Collapse）；GRPO (w/ DIS) 虽维持稳定但在 400 步后停滞；SAO 凭借单 Rollout 更高的样本多样性持续攀升，稳定训练超 1000 步。* 异步单 Rollout 训练动态与消融特征分析 *图 4 费曼图解（论文 Figure 4）：(a) 更快价值更新（K=2）显著提高 Critic 的解释方差（Explained Variance）；(b) 冻结注意力层（Frozen Attention）将 Critic 梯度范数压制在低位平稳区间，全参数训练则发生梯度激增；(c) DIS 的 Token 级裁剪率稳定在千分之几，从根源上剔除发散更新。*"
       },
       {
         "h": "全文 · 解决什么问题",
@@ -2206,7 +2302,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · AI 预读备注",
         "a": "notes/papers/2026-sao.html#ai-notes",
-        "t": "AI 预读备注 本篇预读底稿提取自 Zotero AI Butler 子项（itemKey：ATCLW9GW，GLM-5.3 引擎，生成于 2026-08-24）。 预读提取的核心线索：准确梳理了单 Rollout 采样、DIS 双侧硬门控、Skip-Obs GAE 与 Frozen-Attention Critic 四大模块； 人工校验与费曼深化：AI Butler 摘要将 DIS 简述为「裁剪策略」，但在费曼检验中我们深入辨析了它与 PPO 截断的本质差异：DIS 是硬门控置零（Gradient Masking）而非数值饱和社会，这也是异步离线偏差下避免模型崩塌的核心数学保障。"
+        "t": "AI 预读备注 本篇预读底稿提取自 Zotero AI Butler 子项（itemKey：ATCLW9GW，GLM-5.3 引擎，生成于 2026-08-24）。 预读提取的核心线索：准确梳理了单 Rollout 采样、DIS 双侧硬门控、Skip-Obs GAE 与 Frozen-Attention Critic 四大模块； 人工校验与费曼深化：AI Butler 摘要将 DIS 简述为「裁剪策略」，但在费曼检验中我们深入辨析了它与 PPO 截断的本质差异：DIS 是硬门控置零（Gradient Masking）而非数值饱和截断，这也是异步离线偏差下避免模型崩塌的核心数学保障。"
       },
       {
         "h": "全文 · 我的复述",
@@ -2219,6 +2315,21 @@ window.WIKI_INDEX = [
         "t": "卡壳点与解答 Q：DIS 的双侧硬门控和 PPO 的 Clip 截断到底有什么本质区别？为什么异步下必须置零？ PPO 的 Clip 是「饱和截断」：当比值越界时，强行以边界值 $1+\\epsilon$ 计算，梯度依然存在且持续推动更新。在同步同分布下这能提供稳定的保守更新；但在异步集群中，严重越界的比值代表数据产生自极为陈旧的模型快照，该动作在当前策略下已经被认定为不可信。若继续以 $1+\\epsilon$ 强推，累积的 Off-policy 伪梯度会在百余步内直接撕裂分布。DIS 采取硬门控置零（$f=0$），直接关闭该 Token 的梯度流，宁可不学、绝不学歪。 Q：单 Rollout 的单题方差天然高于组采样，为什么长时程智能体整体训练效果反而大幅超越 GRPO？ 长时程多轮智能体任务在固定算力预算下的核心矛盾是「木桶等待造成的算力空转」与「Prompt 覆盖多样性严重匮乏」。GRPO 同一题采 8 条，不仅导致快节点苦等慢节点，而且见到的题目种类只有 $1/8$。SAO 凭借预训练充分且冻结注意力的 Critic 吸收掉了单题方差，同时将 Prompt 探索空间拓宽了 8 倍，因而在复杂推理与工程编码等考验知识广度与深度探索的基准上达成全面领先。 Q：智能体多轮轨迹中的环境观测（Terminal 输出）为什么不能顺次参与 GAE 时序差分？ 外部观测 Token（例如 500 行编译器报错或 Bash 执行结果）并非模型策略 $\\pi_\\theta$ 生成，其文本分布由外部编译器、解释器或沙盒物理环境决定。若不跨过这些 Token，Critic 网络会强行去建模外部环境的状态转移概率，导致时序差分误差被外界随机性严重污染，无法为模型前后的真实动作进行正确的信用分配。"
       },
       {
+        "h": "全文问答 · Q：DIS 的双侧硬门控和 PPO 的 Clip 截断到底有什么本质区别？为什么异步下必须置零？",
+        "a": "notes/papers/2026-sao.html#qa-dis-vs-ppo-clip",
+        "t": "Q：DIS 的双侧硬门控和 PPO 的 Clip 截断到底有什么本质区别？为什么异步下必须置零？ PPO 的 Clip 是「饱和截断」：当比值越界时，强行以边界值 $1+\\epsilon$ 计算，梯度依然存在且持续推动更新。在同步同分布下这能提供稳定的保守更新；但在异步集群中，严重越界的比值代表数据产生自极为陈旧的模型快照，该动作在当前策略下已经被认定为不可信。若继续以 $1+\\epsilon$ 强推，累积的 Off-policy 伪梯度会在百余步内直接撕裂分布。DIS 采取硬门控置零（$f=0$），直接关闭该 Token 的梯度流，宁可不学、绝不学歪。"
+      },
+      {
+        "h": "全文问答 · Q：单 Rollout 的单题方差天然高于组采样，为什么长时程智能体整体训练效果反而大幅超越 GRPO？",
+        "a": "notes/papers/2026-sao.html#qa-single-rollout-variance",
+        "t": "Q：单 Rollout 的单题方差天然高于组采样，为什么长时程智能体整体训练效果反而大幅超越 GRPO？ 长时程多轮智能体任务在固定算力预算下的核心矛盾是「木桶等待造成的算力空转」与「Prompt 覆盖多样性严重匮乏」。GRPO 同一题采 8 条，不仅导致快节点苦等慢节点，而且见到的题目种类只有 $1/8$。SAO 凭借预训练充分且冻结注意力的 Critic 吸收掉了单题方差，同时将 Prompt 探索空间拓宽了 8 倍，因而在复杂推理与工程编码等考验知识广度与深度探索的基准上达成全面领先。"
+      },
+      {
+        "h": "全文问答 · Q：智能体多轮轨迹中的环境观测（Terminal 输出）为什么不能顺次参与 GAE 时序差分？",
+        "a": "notes/papers/2026-sao.html#qa-skip-observation-noise",
+        "t": "Q：智能体多轮轨迹中的环境观测（Terminal 输出）为什么不能顺次参与 GAE 时序差分？ 外部观测 Token（例如 500 行编译器报错或 Bash 执行结果）并非模型策略 $\\pi_\\theta$ 生成，其文本分布由外部编译器、解释器或沙盒物理环境决定。若不跨过这些 Token，Critic 网络会强行去建模外部环境的状态转移概率，导致时序差分误差被外界随机性严重污染，无法为模型前后的真实动作进行正确的信用分配。"
+      },
+      {
         "h": "全文 · 还没搞懂",
         "a": "notes/papers/2026-sao.html#open",
         "t": "还没搞懂 待探索：在长时程多轮智能体中，Critic 网络是否可能通过与 Policy 参数浅层共享或 LoRA 微调来降低显存开销，而无需完全保留独立的对等规模网络？ 待验证：DIS 的非对称裁剪阈值（$\\epsilon_l=0.3 \\sim 0.8, \\epsilon_h=3.0 \\sim 5.0$）在非 MoE 架构（Dense 模型）或连续状态控制智能体任务上的普适性与灵敏度规律。"
@@ -2226,7 +2337,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关联",
         "a": "notes/papers/2026-sao.html#relations",
-        "t": "关联 DeepSeekMath / GRPO ： GRPO 靠组内均值消灭了独立 Critic，在短推理与同步训练下极其高效；SAO 揭示了其在异步长时程智能体任务下的木桶同步瓶颈与非平稳失效，重新证明了独立强 Critic 的必要性。 PPO ： SAO 继承了 Actor-Critic 范式与 GAE 优势估计，但将 PPO 的三模型结构与软截断改写为基于推理端行为概率的单 Rollout 双侧硬门控（DIS）。 GSPO ： GSPO 从序列级长度归一化似然解决 MoE 路由跳变与逐 Token 撕裂；SAO 则从系统异步性与智能体长轨迹出发，通过单 Rollout 与 DIS 实现高吞吐千步稳训。"
+        "t": "关联 DeepSeekMath / GRPO ： GRPO 靠组内均值消灭了独立 Critic，在短推理与同步训练下极其高效；SAO 揭示了其在异步长时程智能体任务下的木桶同步瓶颈与非平稳失效，重新证明了独立强 Critic 的必要性。 PPO ： SAO 继承了 Actor-Critic 范式与 GAE 优势估计，但将 PPO 的三模型结构与软截断改写为基于推理端行为概率的单 Rollout 双侧硬门控（DIS）。 GSPO ： GSPO 从序列级长度归一化似然解决 MoE 路由跳变与逐 Token 撕裂；SAO 则从系统异步性与智能体长轨迹出发，通过单 Rollout 与 DIS 实现高吞吐千步稳训。 DAPO ： 同步长推理 vs 异步长时程智能体对照：DAPO 在同步组采样下用 Dynamic Sampling 过滤全对/全错题并补满批次、配合 Clip-Higher 放宽正优势上界；SAO 针对多轮工具交互的长尾同步等待，直接改为 $G=1$ 单 Rollout 即采即训，并用非对称宽区间 $[\\epsilon_l, \\epsilon_h]$ 的 DIS 硬门控抵御策略滞后。"
       }
     ]
   },
@@ -2258,7 +2369,7 @@ window.WIKI_INDEX = [
       "next": "2026-09-17",
       "last": "2026-09-10",
       "count": 1,
-      "result": ""
+      "result": "pass"
     },
     "relations": [],
     "members": [
@@ -2384,7 +2495,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关系记录",
         "a": "notes/syntheses/distillation.html#relations",
-        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-distill-asymmetry-source 2026-u-opsd compare 2026-s2vopd 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations a52b09ab rel-distill-divergence-fact 2026-u-opsd tension 2026-s2vopd 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 在其实验中 forward KL 更稳（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 reported notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence 027ac948 rel-distill-recoverability 2026-u-opsd compare 2026-s2vopd 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 hypothesis notes/papers/2026-s2vopd.html#open 741401a2 rel-distill-orthogonal-slices 2026-u-opsd complement 2026-open-mopd 单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-combine-self-teachers 2026-u-opsd possible-combination 2026-open-mopd 组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节提出了组合设想，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额 hypothesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-divergence-slot 2026-u-opsd compare 2026-open-mopd 散度的角色不同：U-OPSD 的 forward KL 直接当损失（其 reverse KL 实验出现复读塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 PPO 裁剪目标）；同方向不同框架，不矛盾 reported notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 93f4992d rel-distill-self-asymmetry-in-multi 2026-s2vopd possible-combination 2026-open-mopd 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） hypothesis notes/papers/2026-s2vopd.html#relations 1e64510c rel-distill-ppo-prerequisite 2017-ppo prerequisite 2026-open-mopd Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，clip fraction 约为 75.8%，不等于全部梯度冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob reported notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse 08620a65"
+        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-distill-asymmetry-source 2026-u-opsd compare 2026-s2vopd 同一作者线在两个域给出单教师信息差的两种构造：U-OPSD 给教师加信息（伪解轨迹拼进教师上下文），S²VOPD 从学生减信息（输入图退化）；两者共享「师生只差一份信息」的前提 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-s2vopd.html#relations a52b09ab rel-distill-divergence-fact 2026-u-opsd tension 2026-s2vopd 散度消融排序颠倒是两篇各自报告的实验事实：U-OPSD 在其实验中 forward KL 更稳（reverse KL 复读塌缩、JSD 掉 13.8），S²VOPD 则 JSD 最好、reverse KL 居中、forward KL 最差；两组实验条件不同，不能说一篇推翻另一篇 reported notes/papers/2026-u-opsd.html#qa-fwd-kl notes/papers/2026-s2vopd.html#qa-divergence 027ac948 rel-distill-recoverability 2026-u-opsd compare 2026-s2vopd 「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论 hypothesis notes/papers/2026-s2vopd.html#open deb3b3b8 rel-distill-orthogonal-slices 2026-u-opsd complement 2026-open-mopd 单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖 synthesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 03d5e06c rel-distill-combine-self-teachers 2026-u-opsd possible-combination 2026-open-mopd 组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节提出了组合设想，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额 hypothesis notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 03d5e06c rel-distill-divergence-slot 2026-u-opsd compare 2026-open-mopd 散度的角色不同：U-OPSD 的 forward KL 直接当损失（其 reverse KL 实验出现复读塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 PPO 裁剪目标）；同方向不同框架，不矛盾 reported notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations 03d5e06c rel-distill-self-asymmetry-in-multi 2026-s2vopd possible-combination 2026-open-mopd 组合设想（库内无实验）：多教师框架里每个教师都可以用 S²VOPD 式自构造不对称（零特权） hypothesis notes/papers/2026-s2vopd.html#relations 1e64510c rel-distill-ppo-prerequisite 2017-ppo prerequisite 2026-open-mopd Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，clip fraction 约为 75.8%，不等于全部梯度冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob reported notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse e227272b"
       },
       {
         "h": "全文 · 分叉与演进",
@@ -2469,7 +2580,7 @@ window.WIKI_INDEX = [
       "next": "2026-09-17",
       "last": "2026-09-10",
       "count": 1,
-      "result": ""
+      "result": "pass"
     },
     "relations": [],
     "members": [
@@ -2583,7 +2694,7 @@ window.WIKI_INDEX = [
       {
         "h": "全文 · 关系记录",
         "a": "notes/syntheses/video-understanding.html#relations",
-        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-video-perception-vs-timing 2026-videochat3 complement 2026-vst VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 reported notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations 1146b31b rel-video-timing-before-vs-after 2026-vst compare 2026-video-o3 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 synthesis notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations b3219999 rel-video-how-much-vs-where 2026-videochat3 complement 2026-video-o3 VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） synthesis notes/papers/2026-video-o3.html#relations 5b28a654 rel-video-tspo-vs-video-o3 2026-tspo compare 2026-video-o3 两者都针对稀疏证据，但 TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活，延迟与适应性取舍不同 synthesis notes/papers/2026-tspo.html#relations 3bd90554 rel-video-combine-feasible 2026-vst possible-combination 2026-video-o3 组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度 hypothesis notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations 5f9d0a5a rel-video-combine-timing-conflict 2026-vst tension 2026-video-o3 组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 synthesis notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations 5f9d0a5a rel-video-encoder-pretraining 2026-genlip possible-combination 2026-videochat3 GenLIP 讨论视觉编码器的预训练，VideoChat3 讨论时空编码；将 GenLIP 接入 I3D-ViT 是组合设想，本库没有该替换实验 hypothesis notes/papers/2026-videochat3.html#relations 8abdd1b0"
+        "t": "关系记录 规范记录。导读页的关系表、静态图与搜索条目都是它的投影；论文页既有的关系卡在迁移时逐条核对到这里的关系 ID。 关系 ID 起点 类型 终点 一句主张 证据状态 依据锚点 指纹 --- --- --- --- --- --- --- --- rel-video-perception-vs-timing 2026-videochat3 complement 2026-vst VideoChat3 管感知效率（编码器压 token、状态机自适应分辨率），VST 管认知时机（推理前置、文本记忆），思路正交可互补；VST 论文自述其文本记忆与视觉记忆机制正交 reported notes/papers/2026-videochat3.html#relations notes/papers/2026-vst.html#relations fafd165f rel-video-timing-before-vs-after 2026-vst compare 2026-video-o3 推理时机不同：VST 查询前边看边想、查询即答 0.56s；Video-o3 查询后多轮裁剪找线索、MLVU 推理 10.2s；一个解决实时性，一个解决多跳精度 synthesis notes/papers/2026-video-o3.html#qa-timing notes/papers/2026-vst.html#relations 92555be7 rel-video-how-much-vs-where 2026-videochat3 complement 2026-video-o3 VideoChat3 靠编码器压缩与状态机决定看多少像素（感知效率），Video-o3 靠推理时工具调用决定看哪里（检索精度） synthesis notes/papers/2026-video-o3.html#relations 32aad0dc rel-video-tspo-vs-video-o3 2026-tspo compare 2026-video-o3 两者都针对稀疏证据，但 TSPO 在回答前训练 temporal agent 一次性选帧，Video-o3 在查询后多轮调用工具搜索；前者路径短，后者 test-time 搜索更灵活，延迟与适应性取舍不同 synthesis notes/papers/2026-tspo.html#relations 3bd90554 rel-video-combine-feasible 2026-vst possible-combination 2026-video-o3 组合设想（库内无实验）：VST 文本记忆 + Video-o3 工具裁剪可互补实时性与多跳精度 hypothesis notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations 19df2790 rel-video-combine-timing-conflict 2026-vst tension 2026-video-o3 组合的结构性障碍（库内对照，依据两页关联节自述）：「查询即答」与「多轮探索后才答」在响应时机上逻辑冲突，需新的统一调度；VideoChat3 的状态 token 与 VST 组合时是同一个问题 synthesis notes/papers/2026-video-o3.html#qa-combine notes/papers/2026-vst.html#relations 19df2790 rel-video-encoder-pretraining 2026-genlip possible-combination 2026-videochat3 GenLIP 讨论视觉编码器的预训练，VideoChat3 讨论时空编码；将 GenLIP 接入 I3D-ViT 是组合设想，本库没有该替换实验 hypothesis notes/papers/2026-videochat3.html#relations 55ff314a"
       },
       {
         "h": "全文 · 分叉与演进",

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GSPO · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -68,46 +68,46 @@
 <ol>
 <li><strong>奖励与优化的粒度错位（Unit Mismatch）与长链条方差爆炸</strong>：<ul>
 <li>外部评估（数学对错、代码测例）是<strong>序列级标量奖励</strong>（Outcome Reward），算法无法获知每个 token 的真实因果贡献；</li>
-<li>GRPO 强行在每个 token 上独立计算重要性比率 <span class="note-math">$r_{i,t} = \frac{\pi_\theta(y_{i,t})}{\pi_{\text{old}}(y_{i,t})}$</span> 并独立执行 <span class="note-math">$[1-\varepsilon, 1+\varepsilon]$</span> 裁剪；</li>
+<li>GRPO 强行在每个 token 上独立计算重要性比率 <span class="note-math" data-tex="r_{i,t} = \frac{\pi_\theta(y_{i,t})}{\pi_{\text{old}}(y_{i,t})}"><math><mrow><msub><mi>r</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo>=</mo><mfrac><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><mtext>old</mtext></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac></mrow></math></span> 并独立执行 <span class="note-math" data-tex="[1-\varepsilon, 1+\varepsilon]"><math><mrow><mo fence="true" form="prefix" stretchy="false">[</mo><mn>1</mn><mo>−</mo><mi>ε</mi><mo separator="true">,</mo><mn>1</mn><mo>+</mo><mi>ε</mi><mo fence="true" form="postfix" stretchy="false">]</mo></mrow></math></span> 裁剪；</li>
 <li>在长达数千 token 的推导中，整条本该协同强化的正确解题过程，部分 token 满足比率被放大，部分 token 越过阈值被强行截断为 0 梯度，导致连贯的思维链被撕裂。累计梯度方差随生成长度激增，容易诱发不可逆的<strong>灾难性模型崩溃（Model Collapse）</strong>。</li>
 </ul>
 </li>
 <li><strong>MoE 模型的稀疏路由地震与沉重的工程包袱</strong>：<ul>
 <li>在混合专家（MoE）模型中，每个 token 由门控路由分配给 Top-K 专家；</li>
-<li>训练步轻微更新后，某些 token 激活的专家组合发生变动，导致单 token 条件概率剧烈跳跃，使得 token 级比率 <span class="note-math">$r_t$</span> 瞬间飞出正常区间甚至溢出；</li>
+<li>训练步轻微更新后，某些 token 激活的专家组合发生变动，导致单 token 条件概率剧烈跳跃，使得 token 级比率 <span class="note-math" data-tex="r_t"><math><msub><mi>r</mi><mi>t</mi></msub></math></span> 瞬间飞出正常区间甚至溢出；</li>
 <li>过去为了维系 MoE 的 GRPO 训练收敛，业界被迫引入 <strong>Routing Replay（路由回放）</strong>：Rollout 采样时必须在显存中缓存每一层、每个 token 的激活专家索引，训练前向传播时强行劫持 Router 注入旧专家。这造成了极其庞大的显存占用、分布式跨集群通信延迟与脆弱的底层算子侵入。</li>
 </ul>
 </li>
 </ol>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="类比：合力做大题与拔河比赛">类比：合力做大题与拔河比赛</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：合力做大题与拔河比赛</h3>
 <p>把模型的长思维链推理比作一个班级齐心协力解出一道压轴奥数题：</p>
 <ul>
-<li><strong>GRPO 的做法</strong>：老师给整道题打了满分（序列级奖励 <span class="note-math">$\widehat{A} &gt; 0$</span>）。但发奖励时，主任拿着放大镜去给每个人的「呼吸频率」算系数——谁呼吸稍微急促了一点就当场扇一巴掌让他闭嘴（Token 级裁剪截断梯度）；谁呼吸平缓就硬拉着往前拽。一条完整严密的证明被切成了无数段碎肉，队员互相绊倒，全班当场散伙。</li>
+<li><strong>GRPO 的做法</strong>：老师给整道题打了满分（序列级奖励 <span class="note-math" data-tex="\widehat{A} &gt; 0"><math><mrow><mover><mi>A</mi><mo stretchy="true" class="tml-hat-1 tml-depth-0">ˆ</mo></mover><mo>&gt;</mo><mn>0</mn></mrow></math></span>）。但发奖励时，主任拿着放大镜去给每个人的「呼吸频率」算系数——谁呼吸稍微急促了一点就当场扇一巴掌让他闭嘴（Token 级裁剪截断梯度）；谁呼吸平缓就硬拉着往前拽。一条完整严密的证明被切成了无数段碎肉，队员互相绊倒，全班当场散伙。</li>
 <li><strong>GSPO 的做法</strong>：主任只看整班人交出来的试卷总体倾向相比草稿调整了多少（整篇序列似然取几何平均）。只要整篇文章的方向可控，所有队员共享平滑、同步的奖励；若整篇跑偏过远，则全篇统一减速。整篇逻辑骨架保持完整，方差自然消失。</li>
 </ul>
 <p>在 MoE 架构中，就像班里有 64 位不同学科的专家辅导员。GRPO 因为单字微观挑刺，一旦门卫把某个字的辅导员换成了另一个人，该字的比率就会爆发大地震；而 GSPO 关注整篇作文的宏观质量，个别专家的微调被全篇数千字平滑稀释，根本不需要花重金雇佣监工（Routing Replay）强行规定谁辅导哪个字。</p>
 </section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="1-长度归一化的序列重要性比率（length-normalized-sequence-ratio）">1. 长度归一化的序列重要性比率（Length-Normalized Sequence Ratio）</h3>
-<p>GSPO 将重要性采样比率定义在整条候选序列 <span class="note-math">$y_i$</span> 的联合概率上，并通过序列长度 <span class="note-math">$|y_i|$</span> 取几何平均：</p>
-<pre class="note-pre">$$s_i(\theta) = \left[ \frac{\pi_\theta(y_i \mid x)}{\pi_{\theta_{\text{old}}}(y_i \mid x)} \right]^{\frac{1}{|y_i|}} = \exp\left( \frac{1}{|y_i|} \sum_{t=1}^{|y_i|} \log \frac{\pi_\theta(y_{i,t} \mid x, y_{i,&lt;t})}{\pi_{\theta_{\text{old}}}(y_{i,t} \mid x, y_{i,&lt;t})} \right)$$</pre>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>1. 长度归一化的序列重要性比率（Length-Normalized Sequence Ratio）</h3>
+<p>GSPO 将重要性采样比率定义在整条候选序列 <span class="note-math" data-tex="y_i"><math><msub><mi>y</mi><mi>i</mi></msub></math></span> 的联合概率上，并通过序列长度 <span class="note-math" data-tex="|y_i|"><math><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></math></span> 取几何平均：</p>
+<div class="note-math-block" data-tex="s_i(\theta) = \left[ \frac{\pi_\theta(y_i \mid x)}{\pi_{\theta_{\text{old}}}(y_i \mid x)} \right]^{\frac{1}{|y_i|}} = \exp\left( \frac{1}{|y_i|} \sum_{t=1}^{|y_i|} \log \frac{\pi_\theta(y_{i,t} \mid x, y_{i,&lt;t})}{\pi_{\theta_{\text{old}}}(y_{i,t} \mid x, y_{i,&lt;t})} \right)"><math display="block" class="tml-display"><mrow><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><msup><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mfrac><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mi>i</mi></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><msub><mi>θ</mi><mtext>old</mtext></msub></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mi>i</mi></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><mo fence="true" form="postfix" stretchy="true">]</mo></mrow><mfrac><mn scriptlevel="2" class="tml-depth-2">1</mn><mrow scriptlevel="2" class="tml-depth-2"><mi>|</mi><msub><mi>y</mi><mi scriptlevel="2">i</mi></msub><mi>|</mi></mrow></mfrac></msup><mo>=</mo><mrow><mi>exp</mi><mo>⁡</mo></mrow><mrow><mo fence="true" form="prefix" stretchy="true">(</mo><mfrac><mn>1</mn><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></munderover></mrow><mrow><mi>log</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><mfrac><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo separator="true">,</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mo>&lt;</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><msub><mi>θ</mi><mtext>old</mtext></msub></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo separator="true">,</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mo>&lt;</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><mo fence="true" form="postfix" stretchy="true">)</mo></mrow></mrow></math></div>
 <ul>
-<li><strong>数值稳定性保障</strong>：若直接计算联合概率比的连乘 <span class="note-math">$\prod_{t=1}^{|y_i|} r_{i,t}$</span>，数千步的概率积在浮点精度下必然下溢至 0 或极端爆炸；通过取 <span class="note-math">$\frac{1}{|y_i|}$</span> 次方（即 log-ratio 算术平均后再指数化），<span class="note-math">$s_i(\theta)$</span> 在不同生成长度下均稳定居中在 1.0 附近。</li>
+<li><strong>数值稳定性保障</strong>：若直接计算联合概率比的连乘 <span class="note-math" data-tex="\prod_{t=1}^{|y_i|} r_{i,t}"><math><mrow><msubsup><mo movablelimits="false">∏</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></msubsup><msub><mi>r</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub></mrow></math></span>，数千步的概率积在浮点精度下必然下溢至 0 或极端爆炸；通过取 <span class="note-math" data-tex="\frac{1}{|y_i|}"><math><mfrac><mn>1</mn><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac></math></span> 次方（即 log-ratio 算术平均后再指数化），<span class="note-math" data-tex="s_i(\theta)"><math><mrow><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></span> 在不同生成长度下均稳定居中在 1.0 附近。</li>
 </ul>
-<h3 id="2-序列级裁剪代理目标（sequence-level-clipped-objective）">2. 序列级裁剪代理目标（Sequence-level Clipped Objective）</h3>
-<p>将裁剪限制在整条序列的全局标量比率 <span class="note-math">$s_i(\theta)$</span> 上：</p>
-<pre class="note-pre">$$\mathcal{J}_{\text{GSPO}}(\theta) = \mathbb{E}_{x \sim \mathcal{D},\, \{y_i\}_{i=1}^G \sim \pi_{\theta_{\text{old}}}}\left[ \frac{1}{G} \sum_{i=1}^G \min\left( s_i(\theta)\widehat{A}_i, \; \text{clip}\left(s_i(\theta), \, 1 - \varepsilon, \, 1 + \varepsilon\right)\widehat{A}_i \right) \right]$$</pre>
-<p>其中 <span class="note-math">$\widehat{A}_i$</span> 沿用组内相对标准化优势：<span class="note-math">$\widehat{A}_i = \frac{R_i - \text{mean}(R)}{\text{std}(R)}$</span>。</p>
-<h3 id="3-梯度展开与序列内同频更新">3. 梯度展开与序列内同频更新</h3>
+<h3>2. 序列级裁剪代理目标（Sequence-level Clipped Objective）</h3>
+<p>将裁剪限制在整条序列的全局标量比率 <span class="note-math" data-tex="s_i(\theta)"><math><mrow><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></span> 上：</p>
+<div class="note-math-block" data-tex="\mathcal{J}_{\text{GSPO}}(\theta) = \mathbb{E}_{x \sim \mathcal{D},\, \{y_i\}_{i=1}^G \sim \pi_{\theta_{\text{old}}}}\left[ \frac{1}{G} \sum_{i=1}^G \min\left( s_i(\theta)\widehat{A}_i, \; \text{clip}\left(s_i(\theta), \, 1 - \varepsilon, \, 1 + \varepsilon\right)\widehat{A}_i \right) \right]"><math display="block" class="tml-display"><mrow><msub><mi class="mathcal">𝒥</mi><mtext>GSPO</mtext></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><mrow><mi>x</mi><mo>∼</mo><mi class="mathcal">𝒟</mi><mo separator="true">,</mo><mspace width="0.1667em"></mspace><msubsup><mrow><mo fence="true" form="prefix" stretchy="false">{</mo><msub><mi>y</mi><mi>i</mi></msub><mo fence="true" form="postfix" stretchy="false">}</mo></mrow><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></msubsup><mo>∼</mo><msub><mi>π</mi><msub><mi>θ</mi><mtext scriptlevel="2">old</mtext></msub></msub></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mfrac><mn>1</mn><mi>G</mi></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></munderover></mrow><mrow><mi>min</mi><mo>⁡</mo></mrow><mrow><mo fence="true" form="prefix" stretchy="true">(</mo><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><msub><mover><mi>A</mi><mo stretchy="true" class="tml-hat-1 tml-depth-0">ˆ</mo></mover><mi>i</mi></msub><mo separator="true">,</mo><mspace width="0.2778em"></mspace><mtext>clip</mtext><mrow><mo fence="true" form="prefix" stretchy="true">(</mo><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo separator="true">,</mo><mspace width="0.1667em"></mspace><mn>1</mn><mo>−</mo><mi>ε</mi><mo separator="true">,</mo><mspace width="0.1667em"></mspace><mn>1</mn><mo>+</mo><mi>ε</mi><mo fence="true" form="postfix" stretchy="true">)</mo></mrow><msub><mover><mi>A</mi><mo stretchy="true" class="tml-hat-1 tml-depth-0">ˆ</mo></mover><mi>i</mi></msub><mo fence="true" form="postfix" stretchy="true">)</mo></mrow><mo fence="true" form="postfix" stretchy="true">]</mo></mrow></mrow></math></div>
+<p>其中 <span class="note-math" data-tex="\widehat{A}_i"><math><msub><mover><mi>A</mi><mo stretchy="true" class="tml-hat-1 tml-depth-0">ˆ</mo></mover><mi>i</mi></msub></math></span> 沿用组内相对标准化优势：<span class="note-math" data-tex="\widehat{A}_i = \frac{R_i - \text{mean}(R)}{\text{std}(R)}"><math><mrow><msub><mover><mi>A</mi><mo stretchy="true" class="tml-hat-1 tml-depth-0">ˆ</mo></mover><mi>i</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>R</mi><mi>i</mi></msub><mo>−</mo><mtext>mean</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>R</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><mtext>std</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>R</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac></mrow></math></span>。</p>
+<h3>3. 梯度展开与序列内同频更新</h3>
 <p>对未触发裁剪的序列求梯度：</p>
-<pre class="note-pre">$$\nabla_\theta \mathcal{J}_{\text{GSPO}} = \frac{1}{G} \sum_{i=1}^G \widehat{A}_i \cdot s_i(\theta) \cdot \frac{1}{|y_i|} \sum_{t=1}^{|y_i|} \nabla_\theta \log \pi_\theta(y_{i,t} \mid x, y_{i,&lt;t})$$</pre>
+<div class="note-math-block" data-tex="\nabla_\theta \mathcal{J}_{\text{GSPO}} = \frac{1}{G} \sum_{i=1}^G \widehat{A}_i \cdot s_i(\theta) \cdot \frac{1}{|y_i|} \sum_{t=1}^{|y_i|} \nabla_\theta \log \pi_\theta(y_{i,t} \mid x, y_{i,&lt;t})"><math display="block" class="tml-display"><mrow><msub><mo form="prefix" stretchy="false">∇</mo><mi>θ</mi></msub><msub><mi class="mathcal">𝒥</mi><mtext>GSPO</mtext></msub><mo>=</mo><mfrac><mn>1</mn><mi>G</mi></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></munderover></mrow><msub><mover><mi>A</mi><mo stretchy="true" class="tml-hat-1 tml-depth-0">ˆ</mo></mover><mi>i</mi></msub><mo>⋅</mo><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>⋅</mo><mfrac><mn>1</mn><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></munderover></mrow><msub><mo form="prefix" stretchy="false">∇</mo><mi>θ</mi></msub><mrow><mi>log</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>x</mi><mo separator="true">,</mo><msub><mi>y</mi><mrow><mi>i</mi><mo separator="true">,</mo><mo>&lt;</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></div>
 <ul>
-<li>在反向传播时，序列 <span class="note-math">$y_i$</span> 内每一个 token 共享统一的缩放因子 <span class="note-math">$\frac{\widehat{A}_i \cdot s_i(\theta)}{|y_i|}$</span>，消除了局部 token 梯度非均匀裁剪造成的语义扭曲；</li>
+<li>在反向传播时，序列 <span class="note-math" data-tex="y_i"><math><msub><mi>y</mi><mi>i</mi></msub></math></span> 内每一个 token 共享统一的缩放因子 <span class="note-math" data-tex="\frac{\widehat{A}_i \cdot s_i(\theta)}{|y_i|}"><math><mfrac><mrow><msub><mover><mi>A</mi><mo stretchy="true" class="tml-hat-1 tml-depth-0">ˆ</mo></mover><mi>i</mi></msub><mo>⋅</mo><msub><mi>s</mi><mi>i</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><mi>|</mi><msub><mi>y</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac></math></span>，消除了局部 token 梯度非均匀裁剪造成的语义扭曲；</li>
 <li>只有当整条序列偏离旧策略过远时，裁剪才一次性踩刹车，保护完整逻辑链路。</li>
 </ul>
-<h3 id="4-彻底抛弃-routing-replay">4. 彻底抛弃 Routing Replay</h3>
+<h3>4. 彻底抛弃 Routing Replay</h3>
 <p>在 48 层的 Qwen3-30B-A3B-Base 中，一次更新后约 10% 的 token 会路由到不同专家。在 GSPO 下，序列似然的宏观平滑性抵抗了微观专家路径震荡，系统无需在显存中缓存路由索引，节省数 GB 显存与繁重的跨集群 All-to-All 路由通信。</p>
-<h3 id="5-解耦推理与训练重算（rl-infrastructure-简化）">5. 解耦推理与训练重算（RL Infrastructure 简化）</h3>
+<h3>5. 解耦推理与训练重算（RL Infrastructure 简化）</h3>
 <p>由于训练引擎（Megatron）与推理引擎（vLLM / SGLang）之间存在底层算子浮点差异，GRPO 必须在训练端重新前向跑一遍旧策略以消除单 token 误差。GSPO 对单 token 精度差异容忍度高，可直接复用推理引擎产出的序列似然，在分布式训练架构下进一步提升吞吐。</p>
 </section>
 <section class="note-sec" id="evidence"><h2>结果与代价</h2><ul>
@@ -158,13 +158,16 @@
 </ul>
 </section>
 <section class="note-sec" id="relations"><h2>关联</h2><ul>
+<li><a href="2026-sao.html">SAO</a> — 异步智能体与长轨迹优化另一路线：GSPO 聚焦同步组相对训练下的 MoE 路由跳变与序列似然几何平滑；SAO 则从异步高并发流水线出发，废除组采样改用单 Rollout 即采即训，配合双侧硬门控 DIS 与冻结注意力的强 Critic 稳定收敛。</li>
 <li><a href="2017-ppo.html">PPO</a> — 奠定了裁剪代理目标（Clipped Surrogate）与信任域优化范式，GSPO 将其单步裁剪拓展为序列级裁剪。</li>
 <li><a href="2024-deepseekmath.html">DeepSeekMath</a> — 提出了 GRPO 组相对优势估计，GSPO 继承其去 Critic 的组比较架构并修复其 Token 级方差缺陷。</li>
 <li><a href="2025-dapo.html">DAPO</a> — 同样针对长思维链 RL 的稳定性瓶颈，DAPO 采用不对称 Clip-Higher 与 Token-level loss weight 启发式调优，GSPO 则在数学粒度上更彻底地重塑为序列似然比。</li>
 </ul>
 </section>
 <footer class="note-foot"><a href="../../papers/2025-gspo.html">← 返回阅读页</a><a href="../../../wiki/papers/2025-gspo.md">markdown 源文件（唯一真源）</a><span>本页是完整笔记的静态投影，保留原话、限定与假说标记。</span></footer>
-</main>
+  </main>
 </div>
+<script src="../../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

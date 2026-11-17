@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PPO · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -96,7 +96,8 @@
           <h2>关键机制：悲观下界与外层 min</h2>
           <span class="slide-no">03</span>
         </div>
-        <p>核心损失函数定义为：L_CLIP(θ) = E_t [ min(r_t(θ) A_t, clip(r_t(θ), 1-ε, 1+ε) A_t) ]。外层 min 构成了非对称保护伞：</p>
+        <p>核心裁剪代理目标由外层 min 构成非对称下界：</p>
+        <div class="note-math-block" data-tex="L^{\text{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min\!\Big( r_t(\theta)\hat{A}_t,\; \text{clip}\big(r_t(\theta), 1-\epsilon, 1+\epsilon\big)\hat{A}_t \Big) \right]"><math display="block" class="tml-display"><mrow><msup><mi>L</mi><mtext class="tml-sml-pad">CLIP</mtext></msup><mo form="prefix" stretchy="false">(</mo><mi>θ</mi><mo form="postfix" stretchy="false">)</mo><mo>=</mo><msub><mover><mi>𝔼</mi><mo stretchy="false" class="wbk-acc tml-depth-0">ˆ</mo></mover><mi>t</mi></msub><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mrow><mi>min</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><mrow></mrow><mo fence="false" symmetric="true" minsize="1.8em" maxsize="1.8em">(</mo><msub><mi>r</mi><mi>t</mi></msub><mo form="prefix" stretchy="false">(</mo><mi>θ</mi><mo form="postfix" stretchy="false">)</mo><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mi>t</mi></msub><mo separator="true">,</mo><mspace width="0.2778em"></mspace><mtext>clip</mtext><mo fence="false" symmetric="true" minsize="1.2em" maxsize="1.2em">(</mo><msub><mi>r</mi><mi>t</mi></msub><mo form="prefix" stretchy="false">(</mo><mi>θ</mi><mo form="postfix" stretchy="false">)</mo><mo separator="true">,</mo><mn>1</mn><mo>−</mo><mi>ϵ</mi><mo separator="true">,</mo><mn>1</mn><mo>+</mo><mi>ϵ</mi><mo fence="false" symmetric="true" minsize="1.2em" maxsize="1.2em">)</mo><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mi>t</mi></msub><mo fence="false" symmetric="true" minsize="1.8em" maxsize="1.8em">)</mo><mo fence="true" form="postfix" stretchy="true">]</mo></mrow></mrow></math></div>
         <table class="dtable">
           <thead><tr><th>优势信号</th><th>目标与比率变化</th><th>clip 截断效果</th><th>外层 min 的保护意义</th></tr></thead>
           <tbody>
@@ -211,12 +212,12 @@
           <div class="qa" id="qa-min-bound">
   <p class="qa-q">Q：为什么公式里既要有 clip 又必须有外层的 min？只保留 clip(r, 1-eps, 1+eps) * A 会发生什么？</p>
   <div class="qa-a">
-    <p>如果只有裁剪项，当一个动作的优势为负（$\hat{A}_t < 0$，糟糕动作），且网络在某次更新中错误地**大幅增加了该动作的概率**（例如 $r_t = 2.0$）时，裁剪项会把比率截断在 $1+\epsilon = 1.2$。这会导致两个致命错误：</p>
+    <p>如果只有裁剪项，当一个动作的优势为负（<code>A_t &lt; 0</code>，糟糕动作），且网络在某次更新中错误地<strong>大幅增加了该动作的概率</strong>（例如 <code>r_t = 2.0</code>）时，裁剪项会把比率截断在 <code>1+ε = 1.2</code>。这会导致两个致命错误：</p>
     <ol>
-      <li><strong>惩罚被严重缩小</strong>：损失值从真实的 $2.0 \hat{A}_t$ 变成了 $-1.2|\hat{A}_t|$，对恶性错误的惩罚被人为减轻；</li>
+      <li><strong>惩罚被严重缩小</strong>：损失值从真实的 <code>2.0 A_t</code> 变成了 <code>-1.2|A_t|</code>，对恶性错误的惩罚被人为减轻；</li>
       <li><strong>梯度直接归零</strong>：因为比率被锁定在常数边界 1.2 上，导数变为 0，优化器根本收不到惩罚信号来降低这个危险动作的概率！</li>
     </ol>
-    <p>外层的 $\min$ 取未裁剪项 $r_t \hat{A}_t$ 与截断项的最小值，在负优势且动作概率激增时强行保留了真实的未截断值，保留沿降低坏动作概率方向的纠偏信号；梯度大小和最终更新效果仍取决于参数化、优势与其他样本。</p>
+    <p>外层的 <code>min</code> 取未裁剪项 <code>r_t A_t</code> 与截断项的最小值，在负优势且动作概率激增时强行保留了真实的未截断值，保留沿降低坏动作概率方向的纠偏信号；梯度大小和最终更新效果仍取决于参数化、优势与其他样本。</p>
   </div></div>
           <div class="qa" id="qa-on-policy-reuse">
   <p class="qa-q">Q：既然可以在同一批数据上跑多个 Epoch，为什么说 PPO 依然是严格的 on-policy 算法？为什么不能丢进 Replay Buffer 长期复用？</p>
@@ -248,7 +249,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">applied-in · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2026-open-mopd.html">Open-MOPD：Open-MOPD 在 PPO 多轮复用轨迹时刷新奖励，以缓解奖励陈旧；刷新不重新采样轨迹。</a></div></div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2024-deepseekmath.html">DeepSeekMath：GRPO 继承 PPO 裁剪代理目标，丢弃独立 Critic 改用同题组内标准化奖励作基线。</a></div><div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2025-dapo.html">DAPO：将对称裁剪解耦为非对称 Clip-Higher，在长推理 RL 中延后正优势平台以抑制熵坍缩。</a></div><div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2025-gspo.html">GSPO：将单步逐 token 比率与裁剪提升至整条序列的长度归一化几何平均似然比。</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-sao.html">SAO：继承 Actor-Critic 与 GAE，针对异步长尾场景改用推理端行为概率与双侧硬门控 DIS。</a></div><div class="link-item"><span class="link-rel">prerequisite · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2026-open-mopd.html">Open-MOPD：在 PPO 多轮复用轨迹时顺手用当前学生 logprob 刷新奖励，缓解奖励陈旧。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -270,7 +271,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-4"></script>
-<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

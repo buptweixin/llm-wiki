@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>蒸馏与训练预算 · 完整专题笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -35,7 +35,7 @@
       <div class="tagrow"><a class="tag" href="../../index.html?tag=on-policy-distillation">on-policy 蒸馏</a><a class="tag" href="../../index.html?tag=self-distillation">自蒸馏</a><a class="tag" href="../../index.html?tag=multi-teacher">多教师蒸馏</a><a class="tag" href="../../index.html?tag=budget-allocation">训练预算</a><a class="tag" href="../../index.html?tag=reduce-supervision">减少外部监督</a><a class="tag" href="../../index.html?tag=improve-training-efficiency">提高训练预算利用率</a></div>
     </header>
 <nav class="note-toc" aria-label="本页章节"><span class="note-toc-kicker">SECTIONS</span><a href="#essence">专题本质</a><a href="#map">问题与方法地图</a><a href="#relations">关系记录</a><a href="#evolution">分叉与演进</a><a href="#compare">关键维度比较</a><a href="#path">带着问题读论文</a><a href="#pitfalls">跨篇卡壳点</a><a href="#boundaries">证据边界与来源</a></nav>
-<section class="note-sec" id="essence"><h2>专题本质</h2><h3 id="用问题重建专题">用问题重建专题</h3>
+<section class="note-sec" id="essence"><h2>专题本质</h2><h3>用问题重建专题</h3>
 <div class="learning-guide" id="guide-distillation">
   <p class="guide-problem">先分清两个问题：单教师的学习信号从哪里来，多教师的训练预算如何分配。三个成员分别处理这两个切片。</p>
   <ol class="guide-path" aria-label="机制路径">
@@ -52,9 +52,7 @@
   </div>
   <aside class="guide-selftest"><h3>可选自测</h3><p class="guide-transfer">关掉提示后把三篇放回“信息差来源”与“预算分配”两个分支，并指出哪条跨篇解释仍待验证。</p></aside>
   <p class="guide-status">2026-10-04：讲解与练习待试用，本次未进行理解检验；此处不记录复测通过。</p>
-</div>
-
-<p>三篇论文围绕 on-policy 蒸馏（OPD，在学生自己采样的轨迹上逐 token 对齐教师分布）分成两个子问题：前两篇在自蒸馏里构造师生信息差（U-OPSD 给教师拼进一条多数投票出的完整解题轨迹，S²VOPD 反过来把学生的输入图退化），第三篇回答多个教师同时教时训练预算怎么分。Open-MOPD 的教师是三个不同的域专家，教师与学生本就是不同模型，不需要靠额外输入制造差异；因此本页不把它当作「信息差来源」谱系的一员。</p>
+</div><p>三篇论文围绕 on-policy 蒸馏（OPD，在学生自己采样的轨迹上逐 token 对齐教师分布）分成两个子问题：前两篇在自蒸馏里构造师生信息差（U-OPSD 给教师拼进一条多数投票出的完整解题轨迹，S²VOPD 反过来把学生的输入图退化），第三篇回答多个教师同时教时训练预算怎么分。Open-MOPD 的教师是三个不同的域专家，教师与学生本就是不同模型，不需要靠额外输入制造差异；因此本页不把它当作「信息差来源」谱系的一员。</p>
 <p><strong>自蒸馏里的信息差为什么必要</strong>：U-OPSD 与 S²VOPD 的教师与学生共享参数，若两者上下文也完全相同，分布就一致、逐 token KL 为零、无学习信号（<a href="../papers/2026-u-opsd.html#mechanism">U-OPSD 关键机制</a>：学生也看了 y+ 则教师=学生 KL 恒 0；<a href="../papers/2026-s2vopd.html#problem">S²VOPD 解决什么问题</a>：教师比学生多知道点什么才有信息量）。这条命题只在这类「同模型、同条件」的自蒸馏设置里成立，本页不把它外推为整个 OPD 家族的普适必要条件：教师与学生是不同模型时，分布差异天然存在，但不自动等于蒸馏信号有用。</p>
 <ol>
 <li><strong>教师的信息差从哪里来？</strong>（自蒸馏设置）传统答案都要外部资源（更大的模型、GT 答案、GT 区域标注）。U-OPSD 用模型自己多数投票出来的完整解题轨迹给教师加信息；S²VOPD 反过来，把学生的输入图退化，从学生身上减信息。两篇是同一作者线在文本推理域与视觉感知域的两个答案。</li>
@@ -63,7 +61,66 @@
 <p>范围说明：本专题不覆盖尚未入库的 OPD 基础工作（DistiLLM 系列、GKD）与 SFT / OPD / OPSD 三个谱系背景节点，它们只作为有来源说明的背景出现，不制造未入库论文的阅读卡。Open-MOPD 的教师是与学生不同的域专家，不属于「自蒸馏信息差来源」这一子问题，本专题只把它作为正交的「多教师预算」切片引用。</p>
 </section>
 <section class="note-sec" id="map"><h2>问题与方法地图</h2><p>图稿依据三篇论文页的「解决什么问题」与「关联」节组织。连线「问题分解」是库内组织方式；「对应方法」连线来自各论文自述。PPO 到 Open-MOPD 的虚线只表示理解前置，不表示论文继承。</p>
-<pre><code class="language-mermaid">flowchart TB
+<div class="hub-fig note-hub-fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" class="hub-svg" role="group" aria-labelledby="hub-map-title hub-map-desc">
+  <title id="hub-map-title">蒸馏与训练预算：问题与方法地图</title>
+  <desc id="hub-map-desc">专题分成两个子问题：教师凭什么提供更有用的分布（U-OPSD 给教师加信息，S²VOPD 从学生减信息），多个教师的训练预算如何分配（Open-MOPD）。PPO 以虚线连到 Open-MOPD，表示理解前置而不是论文继承。</desc>
+  <defs>
+    <marker id="hs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" class="hs-arrow"/>
+    </marker>
+  </defs>
+
+  <path class="hs-edge" d="M440 78 V112 H250 V148" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="345" y="105" text-anchor="middle">问题分解</text>
+  <path class="hs-edge" d="M560 78 V112 H765 V148" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="662" y="105" text-anchor="middle">问题分解</text>
+
+  <path class="hs-edge hs-edge-hi" d="M145 206 V298" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="155" y="256">文本信息差：给教师加信息</text>
+  <path class="hs-edge hs-edge-hi" d="M415 206 V298" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="425" y="256">视觉信息差：从学生减信息</text>
+  <path class="hs-edge hs-edge-hi" d="M765 206 V298" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="775" y="256">对应方法</text>
+  <path class="hs-edge hs-edge-dash" d="M765 444 V364" marker-end="url(#hs-arrow)"/>
+  <text class="hs-edge-label" x="775" y="408">理解前置：不是论文继承</text>
+
+  <g class="hs-group">
+    <rect class="hs-node hs-node-root" x="340" y="20" width="320" height="58"/>
+    <text class="hs-title" x="500" y="44" text-anchor="middle">蒸馏</text>
+    <text class="hs-sub" x="500" y="63" text-anchor="middle">教师信号与训练预算</text>
+  </g>
+  <g class="hs-group">
+    <rect class="hs-node hs-node-q" x="60" y="148" width="380" height="58"/>
+    <text class="hs-title" x="250" y="172" text-anchor="middle">教师凭什么提供更有用的分布？</text>
+    <text class="hs-sub" x="250" y="191" text-anchor="middle">单教师的信息差从哪里来</text>
+  </g>
+  <g class="hs-group">
+    <rect class="hs-node hs-node-q" x="590" y="148" width="350" height="58"/>
+    <text class="hs-title" x="765" y="172" text-anchor="middle">多个教师的训练预算如何分配？</text>
+    <text class="hs-sub" x="765" y="191" text-anchor="middle">合并训练为什么掉分</text>
+  </g>
+  <a href="../../topics/distillation.html#paper-2026-u-opsd" class="hs-link">
+    <rect class="hs-node hs-node-paper" x="20" y="298" width="250" height="66"/>
+    <text class="hs-title" x="145" y="324" text-anchor="middle">U-OPSD</text>
+    <text class="hs-sub" x="145" y="345" text-anchor="middle">教师多看自投票的完整轨迹</text>
+  </a>
+  <a href="../../topics/distillation.html#paper-2026-s2vopd" class="hs-link">
+    <rect class="hs-node hs-node-paper" x="290" y="298" width="250" height="66"/>
+    <text class="hs-title" x="415" y="324" text-anchor="middle">S²VOPD</text>
+    <text class="hs-sub" x="415" y="345" text-anchor="middle">教师看清晰图，学生看退化图</text>
+  </a>
+  <a href="../../topics/distillation.html#paper-2026-open-mopd" class="hs-link">
+    <rect class="hs-node hs-node-paper" x="640" y="298" width="250" height="66"/>
+    <text class="hs-title" x="765" y="324" text-anchor="middle">Open-MOPD</text>
+    <text class="hs-sub" x="765" y="345" text-anchor="middle">修复多教师 token 预算错配</text>
+  </a>
+  <a href="../../topics/distillation.html#paper-2017-ppo" class="hs-link">
+    <rect class="hs-node hs-node-ref" x="640" y="444" width="250" height="62"/>
+    <text class="hs-title" x="765" y="468" text-anchor="middle">PPO（跨专题前置）</text>
+    <text class="hs-sub" x="765" y="489" text-anchor="middle">重要性比率与 clip 是机制三的载体</text>
+  </a>
+</svg></div>
+<pre class="note-pre note-mermaid-code"><code class="language-mermaid">flowchart TB
     root[&quot;蒸馏：教师信号与训练预算&quot;]
     signal[&quot;教师凭什么提供更有用的分布？&quot;]
     budget[&quot;多个教师的训练预算如何分配？&quot;]
@@ -160,7 +217,7 @@
 <td>「教师多出的信息学生能否恢复」统一解释两篇散度分歧（可恢复则全面模仿方向正确，不可恢复则模仿不可及细节有害）；这是库内假说，不是任一原文结论</td>
 <td>hypothesis</td>
 <td>notes/papers/2026-s2vopd.html#open</td>
-<td>741401a2</td>
+<td>deb3b3b8</td>
 </tr>
 <tr>
 <td>rel-distill-orthogonal-slices</td>
@@ -170,7 +227,7 @@
 <td>单教师信号从哪来与多教师预算怎么分账是正交切片：两页各自处理一个，机制上互不依赖</td>
 <td>synthesis</td>
 <td>notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations</td>
-<td>93f4992d</td>
+<td>03d5e06c</td>
 </tr>
 <tr>
 <td>rel-distill-combine-self-teachers</td>
@@ -180,7 +237,7 @@
 <td>组合设想（库内无实验）：多个自蒸馏伪教师 + Open-MOPD 三机制；两页关联节提出了组合设想，但只论证机制正交，未验证自投票门控按题跳过训练步会不会改变各域 token 份额</td>
 <td>hypothesis</td>
 <td>notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations</td>
-<td>93f4992d</td>
+<td>03d5e06c</td>
 </tr>
 <tr>
 <td>rel-distill-divergence-slot</td>
@@ -190,7 +247,7 @@
 <td>散度的角色不同：U-OPSD 的 forward KL 直接当损失（其 reverse KL 实验出现复读塌缩），Open-MOPD 的 reverse-KL 式 dense reward 只是 PPO 的奖励信号（停梯度、走 PPO 裁剪目标）；同方向不同框架，不矛盾</td>
 <td>reported</td>
 <td>notes/papers/2026-u-opsd.html#relations notes/papers/2026-open-mopd.html#relations</td>
-<td>93f4992d</td>
+<td>03d5e06c</td>
 </tr>
 <tr>
 <td>rel-distill-self-asymmetry-in-multi</td>
@@ -210,7 +267,7 @@
 <td>Open-MOPD 机制三（reward refresh）的底层载体是 PPO 的重要性比率与 clip：K 次复用同一批 rollout 时若沿用旧 reward，比率过冲触发 clip，clip fraction 约为 75.8%，不等于全部梯度冻结；刷新只是顺手用 PPO 本来就要算的当前学生 logprob</td>
 <td>reported</td>
 <td>notes/papers/2026-open-mopd.html#qa-reward-refresh notes/papers/2017-ppo.html#qa-on-policy-reuse</td>
-<td>08620a65</td>
+<td>e227272b</td>
 </tr>
 </tbody></table>
 </section>
@@ -294,8 +351,8 @@
       <span>本页是完整专题笔记的静态投影，保留关系记录规范表、证据状态与假说标记。</span>
     </footer>
   </main>
-
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

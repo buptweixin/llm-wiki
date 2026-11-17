@@ -102,6 +102,46 @@ function synthesisSectionId(heading) {
   }[heading];
 }
 
+function conceptSectionId(heading, state) {
+  if (heading === "五分钟重建") return "rebuild";
+  if (heading === "为什么需要它") return "problem";
+  if (heading === "大白话讲解") return "intuition";
+  if (heading === "类比") return "analogy";
+  if (heading === "关键机制 / 数学直觉" || heading === "关键机制") {
+    state.mechanism = (state.mechanism || 0) + 1;
+    return state.mechanism === 1 ? "mechanism" : `mechanism-${state.mechanism}`;
+  }
+  if (heading === "常见误解") return "evidence";
+  if (heading === "我的复述") return "restatement";
+  if (heading === "卡壳点与解答") return "pitfalls";
+  if (heading === "还没搞懂") return "open";
+  if (heading === "关联") return "relations";
+  return undefined;
+}
+
+function codeSectionId(heading, state) {
+  if (heading === "五分钟重建") return "rebuild";
+  if (heading === "在整个系统中的位置") return "problem";
+  if (heading === "大白话讲解：数据怎么流") return "intuition";
+  if (heading === "核心代码走读") {
+    state.mechanism = (state.mechanism || 0) + 1;
+    return state.mechanism === 1 ? "mechanism" : `mechanism-${state.mechanism}`;
+  }
+  if (heading === "设计取舍") return "evidence";
+  if (heading === "我的复述") return "restatement";
+  if (heading === "卡壳点与解答") return "pitfalls";
+  if (heading === "还没搞懂") return "open";
+  if (heading === "关联") return "relations";
+  return undefined;
+}
+
+function sectionMapperFor(type) {
+  if (type === "synthesis") return synthesisSectionId;
+  if (type === "concept") return conceptSectionId;
+  if (type === "code") return codeSectionId;
+  return paperSectionId;
+}
+
 function sourceSections(markdown, sectionId) {
   const headings = Array.from(markdown.matchAll(/^## (.+)$/gm));
   const state = {};
@@ -212,7 +252,7 @@ function parseRelationRecords(markdown) {
 /* ---------- C1 派生文件存在性与孤儿页 ---------- */
 
 section("C1 派生文件与孤儿页");
-check(pages.every(page => page.type === "paper" || page.type === "synthesis"), "索引每页都有 type（paper / synthesis）");
+check(pages.every(page => ["paper", "synthesis", "concept", "code"].includes(page.type)), "索引每页都有合法 type（paper / synthesis / concept / code）");
 for (const page of pages) {
   for (const rel of [speedPath(page), notePath(page), sourcePath(page)]) {
     check(exists(rel), `${rel} 存在（${page.id}）`);
@@ -221,7 +261,7 @@ for (const page of pages) {
     check(exists(`site/assets/diagrams/${page.id}-map.svg`), `site/assets/diagrams/${page.id}-map.svg 存在（${page.id}）`);
   }
 }
-for (const dir of ["site/papers", "site/notes/papers", "site/topics", "site/notes/syntheses"]) {
+for (const dir of ["site/papers", "site/notes/papers", "site/concepts", "site/notes/concepts", "site/code", "site/notes/code", "site/topics", "site/notes/syntheses"]) {
   if (!exists(dir)) continue;
   for (const file of fs.readdirSync(path.join(root, dir)).filter(item => item.endsWith(".html") && !item.startsWith("_"))) {
     const id = file.replace(/\.html$/, "");
@@ -266,7 +306,7 @@ for (const page of pages) {
   const markdown = read(sourcePath(page));
   const noteHtml = read(notePath(page));
   const actualIds = new Set(Array.from(noteHtml.matchAll(/<section class="note-sec" id="([^"]+)">/g), match => match[1]));
-  const sectionId = page.type === "synthesis" ? synthesisSectionId : paperSectionId;
+  const sectionId = sectionMapperFor(page.type);
   for (const source of sourceSections(markdown, sectionId)) {
     check(actualIds.has(source.id), `${page.id} 真源章节「${source.heading}」派生锚点 #${source.id} 存在`);
     check(page.entries.some(entry => entry.h === `全文 · ${source.heading}` && entry.a === `${page.noteHref}#${source.id}`),
@@ -280,7 +320,9 @@ section("C3 关系卡与关系记录");
 for (const page of pages) {
   for (const rel of page.relations || []) {
     check(ids.has(rel.to), `${page.id} 关系「${rel.type}」指向 ${rel.to} 存在`);
+    check(RELATION_TYPES.includes(rel.type), `${page.id} 关系「${rel.type} → ${rel.to}」类型在受控集合内`);
     check(EVIDENCE_STATUS.includes(rel.status), `${page.id} 关系「${rel.type} → ${rel.to}」证据状态有效`);
+    check(typeof rel.reason === "string" && rel.reason.trim().length > 0 && !("claim" in rel), `${page.id} 关系「${rel.type} → ${rel.to}」含非空 reason 字段`);
   }
 }
 const relationIds = new Map();
@@ -570,6 +612,48 @@ for (const page of papers) {
       check(!!match && visibleText(renderedCaption || '').replace(/——|—|–/g, '：') === expected,
         `${rel} 的 ${path.basename(imageFile)} 图注与真源一致`);
     }
+  }
+}
+
+/* ---------- C17 阅读页交互、样式与出口契约 ---------- */
+
+section("C17 阅读页交互与样式契约");
+const sharedCss = read("site/assets/wiki-slides.css");
+const sharedJs = read("site/assets/wiki-slides.js");
+const definedClasses = new Set([
+  ...Array.from(sharedCss.matchAll(/\.([a-zA-Z0-9_-]+)/g), m => m[1]),
+  ...Array.from(sharedJs.matchAll(/["'.]([a-z][a-z0-9_-]+)["']/g), m => m[1]),
+  "is-synthesis", "demo-scenarios", "hub-edges", "hs-group"
+]);
+for (const rel of htmlFiles) {
+  const html = read(rel);
+  check(!/<style\b/i.test(html) && !/\bstyle="/i.test(html), `${rel} 无页内 <style> 或内联 style 属性`);
+  const unknown = new Set();
+  for (const m of html.matchAll(/\bclass="([^"]+)"/g)) {
+    for (const cls of m[1].split(/\s+/).filter(Boolean)) {
+      if (!definedClasses.has(cls) && !cls.startsWith("language-")) unknown.add(cls);
+    }
+  }
+  check(!unknown.size, `${rel} 只使用已定义的样式与语义类名${unknown.size ? `（未知: ${Array.from(unknown).join(", ")}）` : ""}`);
+  check(!/\$[^\n$]*\t[^\n$]*\$/.test(html), `${rel} 无控制符损坏公式`);
+}
+for (const page of pages) {
+  const rel = speedPath(page);
+  const html = read(rel);
+  const noteRel = notePath(page);
+  const noteHtml = read(noteRel);
+  check(/wiki-index\.js/.test(html) && /wiki-slides\.js/.test(html), `${rel} 同时加载 wiki-index.js 与 wiki-slides.js`);
+  check(/wiki-index\.js/.test(noteHtml) && /wiki-slides\.js/.test(noteHtml), `${noteRel} 同时加载 wiki-index.js 与 wiki-slides.js`);
+  check(/class="qa-list"/.test(html), `${rel} 卡壳问答包含 .qa-list 容器（保障回忆模式可用）`);
+  const outsideSlides = html.replace(/<section class="slide"[\s\S]*?<\/section>/g, "");
+  check(!/<figure\b/.test(outsideSlides), `${rel} 所有 <figure> 均位于 <section class="slide"> 内部`);
+  const visibleNoCode = html.replace(/<(?:script|code|pre)[\s\S]*?<\/(?:script|code|pre)>/g, "").replace(/<[^>]+>/g, "");
+  const rawTex = visibleNoCode.match(/\$[^$\n]{1,80}\$/);
+  check(!rawTex, `${rel} 速览/导读正文无裸露 LaTeX 源码${rawTex ? `（发现 ${rawTex[0]}）` : ""}`);
+  if (page.type !== "synthesis") {
+    check(/class="link-groups"/.test(html), `${rel} 使用标准 .link-groups 关联与来源区块`);
+    check(html.includes(`href="../${page.noteHref}"`), `${rel} SOURCE 区含完整笔记出口链接`);
+    check(html.includes(`href="../../${page.sourceHref}"`), `${rel} SOURCE 区含源文件出口链接`);
   }
 }
 

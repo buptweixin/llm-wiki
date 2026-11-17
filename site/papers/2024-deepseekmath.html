@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeepSeekMath · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -92,7 +92,7 @@
           <span class="slide-no">03</span>
         </div>
         <p>论文比较的 LLM PPO 训练包含 Actor、Critic、Ref、Reward，其中 Critic 往往与 Actor 同等体量。GRPO 省掉独立 Critic，仍需要奖励模型或程序规则给回答评分：</p>
-        <figure class="paper-fig"><img src="../assets/figures/2024-deepseekmath/fig4.png" alt="PPO 与 GRPO 架构对比" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 $G$ 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。</figcaption></figure>
+        <figure class="paper-fig"><img src="../assets/figures/2024-deepseekmath/fig4.png" alt="PPO 与 GRPO 架构对比" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 G 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。</figcaption></figure>
         <table class="dtable">
           <thead><tr><th>对比维度</th><th>传统 PPO</th><th data-hi>GRPO（本方法）</th><th>机制差异收益</th></tr></thead>
           <tbody>
@@ -126,7 +126,8 @@
           <h2>机制深入：统一梯度系数与网页挖掘</h2>
           <span class="slide-no">04</span>
         </div>
-        <p>论文将各类微调算法统一在统一梯度范式下：∇_θ J(θ) = E [ 1/|o| ∑_t GC(q, o, t) · ∇_θ log π_θ ]。不同算法的核心分水岭在于数据源是离线还是在线，以及梯度系数 GC 是否提供动态正负惩罚：</p>
+        <p>论文将各类微调算法统一在统一梯度范式下，核心分水岭在于数据源是离线还是在线，以及梯度系数 GC 是否提供动态正负奖惩：</p>
+        <div class="note-math-block" data-tex="\nabla_\theta \mathcal{J}(\theta) = \mathbb{E}_{(q, o) \sim \mathcal{D}} \left[ \frac{1}{|o|} \sum_{t=1}^{|o|} GC(q, o, t, \pi_{\text{rf}}) \cdot \nabla_\theta \log \pi_\theta(o_t \mid q, o_{&lt;t}) \right]"><math display="block" class="tml-display"><mrow><msub><mo form="prefix" stretchy="false">∇</mo><mi>θ</mi></msub><mi class="mathcal">𝒥</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><mrow><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>q</mi><mo separator="true">,</mo><mi>o</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>∼</mo><mi class="mathcal">𝒟</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mfrac><mn>1</mn><mrow><mi>|</mi><mi>o</mi><mi>|</mi></mrow></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><mi>o</mi><mi>|</mi></mrow></munderover></mrow><mi>G</mi><mi>C</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>q</mi><mo separator="true">,</mo><mi>o</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><msub><mi>π</mi><mtext>rf</mtext></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>⋅</mo><msub><mo form="prefix" stretchy="false">∇</mo><mi>θ</mi></msub><mrow><mi>log</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mi>t</mi></msub><mo lspace="0.22em" rspace="0.22em" stretchy="false">|</mo><mi>q</mi><mo separator="true">,</mo><msub><mi>o</mi><mrow><mo lspace="0em" rspace="0em">&lt;</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo fence="true" form="postfix" stretchy="true">]</mo></mrow></mrow></math></div>
         <table class="dtable">
           <thead><tr><th>微调方法</th><th>数据采样源</th><th>奖励形式</th><th>梯度系数 GC 特性</th></tr></thead>
           <tbody>
@@ -165,17 +166,18 @@
           <h2>卡壳点与解答</h2>
           <span class="slide-no">06</span>
         </div>
+        <div class="qa-list">
         <div class="qa" id="qa-grpo-advantage"><p class="qa-q">Q1：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？</p><div class="qa-a"><ul>
-<li><strong>评分与预测的分工</strong>：Reward Model 或程序规则给已生成的回答评分；Outcome 模式可以读完整答案后返回 0 或 1，Process 模式也可以逐推理步骤评分。Critic 则读取当前前缀，预测从这里继续生成的预期回报 <span class="note-math">$V(s_t)$</span>。它预测价值，优势由奖励与价值基线进一步计算。区别不在于局部 token 与整条轨迹。</li>
+<li><strong>评分与预测的分工</strong>：Reward Model 或程序规则给已生成的回答评分；Outcome 模式可以读完整答案后返回 0 或 1，Process 模式也可以逐推理步骤评分。Critic 则读取当前前缀，预测从这里继续生成的预期回报 <code>V(s_t)</code>。它预测价值，优势由奖励与价值基线进一步计算。区别不在于局部 token 与整条轨迹。</li>
 <li><strong>GRPO 替代的是基线估计</strong>：用同题回答的奖励均值作基线，再除以组标准差得到优势；它省掉独立 Critic，仍需要评分来源。程序能判分时，不需要神经奖励模型。</li>
 <li><strong>显存与奖励尺度</strong>：省去 Critic 的参数、优化器与反向图成本，实际总显存收益取决于实现。组相对比较与同题候选偏好评分相契合，但奖励噪声仍会存在，不能说组内标准化消除一切校准误差。</li>
 <li><strong>2026-10-25 补讲方法与表现</strong>：用「完整答案判卷」对照「半截推导预测得分」。第一次迁移回答仍把两者混在一起；第二次给组件识别题，正确区分评分与 Critic，并指出 GRPO 省掉后者。</li>
 </ul>
 </div></div>
         <div class="qa" id="qa-zero-variance"><p class="qa-q">Q2：在 Outcome 模式下全对或全错时，GRPO 与传统 PPO 的梯度行为有何不同？</p><div class="qa-a"><ul>
-<li><strong>GRPO</strong>：组内奖励全相同时，<span class="note-math">$r_i-\mathrm{mean}(\mathbf r)=0$</span>。实现用微小稳定项避免除零后，优势全为零。该组的任务奖励 surrogate 没有梯度；原版 GRPO 的 KL 正则仍可能产生梯度。若关闭 KL 且没有其他损失，这组回答才没有该训练目标的更新信号。所有回答都得 0.6 分时同理，不限于全对或全错。</li>
+<li><strong>GRPO</strong>：组内奖励全相同时，<code>r_i - mean(r) = 0</code>。实现用微小稳定项避免除零后，优势全为零。该组的任务奖励 surrogate 没有梯度；原版 GRPO 的 KL 正则仍可能产生梯度。若关闭 KL 且没有其他损失，这组回答才没有该训练目标的更新信号。所有回答都得 0.6 分时同理，不限于全对或全错。</li>
 <li><strong>PPO</strong>：优势依赖奖励与 Critic 预测，不直接以本组奖励均值作比较。因此，组内回报相同不会强制其优势归零；也不能反过来说 PPO 总有非零梯度。</li>
-<li><strong>终止步骤例子（教学简化）</strong>：忽略额外奖励、优势归一化和裁剪，终止后的价值为零，最后一步优势可写成 <span class="note-math">$A=R-V(s)$</span>。两条回答都错，<span class="note-math">$R=0$</span>；若 Critic 在最后动作前预测为 0.8 和 0.2，优势分别为 -0.8 和 -0.2。若 Critic 准确预测二者回报为零，优势也可以为零。实际 PPO 通常用 GAE 汇总多步 TD 误差；价值估计非零不保证每步 TD 误差、最终优势或参数梯度都非零，也不保证更新有益。</li>
+<li><strong>终止步骤例子（教学简化）</strong>：忽略额外奖励、优势归一化和裁剪，终止后的价值为零，最后一步优势可写成 <code>A = R - V(s)</code>。两条回答都错，<code>R = 0</code>；若 Critic 在最后动作前预测为 0.8 和 0.2，优势分别为 -0.8 和 -0.2。若 Critic 准确预测二者回报为零，优势也可以为零。实际 PPO 通常用 GAE 汇总多步 TD 误差；价值估计非零不保证每步 TD 误差、最终优势或参数梯度都非零，也不保证更新有益。</li>
 <li><strong>2026-10-25 补讲方法与表现</strong>：用上述终止步骤例子解释「结果一样，仍可能低于预期」。用户随后在全得 0.6 分的迁移题中正确区分关闭 KL 与开启 KL 的行为。PPO 对比已讲解，尚未单独做无提示迁移检验。</li>
 </ul>
 </div></div>
@@ -187,6 +189,7 @@
 </ul>
 <p>依据：<a href="https://arxiv.org/html/2402.03300v3">DeepSeekMath §4.1 与 §5.2.2</a>、<a href="https://arxiv.org/pdf/1707.06347">PPO §5</a>。</p>
 </div></div>
+        </div>
       </div>
     </section>
 
@@ -197,30 +200,28 @@
           <h2>关联与来源</h2>
           <span class="slide-no">07</span>
         </div>
-        <div class="rel-cards">
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">前置继承</span><h3>PPO</h3></div>
-            <p>GRPO 的直接理论基石：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略单步漂移过激；GRPO 的改动在于彻底裁掉 Critic 价值模型与 GAE，改用组内相对归一化估计优势，并将 KL 惩罚独立外置。</p>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item"><span class="link-rel">prerequisite · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2017-ppo.html">PPO：GRPO 继承重要性采样裁剪目标，去掉独立 Critic 与 GAE，改用组内相对奖励作基线并将 KL 外置。</a></div>
+            <div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2025-dapo.html">DAPO：针对长链推理中朴素 GRPO 的熵坍缩、零方差组与样本级长度稀释做四项系统修复。</a></div>
+            <div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2025-gspo.html">GSPO：继承组内标准化优势，把逐 token 比率与裁剪提升为序列级几何平均似然比，免除 MoE Routing Replay。</a></div>
+            <div class="link-item"><span class="link-rel">compare · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2026-sao.html">SAO：针对异步长尾多轮交互中的组等待屏障，废除组采样改用单 Rollout 与冻结注意力强 Critic。</a></div>
+            <div class="link-item"><span class="link-rel">complement · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2026-geoanchor.html">GeoAnchor：第四阶段采用 GRPO 加 pattern reward 学习空间潜变量的模式选择。</a></div>
           </div>
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">下游应用</span><h3>GeoAnchor</h3></div>
-            <p>空间几何推理的强化对齐应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化多模态模型对不同空间潜变量模式的选择策略。</p>
-          </div>
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">自对齐对照</span><h3>U-OPSD / S²VOPD</h3></div>
-            <p>对齐信号来源的范式分叉：U-OPSD / S²VOPD 走的是模型自身自构造不对称信息差（自投票轨迹 / 图像退化降噪）进行逐 token 稠密教师分布蒸馏；GRPO 则是在策略采样组内计算标量相对奖励以策略梯度优化。</p>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item"><span class="link-rel">完整笔记</span><span><a href="../notes/papers/2024-deepseekmath.html">notes/papers/2024-deepseekmath.html</a>（markdown 的完整静态投影）</span></div>
+            <div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/papers/2024-deepseekmath.md">wiki/papers/2024-deepseekmath.md</a></span></div>
+            <div class="link-item"><span class="link-rel">原文</span><span><a href="zotero://select/items/XQHXBPT7">Zotero</a>（shaoDeepSeekMathPushingLimits2024）· AI Butler 预读笔记 itemKey <code>8CYDI7ER</code> / <code>RK4Y6U8L</code></span></div>
           </div>
         </div>
-        <dl class="cover-meta" style="margin-top:1.5rem">
-          <dt>完整笔记</dt><dd><a href="../notes/papers/2024-deepseekmath.html">notes/papers/2024-deepseekmath.html</a></dd>
-          <dt>源文件</dt><dd><code>wiki/papers/2024-deepseekmath.md</code></dd>
-          <dt>Zotero 深链接</dt><dd><a href="zotero://select/items/XQHXBPT7">zotero://select/items/XQHXBPT7</a>（citekey: <code>shaoDeepSeekMathPushingLimits2024</code>）</dd>
-        </dl>
       </div>
     </section>
 
   </main>
 </div>
-<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

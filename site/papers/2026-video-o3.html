@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Video-o3 · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -175,7 +175,7 @@
           <span class="slide-no">06</span>
         </div>
         <div class="qa-list">
-          <div class="qa" id="qa-two-problems"><p class="qa-q">Q：共享上下文带来的两个核心问题分别是什么？各对应什么解法？（Q1 漏掉的半问）</p><div class="qa-a"><p>(1) <strong>注意力分散</strong>（全局/局部混杂 + Fake Thinking）→ TDAM（10% 掩码）。(2) <strong>上下文效率</strong>（每调一次工具 token 膨胀 + 不知何时停）→ VTGR（$S_{clue}$ 奖励裁得准 + $\gamma$ 惩罚轮数多）。两个问题两个解法是配对的。</p>
+          <div class="qa" id="qa-two-problems"><p class="qa-q">Q：共享上下文带来的两个核心问题分别是什么？各对应什么解法？（Q1 漏掉的半问）</p><div class="qa-a"><p>(1) <strong>注意力分散</strong>（全局/局部混杂 + Fake Thinking）→ TDAM（10% 掩码）。(2) <strong>上下文效率</strong>（每调一次工具 token 膨胀 + 不知何时停）→ VTGR（<code>S_clue</code> 奖励裁得准 + <code>γ</code> 惩罚轮数多）。两个问题两个解法是配对的。</p>
 </div></div>
           <div class="qa" id="qa-timing"><p class="qa-q">Q：VST 和 Video-o3 的推理时机分别放在哪里？（Q3 漏掉的半问）</p><div class="qa-a"><p>VST = <strong>查询前</strong>（播放期边看边想写笔记，查询到直接读笔记秒答）；Video-o3 = <strong>查询后</strong>（拿到问题后在单一上下文里多轮调工具找线索，每轮裁剪+推理交替）。一句话：<strong>VST 是&quot;先把笔记做好，问就秒答&quot;；Video-o3 是&quot;拿到问题才去翻监控放大看&quot;。</strong></p>
 </div></div>
@@ -192,7 +192,7 @@
           <span class="slide-no">07</span>
         </div>
         <div class="link-groups">
-          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-vst.html">VST：查询后工具检索与查询前文本记忆的时机不同；实时响应和补取证据的代价需要分别评估。</a></div><div class="link-item"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-videochat3.html">VideoChat3：编码器控制感知成本；工具调用选择证据位置。环节不同，不能据此断言组合增益。</a></div></div>
+          <div class="link-group"><h3>RELATED</h3><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-vst.html">VST：查询后工具检索与查询前文本记忆的时机不同；实时响应和补取证据的代价需要分别评估。</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-tspo.html">TSPO：TSPO 在回答前一次性选出关键帧，本文在查询后多轮裁剪回看；路径长度与灵活性取舍不同。</a></div><div class="link-item"><span class="link-rel">complement · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-videochat3.html">VideoChat3：编码器控制感知成本；工具调用选择证据位置。环节不同，不能据此断言组合增益。</a></div><div class="link-item"><span class="link-rel">compare · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2026-geoanchor.html">GeoAnchor：外化工具调用（可审计、可插拔）与内化连续潜变量（保几何连续性）两条对立路线。</a></div></div>
           <div class="link-group">
             <h3>SOURCE</h3>
             <div class="link-item">
@@ -214,7 +214,7 @@
 
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-4"></script>
-<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

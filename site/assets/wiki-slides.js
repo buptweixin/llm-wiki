@@ -1,7 +1,11 @@
 /*
- * llm-wiki 阅读层
- * 纯静态、无依赖。文章页（论文速览 / 专题导读）：连续阅读、语义目录、回忆模式、并排比较、专题位置入口；
- * 首页：专题与标签筛选、专题导读入口、全文条目搜索（片段来自真实命中文本，专题结果单独标注）。
+ * llm-wiki 阅读层 (wiki-slides.js)
+ * 纯静态、零外部依赖、支持 file:// 离线打开。
+ * 覆盖三类视图：
+ *   1. 首页 (index.html)：全文与问答搜索、专题计数、分类标签抽屉、排序切换、键盘选卡、回忆模式；
+ *   2. 阅读页 (papers/*.html, topics/*.html)：三栏连续阅读、语义目录跟随、回忆模式、图片/关系图灯箱、
+ *      机制可见性实时探索、专题图谱联动与多列对比弹窗；
+ *   3. 完整笔记页 (notes/**)：桌面三栏目录与上下文旁栏、公式 TeX/代码一键复制、Mermaid 源码折叠、搜索精确定位。
  * 数据来自 site/assets/wiki-index.js（真源为 wiki markdown 与 review.md 的投影）。
  */
 (function () {
@@ -13,8 +17,6 @@
   var TAGS_BY_ID = {};
   taxonomy.forEach(function (tag) { TAGS_BY_ID[tag.id] = tag; });
 
-  // 页面分两类：论文（paper）与专题导读（synthesis）。索引给出 href / noteHref / sourceHref，
-  // 这里不按 id 拼目录。hub 查找表：论文 id → 收录它的专题（主线成员或跨专题引用）。
   function isHub(page) {
     return !!page && page.type === "synthesis";
   }
@@ -29,8 +31,6 @@
       if (!HUB_BY_PAPER[id]) HUB_BY_PAPER[id] = { hub: hub, role: "ref" };
     });
   });
-  var HUB_BY_TOPIC = {};
-  hubPages.forEach(function (hub) { HUB_BY_TOPIC[hub.topic] = hub; });
 
   function qs(selector, root) {
     return (root || document).querySelector(selector);
@@ -60,10 +60,87 @@
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  /* ---------- 主题切换 (Auto / Light / Dark，持久化且兼容离线 file://) ---------- */
+
+  var THEME_KEY = "llm-wiki-theme";
+  var darkMedia = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+
+  function scrollBehavior() {
+    return reduceMotion && reduceMotion.matches ? "auto" : "smooth";
+  }
+
+  function readSavedTheme() {
+    try {
+      var val = window.localStorage.getItem(THEME_KEY);
+      if (val === "light" || val === "dark" || val === "auto") return val;
+    } catch (e) { /* file:// WebView 禁用 storage 时降级内存状态 */ }
+    return "auto";
+  }
+
+  var currentTheme = readSavedTheme();
+
+  function isEffectiveDark() {
+    if (currentTheme === "dark") return true;
+    if (currentTheme === "light") return false;
+    return !!(darkMedia && darkMedia.matches);
+  }
+
+  function themeButtonText() {
+    if (currentTheme === "light") return "浅色";
+    if (currentTheme === "dark") return "深色";
+    return "自动";
+  }
+
+  function applyTheme(mode, persist) {
+    currentTheme = mode;
+    var root = document.documentElement;
+    if (mode === "light" || mode === "dark") {
+      root.setAttribute("data-theme", mode);
+    } else {
+      root.removeAttribute("data-theme");
+    }
+    if (persist) {
+      try { window.localStorage.setItem(THEME_KEY, mode); } catch (e) { /* ignore */ }
+    }
+    qsa(".theme-toggle").forEach(function (btn) {
+      btn.textContent = "外观: " + themeButtonText();
+      btn.title = "切换浅色 / 深色 / 跟随系统 (快捷键 t)";
+    });
+  }
+
+  function cycleTheme() {
+    var sysDark = !!(darkMedia && darkMedia.matches);
+    var next;
+    if (currentTheme === "auto") {
+      next = sysDark ? "light" : "dark";
+    } else if (currentTheme === (sysDark ? "light" : "dark")) {
+      next = sysDark ? "dark" : "light";
+    } else {
+      next = "auto";
+    }
+    applyTheme(next, true);
+  }
+
+  function makeThemeButton() {
+    var btn = node("button", "theme-toggle", "外观: " + themeButtonText());
+    btn.type = "button";
+    btn.title = "切换浅色 / 深色 / 跟随系统 (快捷键 t)";
+    btn.addEventListener("click", cycleTheme);
+    return btn;
+  }
+
+  applyTheme(currentTheme, false);
+  if (darkMedia && darkMedia.addEventListener) {
+    darkMedia.addEventListener("change", function () {
+      if (currentTheme === "auto") applyTheme("auto", false);
+    });
+  }
+
+  /* ---------- 高亮工具 ---------- */
+
   function highlight(value, tokens) {
     var raw = String(value);
-    // 先在原始文本上一次性算出全部命中区间（含互相重叠的），合并后统一转义输出；
-    // 绝不在已含 <mark> 的字符串上继续替换，避免改坏标签名。
     var marks = [];
     tokens.forEach(function (token) {
       if (!token) return;
@@ -133,11 +210,30 @@
     var review = page.review;
     if (!review || !review.next) return "复测：暂无记录";
     var due = review.next <= todayCN();
-    var head;
-    if (!review.count) head = "待首测";
-    else if (review.result === "pass") head = "已通过";
-    else head = "上次复测见 review.md";
+    var head = !review.count ? "待首测" : "已通过（" + review.count + " 次）";
     return (due ? "今天到期 · " : "") + head + " · 下次 " + review.next;
+  }
+
+  function reviewBadge(page) {
+    var review = page.review;
+    if (!review || !review.next) return node("span", "meta-badge", "暂无复测");
+    var due = review.next <= todayCN();
+    if (due) return node("span", "meta-badge is-due", "待复测 · " + (!review.count ? "待首测" : "已过 " + review.count + " 次"));
+    if (!review.count) return node("span", "meta-badge is-pending", "待首测 · " + review.next);
+    return node("span", "meta-badge is-passed", "已通过 " + review.count + " 次 · 下次 " + review.next);
+  }
+
+  function compareReviewPriority(a, b) {
+    var da = reviewDue(a) ? 0 : 1;
+    var db = reviewDue(b) ? 0 : 1;
+    if (da !== db) return da - db;
+    var ca = a.review ? a.review.count : 0;
+    var cb = b.review ? b.review.count : 0;
+    if ((ca === 0) !== (cb === 0)) return ca === 0 ? -1 : 1;
+    if (ca !== cb) return ca - cb;
+    var na = (a.review && a.review.next) || "9999-99-99";
+    var nb = (b.review && b.review.next) || "9999-99-99";
+    return na < nb ? -1 : (na > nb ? 1 : 0);
   }
 
   function reviewDue(page) {
@@ -145,12 +241,6 @@
   }
 
   var STATUS_LABEL = { reported: "原文报告", synthesis: "库内对照", hypothesis: "待验证假说" };
-
-  var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
-
-  function scrollBehavior() {
-    return reduceMotion && reduceMotion.matches ? "auto" : "smooth";
-  }
 
   /* ---------- 搜索 ---------- */
 
@@ -172,8 +262,6 @@
     });
   }
 
-  // 条目排序：问题标题命中 > 正文完整短语 > 正文散命中；具体问答（卡壳/全文问答）
-  // 比章节摘要更可能直接回答困惑。同分保持索引原序（稳定排序）。
   function entryScore(entry, tokens) {
     var h = entry.h.toLocaleLowerCase();
     var t = entry.t.toLocaleLowerCase();
@@ -207,8 +295,6 @@
     return score;
   }
 
-  /* ---------- 匹配选择: 完整短语优先, 其次覆盖全部查询词的最小窗口, 最后降级 ---------- */
-
   function matchSelection(lower, tokens) {
     if (!tokens.length) return null;
     var phrase = tokens.join(" ");
@@ -216,7 +302,6 @@
     if (at >= 0) return { start: at, end: at + phrase.length };
     if (tokens.length > 1) {
       var win = coveringWindow(lower, tokens);
-      // 窗口过大说明词之间隔着整段内容, 算不上"局部上下文", 交由降级路径处理
       if (win && win.span <= 600) return win;
     }
     return null;
@@ -276,7 +361,7 @@
     return { text: clip, exact: true };
   }
 
-  /* ---------- 文章页 ---------- */
+  /* ---------- 路由与来源保留 ---------- */
 
   function pageIdFromPath() {
     var file = window.location.pathname.split("/").pop() || "";
@@ -292,15 +377,14 @@
     var raw = params.get("from") || "";
     if (!raw) return "";
     var source = new URLSearchParams(raw);
-    // 来源校验依赖 WIKI_TOPICS / WIKI_TAXONOMY；完整笔记页不加载全站索引，
-    // 此时按原样保留来源字段，首页加载后会再做同样的校验与归一。
     var hasTopics = Object.keys(topics).length > 0;
     var hasTaxonomy = taxonomy.length > 0;
     var state = {
       q: source.get("q") || "",
       topic: source.get("topic") || "all",
       tag: source.get("tag") || "",
-      review: source.get("review") === "due" ? "due" : ""
+      review: source.get("review") === "due" ? "due" : "",
+      sort: source.get("sort") || ""
     };
     if (state.tag) state.tag = hasTaxonomy ? (resolveTag(state.tag) || "") : state.tag.trim();
     if (state.topic !== "all" && hasTopics && !topics[state.topic]) state.topic = "all";
@@ -309,6 +393,7 @@
     if (state.topic !== "all") normalized.set("topic", state.topic);
     if (state.tag) normalized.set("tag", state.tag);
     if (state.review) normalized.set("review", state.review);
+    if (state.sort && state.sort !== "default") normalized.set("sort", state.sort);
     return normalized.toString();
   }
 
@@ -320,13 +405,10 @@
     return base + (base.indexOf("?") >= 0 ? "&" : "?") + query + hash;
   }
 
-  // 站内阅读页：同目录 *.html，或 ../papers/ ../topics/ ../notes/papers/ ../notes/syntheses/ 下的页面（可带锚点）
   function isLocalReaderHtml(href) {
-    return /^(?:\.\.\/(?:papers|topics)\/|\.\.\/notes\/(?:papers|syntheses)\/)?[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href);
+    return /^(?:\.\.\/(?:papers|topics|concepts|code)\/|\.\.\/notes\/(?:papers|syntheses|concepts|code)\/)?[a-z0-9-]+\.html(?:#[\w-]+)?$/i.test(href);
   }
 
-  // 站内继续阅读链接统一继承来源条件（from），落地页顶部返回才能恢复首页筛选。
-  // 标签链接是新的筛选操作，保持重置语义，不走这里。
   function withFrom(href) {
     var from = fromQuery();
     if (!from) return href;
@@ -341,6 +423,642 @@
     return pathname + "?" + params.toString() + hash;
   }
 
+  /* ---------- 共享 UI 增强：进度条、回顶部、快捷键弹窗、复制、灯箱、可见性探索器 ---------- */
+
+  function bindScrollProgress() {
+    var progress = qs(".topbar-progress");
+    if (!progress) return;
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      var ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      progress.style.setProperty("--progress", ratio.toFixed(4));
+    }
+    window.addEventListener("scroll", function () {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(update);
+      }
+    }, { passive: true });
+    window.addEventListener("resize", update, { passive: true });
+    update();
+  }
+
+  function initBackToTop(sentinel) {
+    if (!sentinel || !("IntersectionObserver" in window)) return;
+    var btn = node("button", "back-top", "↑ 顶部");
+    btn.type = "button";
+    btn.setAttribute("aria-label", "回到页面顶部");
+    btn.addEventListener("click", function () {
+      window.scrollTo({ top: 0, behavior: scrollBehavior() });
+    });
+    document.body.appendChild(btn);
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        btn.classList.toggle("is-visible", !entry.isIntersecting && entry.boundingClientRect.bottom < 0);
+      });
+    }, { threshold: 0 });
+    io.observe(sentinel);
+  }
+
+  var shortcutDialogInstance = null;
+  function openShortcutsModal(mode, trigger) {
+    if (!shortcutDialogInstance) {
+      var dialog = document.createElement("dialog");
+      dialog.className = "reader-modal";
+      var panel = node("div", "reader-modal-panel");
+      var head = node("div", "reader-modal-head");
+      var heading = node("div");
+      heading.appendChild(node("h2", "", "键盘快捷键"));
+      heading.appendChild(node("p", "modal-note", "在非输入框状态下直接按键即可触发；按 Esc 关闭任意浮层。"));
+      var close = node("button", "", "×");
+      close.type = "button";
+      close.setAttribute("aria-label", "关闭快捷键说明");
+      head.appendChild(heading);
+      head.appendChild(close);
+      panel.appendChild(head);
+      var grid = node("div", "shortcut-grid");
+      panel.appendChild(grid);
+      dialog.appendChild(panel);
+      document.body.appendChild(dialog);
+      var lastTrigger = null;
+      close.addEventListener("click", function () { dialog.close(); });
+      dialog.addEventListener("click", function (e) { if (e.target === dialog) dialog.close(); });
+      dialog.addEventListener("close", function () {
+        if (lastTrigger && lastTrigger.focus) lastTrigger.focus();
+      });
+      shortcutDialogInstance = {
+        open: function (rows, opener) {
+          lastTrigger = opener || document.activeElement;
+          grid.innerHTML = "";
+          rows.forEach(function (pair) {
+            var row = node("div", "shortcut-row");
+            row.appendChild(node("span", "", pair[0]));
+            var keys = node("span", "shortcut-keys");
+            pair[1].forEach(function (k) { keys.appendChild(node("kbd", "", k)); });
+            row.appendChild(keys);
+            grid.appendChild(row);
+          });
+          if (!dialog.open) dialog.showModal();
+          close.focus();
+        }
+      };
+    }
+    var items = mode === "index"
+      ? [
+          ["聚焦搜索框", ["/", "⌘K"]],
+          ["在结果卡片间上下移动", ["↑", "↓"]],
+          ["打开当前选中的卡片", ["Enter"]],
+          ["清空搜索词或取消焦点", ["Esc"]],
+          ["切换「先回忆」自测模式", ["r"]],
+          ["切换浅色 / 深色 / 自动外观", ["t"]],
+          ["打开本快捷键面板", ["?"]]
+        ]
+      : [
+          ["跳至下一节 / 上一节", ["j / ]", "k / ["]],
+          ["放大当前视口内的论文图或关系图", ["f"]],
+          ["切换「先回忆」闭卷模式（速览与导读页）", ["r"]],
+          ["切换浅色 / 深色 / 自动外观", ["t"]],
+          ["回到页面顶部", ["g g"]],
+          ["打开本快捷键面板", ["?"]],
+          ["关闭图片灯箱或弹窗", ["Esc"]]
+        ];
+    shortcutDialogInstance.open(items, trigger);
+  }
+
+  function makeHelpButton(mode) {
+    var btn = node("button", "topbar-help", "?");
+    btn.type = "button";
+    btn.title = "查看键盘快捷键 (?)";
+    btn.setAttribute("aria-label", "键盘快捷键");
+    btn.addEventListener("click", function () { openShortcutsModal(mode, btn); });
+    return btn;
+  }
+
+  function copyTextToClipboard(text, button, defaultLabel) {
+    function done() {
+      button.textContent = "已复制";
+      button.classList.add("is-copied");
+      window.clearTimeout(button._copyTimer);
+      button._copyTimer = window.setTimeout(function () {
+        button.textContent = defaultLabel;
+        button.classList.remove("is-copied");
+      }, 1400);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+      fallback();
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "readonly");
+      ta.className = "skip-link";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) { /* ignore */ }
+      document.body.removeChild(ta);
+    }
+  }
+
+  function initCopyAndMermaid(container) {
+    qsa(".note-math-block[data-tex]", container).forEach(function (block) {
+      if (qs(".copy-btn", block)) return;
+      var tex = block.getAttribute("data-tex") || "";
+      if (!tex) return;
+      var btn = node("button", "copy-btn", "复制 TeX");
+      btn.type = "button";
+      btn.addEventListener("click", function () { copyTextToClipboard(tex, btn, "复制 TeX"); });
+      block.appendChild(btn);
+    });
+
+    qsa("pre.note-mermaid-code", container).forEach(function (pre) {
+      if (pre.dataset.enhancedMermaid) return;
+      pre.dataset.enhancedMermaid = "1";
+      var toggle = node("button", "mermaid-toggle", "查看 Mermaid 图稿源码");
+      toggle.type = "button";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.addEventListener("click", function () {
+        var open = pre.classList.toggle("is-open");
+        toggle.textContent = open ? "收起 Mermaid 图稿源码" : "查看 Mermaid 图稿源码";
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      pre.parentNode.insertBefore(toggle, pre);
+    });
+
+    qsa("pre", container).forEach(function (pre) {
+      if (pre.closest(".code-wrap")) return;
+      var text = pre.textContent || "";
+      if (!text.trim()) return;
+      var wrap = node("div", "code-wrap");
+      if (pre.classList.contains("note-mermaid-code")) {
+        // Keep mermaid hide/show working when wrapped
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+        wrap.className = "code-wrap note-mermaid-code";
+        pre.classList.remove("note-mermaid-code");
+        var prevBtn = wrap.previousElementSibling;
+        if (prevBtn && prevBtn.classList.contains("mermaid-toggle")) {
+          prevBtn.onclick = null;
+          var freshToggle = prevBtn.cloneNode(true);
+          prevBtn.replaceWith(freshToggle);
+          freshToggle.addEventListener("click", function () {
+            var open = wrap.classList.toggle("is-open");
+            freshToggle.textContent = open ? "收起 Mermaid 图稿源码" : "查看 Mermaid 图稿源码";
+            freshToggle.setAttribute("aria-expanded", open ? "true" : "false");
+          });
+        }
+      } else {
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+      }
+      var btn = node("button", "copy-btn", "复制");
+      btn.type = "button";
+      btn.addEventListener("click", function () { copyTextToClipboard(pre.textContent || "", btn, "复制"); });
+      wrap.appendChild(btn);
+    });
+  }
+
+  /* ---------- 原生 <dialog> 图片与 SVG 关系图灯箱 ---------- */
+
+  function initLightbox(container) {
+    var items = [];
+    qsa(".paper-fig", container).forEach(function (fig) {
+      var img = qs("img", fig);
+      if (!img) return;
+      var cap = qs("figcaption", fig);
+      var capText = cap ? cap.textContent.trim() : (img.alt || "");
+      var idx = items.length;
+      items.push({ kind: "img", src: img.getAttribute("src"), alt: img.alt || "", caption: capText, el: fig });
+      img.setAttribute("data-zoomable", "1");
+      var parentLink = img.closest("a");
+      var openThis = function (event) {
+        event.preventDefault();
+        openAt(idx, event.currentTarget);
+      };
+      if (parentLink) parentLink.addEventListener("click", openThis);
+      else img.addEventListener("click", openThis);
+      if (cap && !qs(".fig-zoom-btn", cap)) {
+        var wrapper = node("span", "fig-caption-text");
+        while (cap.firstChild) wrapper.appendChild(cap.firstChild);
+        cap.appendChild(wrapper);
+        var zbtn = node("button", "fig-zoom-btn", "放大查看");
+        zbtn.type = "button";
+        zbtn.addEventListener("click", function () { openAt(idx, zbtn); });
+        cap.appendChild(zbtn);
+      }
+    });
+
+    qsa(".hub-fig", container).forEach(function (hubFig) {
+      var svg = qs("svg.hub-svg", hubFig);
+      if (!svg) return;
+      var noteEl = qs(".fig-note", hubFig);
+      var titleEl = qs("title", svg);
+      var capText = noteEl ? noteEl.textContent.trim() : (titleEl ? titleEl.textContent.trim() : "专题问题与方法地图");
+      var idx = items.length;
+      items.push({ kind: "svg", svg: svg, caption: capText, el: hubFig });
+      if (!qs(".hub-fig-head", hubFig)) {
+        var head = node("div", "hub-fig-head");
+        head.appendChild(node("span", "", "关系图稿 · 点击节点可定位对应论文"));
+        var zbtn = node("button", "fig-zoom-btn", "全屏放大");
+        zbtn.type = "button";
+        zbtn.addEventListener("click", function () { openAt(idx, zbtn); });
+        head.appendChild(zbtn);
+        hubFig.insertBefore(head, hubFig.firstChild);
+      }
+    });
+
+    if (!items.length) return null;
+
+    var dialog = null;
+    var stage = null;
+    var titleSpan = null;
+    var captionBox = null;
+    var prevBtn = null;
+    var nextBtn = null;
+    var bgBtn = null;
+    var activeIdx = 0;
+    var stageBg = "auto";
+    var opener = null;
+
+    function ensureDialog() {
+      if (dialog) return;
+      dialog = document.createElement("dialog");
+      dialog.className = "fig-modal";
+      var panel = node("div", "fig-modal-panel");
+      var bar = node("div", "fig-modal-bar");
+      titleSpan = node("span", "fig-modal-title", "");
+      var actions = node("div", "fig-modal-actions");
+      bgBtn = node("button", "", "底色: 纸白");
+      bgBtn.type = "button";
+      bgBtn.addEventListener("click", function () {
+        var cur = stage.getAttribute("data-bg") || "light";
+        var next = cur === "light" ? "dark" : "light";
+        stageBg = next;
+        stage.setAttribute("data-bg", next);
+        bgBtn.textContent = next === "dark" ? "底色: 夜读" : "底色: 纸白";
+      });
+      prevBtn = node("button", "", "← 上一图");
+      prevBtn.type = "button";
+      prevBtn.addEventListener("click", function () { if (activeIdx > 0) renderItem(activeIdx - 1); });
+      nextBtn = node("button", "", "下一图 →");
+      nextBtn.type = "button";
+      nextBtn.addEventListener("click", function () { if (activeIdx < items.length - 1) renderItem(activeIdx + 1); });
+      var closeBtn = node("button", "", "关闭 ×");
+      closeBtn.type = "button";
+      closeBtn.addEventListener("click", function () { dialog.close(); });
+      actions.appendChild(bgBtn);
+      if (items.length > 1) {
+        actions.appendChild(prevBtn);
+        actions.appendChild(nextBtn);
+      }
+      actions.appendChild(closeBtn);
+      bar.appendChild(titleSpan);
+      bar.appendChild(actions);
+      stage = node("div", "fig-modal-stage");
+      captionBox = node("div", "fig-modal-caption");
+      panel.appendChild(bar);
+      panel.appendChild(stage);
+      panel.appendChild(captionBox);
+      dialog.appendChild(panel);
+      document.body.appendChild(dialog);
+
+      dialog.addEventListener("click", function (e) {
+        if (e.target === dialog || e.target === stage) dialog.close();
+      });
+      dialog.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowLeft" && activeIdx > 0) {
+          e.preventDefault();
+          renderItem(activeIdx - 1);
+        } else if (e.key === "ArrowRight" && activeIdx < items.length - 1) {
+          e.preventDefault();
+          renderItem(activeIdx + 1);
+        } else if (e.key.toLowerCase() === "b") {
+          e.preventDefault();
+          bgBtn.click();
+        }
+      });
+      dialog.addEventListener("close", function () {
+        if (opener && opener.focus) opener.focus();
+      });
+    }
+
+    function renderItem(idx) {
+      activeIdx = idx;
+      var item = items[idx];
+      titleSpan.textContent = "图解预览 " + (idx + 1) + " / " + items.length;
+      if (prevBtn) prevBtn.disabled = idx === 0;
+      if (nextBtn) nextBtn.disabled = idx === items.length - 1;
+      var effectiveBg = stageBg === "auto"
+        ? (item.kind === "svg" && isEffectiveDark() ? "dark" : "light")
+        : stageBg;
+      stage.setAttribute("data-bg", effectiveBg);
+      bgBtn.textContent = effectiveBg === "dark" ? "底色: 夜读" : "底色: 纸白";
+      stage.innerHTML = "";
+      if (item.kind === "img") {
+        var img = document.createElement("img");
+        img.src = item.src;
+        img.alt = item.alt;
+        stage.appendChild(img);
+      } else {
+        var clone = item.svg.cloneNode(true);
+        qsa("a.hs-link", clone).forEach(function (a) {
+          a.addEventListener("click", function () { dialog.close(); });
+        });
+        stage.appendChild(clone);
+      }
+      captionBox.textContent = item.caption || "";
+      captionBox.hidden = !item.caption;
+    }
+
+    function openAt(idx, trigger) {
+      ensureDialog();
+      opener = trigger || document.activeElement;
+      stageBg = "auto";
+      renderItem(idx);
+      if (!dialog.open) dialog.showModal();
+    }
+
+    return {
+      openNearest: function () {
+        var best = 0;
+        var bestDist = Infinity;
+        items.forEach(function (item, idx) {
+          var rect = item.el.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) return;
+          var dist = Math.abs(rect.top - 120);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = idx;
+          }
+        });
+        openAt(best, document.activeElement);
+      }
+    };
+  }
+
+  /* ---------- 可见性机制实时探索器 (渐进增强 .mechanism-reference[data-demo="visibility"]) ---------- */
+
+  function initVisibilityDemos(container) {
+    var controllers = [];
+    qsa('.mechanism-reference[data-demo="visibility"]', container).forEach(function (box) {
+      if (qs(".vis-explorer", box)) return;
+      var total = parseInt(box.getAttribute("data-total") || "8", 10);
+      var defTime = parseInt(box.getAttribute("data-time") || "6", 10);
+      var defWin = parseInt(box.getAttribute("data-window") || "3", 10);
+      var rows = qsa(".demo-scenarios tbody tr[data-train]", box);
+      if (!rows.length || isNaN(total) || total < 1) return;
+
+      var state = { rowIdx: 0, time: defTime, win: defWin };
+      var explorer = node("div", "vis-explorer");
+      var controls = node("div", "vis-controls");
+      controls.appendChild(node("span", "", "点击上方任意场景行切换规则，或调节参数观察可见范围："));
+
+      function makeStepper(label, getVal, setVal) {
+        var group = node("span", "vis-step-group");
+        group.appendChild(node("span", "", label));
+        var minus = node("button", "vis-step-btn", "-");
+        minus.type = "button";
+        var valEl = node("span", "vis-value", String(getVal()));
+        var plus = node("button", "vis-step-btn", "+");
+        plus.type = "button";
+        minus.addEventListener("click", function () { setVal(getVal() - 1); update(); });
+        plus.addEventListener("click", function () { setVal(getVal() + 1); update(); });
+        group.appendChild(minus);
+        group.appendChild(valEl);
+        group.appendChild(plus);
+        return { el: group, minus: minus, plus: plus, valEl: valEl };
+      }
+
+      var tStep = makeStepper("当前到达 t =", function () { return state.time; }, function (v) {
+        state.time = Math.min(total, Math.max(1, v));
+      });
+      var lStep = makeStepper("窗口容量 L =", function () { return state.win; }, function (v) {
+        state.win = Math.min(total, Math.max(1, v));
+      });
+      var resetBtn = node("button", "vis-reset", "重置默认");
+      resetBtn.type = "button";
+      resetBtn.addEventListener("click", function () { reset(); });
+
+      controls.appendChild(tStep.el);
+      controls.appendChild(lStep.el);
+      controls.appendChild(resetBtn);
+      explorer.appendChild(controls);
+
+      var strips = node("div", "vis-strips");
+      var trainRow = node("div", "vis-strip-row");
+      var trainLabel = node("span", "vis-strip-label", "训练可见");
+      var trainTokens = node("div", "vis-tokens");
+      trainRow.appendChild(trainLabel);
+      trainRow.appendChild(trainTokens);
+
+      var inferRow = node("div", "vis-strip-row");
+      var inferLabel = node("span", "vis-strip-label", "部署可见");
+      var inferTokens = node("div", "vis-tokens");
+      inferRow.appendChild(inferLabel);
+      inferRow.appendChild(inferTokens);
+
+      strips.appendChild(trainRow);
+      strips.appendChild(inferRow);
+      explorer.appendChild(strips);
+
+      var summary = node("p", "vis-summary", "");
+      explorer.appendChild(summary);
+      box.appendChild(explorer);
+
+      rows.forEach(function (row, idx) {
+        row.setAttribute("tabindex", "0");
+        row.addEventListener("click", function () { state.rowIdx = idx; update(); });
+        row.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            state.rowIdx = idx;
+            update();
+          }
+        });
+      });
+
+      function isVisibleUnder(rule, i, t, win) {
+        if (i > t) return false;
+        if (rule === "prefix") return i >= 1;
+        return i >= Math.max(1, t - win + 1);
+      }
+
+      function renderStrip(target, rule, otherRule) {
+        target.innerHTML = "";
+        for (var i = 1; i <= total; i += 1) {
+          var vis = isVisibleUnder(rule, i, state.time, state.win);
+          var otherVis = isVisibleUnder(otherRule, i, state.time, state.win);
+          var cell = node("span", "vis-token", String(i));
+          if (i > state.time) cell.classList.add("is-future");
+          else if (vis && vis !== otherVis) cell.classList.add("is-mismatch");
+          else if (vis) cell.classList.add("is-visible");
+          if (i === state.time) cell.classList.add("is-current");
+          cell.title = i > state.time ? "Token " + i + ": 未来尚未到达" : (vis ? "Token " + i + ": 可见" : "Token " + i + ": 已滑出窗口");
+          target.appendChild(cell);
+        }
+      }
+
+      function update() {
+        rows.forEach(function (r, idx) { r.classList.toggle("is-selected", idx === state.rowIdx); });
+        tStep.valEl.textContent = String(state.time);
+        lStep.valEl.textContent = String(state.win);
+        tStep.minus.disabled = state.time <= 1;
+        tStep.plus.disabled = state.time >= total;
+        lStep.minus.disabled = state.win <= 1;
+        lStep.plus.disabled = state.win >= total;
+
+        var activeRow = rows[state.rowIdx];
+        var trainRule = activeRow.getAttribute("data-train") || "window";
+        var inferRule = activeRow.getAttribute("data-infer") || "window";
+        renderStrip(trainTokens, trainRule, inferRule);
+        renderStrip(inferTokens, inferRule, trainRule);
+
+        var futureNote = state.time < total ? "；token " + (state.time + 1) + "~" + total + " 尚未到达，双端均不可见。" : "；全部 8 个 token 均已到达。";
+        if (trainRule === inferRule) {
+          var startIdx = trainRule === "window" ? Math.max(1, state.time - state.win + 1) : 1;
+          summary.textContent = "训练与部署规则对齐：均可见 token " + startIdx + "~" + state.time + futureNote;
+        } else if (state.time <= state.win) {
+          summary.textContent = "规则存在隐患（训练 " + trainRule + " vs 部署 " + inferRule + "），当前因 t ≤ L 碰巧都看到 token 1~" + state.time + "；把 t 调大到 " + (state.win + 1) + " 以上即可暴露分裂" + futureNote;
+        } else {
+          var mismatchEnd = state.time - state.win;
+          summary.textContent = "训练与部署可见范围不一致：token 1~" + mismatchEnd + " 在一端可见而另一端被遮挡（高亮格），造成训练-推理分布漂移" + futureNote;
+        }
+      }
+
+      function reset() {
+        state.rowIdx = 0;
+        state.time = defTime;
+        state.win = defWin;
+        update();
+      }
+
+      update();
+      controllers.push({ reset: reset });
+    });
+    return controllers;
+  }
+
+  /* ---------- 专题导读页图谱联动与多列对比弹窗 ---------- */
+
+  function initHubInteractions(deck) {
+    var svg = qs(".hub-svg", deck);
+    var compareTable = qs(".hub-compare", deck);
+    if (svg) {
+      qsa('a.hs-link[href*="#paper-"]', svg).forEach(function (link) {
+        var href = link.getAttribute("href") || "";
+        var m = href.match(/#paper-([a-z0-9-]+)/i);
+        if (!m) return;
+        var paperId = m[1];
+        var step = document.getElementById("paper-" + paperId);
+        var evoCards = qsa(".hub-evo-item", deck).filter(function (card) {
+          var a = qs("h3 a", card);
+          return a && (a.getAttribute("href") || "").indexOf(paperId + ".html") >= 0;
+        });
+        function setHi(on) {
+          if (step) step.classList.toggle("is-linked-hi", on);
+          evoCards.forEach(function (c) { c.classList.toggle("is-linked-hi", on); });
+        }
+        link.addEventListener("mouseenter", function () { setHi(true); });
+        link.addEventListener("mouseleave", function () { setHi(false); });
+        link.addEventListener("focus", function () { setHi(true); });
+        link.addEventListener("blur", function () { setHi(false); });
+      });
+    }
+
+    if (compareTable && !qs(".hub-compare-bar", compareTable.parentNode)) {
+      var headers = qsa("thead th", compareTable);
+      if (headers.length >= 3) {
+        var bar = node("div", "hub-compare-bar");
+        bar.appendChild(node("span", "", "可按列筛选任意两篇并排对照"));
+        var openBtn = node("button", "fig-zoom-btn", "弹窗筛选对比");
+        openBtn.type = "button";
+        bar.appendChild(openBtn);
+        compareTable.parentNode.insertBefore(bar, compareTable);
+
+        var modal = null;
+        openBtn.addEventListener("click", function () {
+          if (!modal) modal = makeHubCompareDialog(compareTable);
+          modal.open(openBtn);
+        });
+      }
+    }
+  }
+
+  function makeHubCompareDialog(sourceTable) {
+    var dialog = document.createElement("dialog");
+    dialog.className = "reader-modal";
+    var panel = node("div", "reader-modal-panel");
+    var head = node("div", "reader-modal-head");
+    var heading = node("div");
+    heading.appendChild(node("h2", "", "关键维度筛选对比"));
+    heading.appendChild(node("p", "modal-note", "点击下方论文名称切换显示列（至少保留两列），方便两两并排阅读。"));
+    var close = node("button", "", "×");
+    close.type = "button";
+    close.setAttribute("aria-label", "关闭对比");
+    head.appendChild(heading);
+    head.appendChild(close);
+    panel.appendChild(head);
+
+    var filters = node("div", "modal-col-filters");
+    var clonedTable = sourceTable.cloneNode(true);
+    clonedTable.classList.remove("hub-compare");
+    var ths = qsa("thead th", clonedTable);
+    var activeCols = ths.map(function () { return true; });
+
+    function syncCols() {
+      var visibleCount = activeCols.slice(1).filter(Boolean).length;
+      qsa("tr", clonedTable).forEach(function (tr) {
+        var cells = qsa("th, td", tr);
+        cells.forEach(function (cell, colIdx) {
+          if (colIdx === 0) return;
+          cell.hidden = !activeCols[colIdx];
+        });
+      });
+      qsa(".modal-col-chip", filters).forEach(function (chip) {
+        var idx = parseInt(chip.dataset.colIdx, 10);
+        chip.setAttribute("aria-pressed", activeCols[idx] ? "true" : "false");
+        chip.disabled = activeCols[idx] && visibleCount <= 2;
+      });
+    }
+
+    ths.slice(1).forEach(function (th, idx) {
+      var colIdx = idx + 1;
+      var chip = node("button", "modal-col-chip", th.textContent.trim());
+      chip.type = "button";
+      chip.dataset.colIdx = String(colIdx);
+      chip.setAttribute("aria-pressed", "true");
+      chip.addEventListener("click", function () {
+        activeCols[colIdx] = !activeCols[colIdx];
+        syncCols();
+      });
+      filters.appendChild(chip);
+    });
+
+    panel.appendChild(filters);
+    panel.appendChild(clonedTable);
+    dialog.appendChild(panel);
+    document.body.appendChild(dialog);
+
+    var opener = null;
+    close.addEventListener("click", function () { dialog.close(); });
+    dialog.addEventListener("click", function (e) { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener("close", function () { if (opener && opener.focus) opener.focus(); });
+    syncCols();
+
+    return {
+      open: function (trigger) {
+        opener = trigger || document.activeElement;
+        if (!dialog.open) dialog.showModal();
+        close.focus();
+      }
+    };
+  }
+
+  /* ---------- 文章页 (论文速览 & 专题导读) ---------- */
+
   function setTopbar(page) {
     var home = qs(".topbar-home");
     var title = qs(".topbar-title");
@@ -348,7 +1066,6 @@
     var nav = qs(".topbar-nav");
     if (home) {
       home.textContent = "← 知识库";
-      // 有来源状态就恢复来源；专题导读页没有来源时回到该专题的筛选视图
       var from = fromQuery();
       home.href = "../index.html" + (from ? "?" + from : (isHub(page) ? "?topic=" + encodeURIComponent(page.topic) : ""));
     }
@@ -368,6 +1085,8 @@
     recallLink.href = "#pitfalls";
     recallLink.dataset.action = "recall";
     nav.appendChild(recallLink);
+    nav.appendChild(makeThemeButton());
+    nav.appendChild(makeHelpButton("reader"));
   }
 
   function semanticSectionId(section, index, used) {
@@ -421,27 +1140,33 @@
     return { outline: outline, sections: sections };
   }
 
-  // 论文在专题导读中的稳定位置：topics/<hub>.html#paper-<论文 id>；返回专题靠这个锚点，不嵌套上一跳 URL
   function hubPosition(paperId) {
     var entry = HUB_BY_PAPER[paperId];
     if (!entry) return null;
     return { hub: entry.hub, role: entry.role, href: "../" + entry.hub.href + "#paper-" + paperId };
   }
 
-  function appendHubEntry(container, page, className) {
+  function appendHubEntry(container, page, basePrefix, className) {
     var position = page ? hubPosition(page.id) : null;
     if (!position) return null;
     var block = node("div", className || "context-hub");
     block.appendChild(node("span", "context-hub-kicker", "TOPIC"));
     var link = node("a", "context-hub-link", "在「" + position.hub.title + "」专题中的位置");
-    link.href = withFrom(position.href);
+    link.href = withFrom((basePrefix || "../") + entryHref(position));
     block.appendChild(link);
     block.appendChild(node("span", "context-hub-role", position.role === "member" ? "主线论文" : "跨专题引用"));
     container.appendChild(block);
     return block;
   }
 
-  function buildContext(deck, page) {
+  function entryHref(position) {
+    return position.hub.href + "#paper-" + position.href.split("#paper-")[1];
+  }
+
+  function buildContext(page, opts) {
+    var options = opts || {};
+    var isNoteView = !!options.isNoteView;
+    var sitePrefix = isNoteView ? "../../" : "../";
     var context = node("aside", "reader-context");
     var hub = isHub(page);
     context.appendChild(node("p", "context-kicker", hub ? "TOPIC MEMBERS" : "CONTINUE READING"));
@@ -457,11 +1182,13 @@
           var head = node("p", "context-rel-head");
           head.appendChild(node("span", "context-rel-type", group[0]));
           var link = node("a", "", target.title);
-          link.href = withFrom("../" + target.href);
+          link.href = withFrom(sitePrefix + (isNoteView ? target.noteHref : target.href));
           head.appendChild(link);
-          var position = node("a", "context-rel-status", "本页位置");
-          position.href = "#paper-" + id;
-          head.appendChild(position);
+          if (!isNoteView) {
+            var position = node("a", "context-rel-status", "本页位置");
+            position.href = "#paper-" + id;
+            head.appendChild(position);
+          }
           item.appendChild(head);
           item.appendChild(node("p", "context-rel-reason", target.essence));
           memberList.appendChild(item);
@@ -469,18 +1196,20 @@
       });
       context.appendChild(memberList);
     } else {
-      appendHubEntry(context, page);
+      appendHubEntry(context, page, sitePrefix);
       if (page && page.relations && page.relations.length) {
         var list = node("div", "context-rel-list");
         page.relations.forEach(function (rel) {
           var target = getPage(rel.to);
           var item = node("div", "context-rel");
           var head = node("p", "context-rel-head");
-          var typeLabel = node("span", "context-rel-type", rel.type);
-          head.appendChild(typeLabel);
+          head.appendChild(node("span", "context-rel-type", rel.type));
           if (target) {
             var link = node("a", "", target.title);
-            link.href = withFrom(isHub(target) ? "../" + target.href : target.href.split("/").pop());
+            var targetPath = isNoteView
+              ? sitePrefix + target.noteHref
+              : (isHub(target) ? "../" + target.href : target.href.split("/").pop());
+            link.href = withFrom(targetPath);
             head.appendChild(link);
           }
           var status = node("span", "context-rel-status", STATUS_LABEL[rel.status] || rel.status);
@@ -502,16 +1231,21 @@
       context.appendChild(review);
     }
 
-    if (page && page.noteHref) {
+    if (isNoteView && page && page.href) {
+      var speed = node("a", "context-action", hub ? "切换到专题导读页" : "切换到速览页");
+      speed.href = withFrom("../../" + page.href);
+      context.appendChild(speed);
+    } else if (!isNoteView && page && page.noteHref) {
       var note = node("a", "context-action", hub ? "阅读完整专题笔记" : "阅读完整笔记");
       note.href = withFrom("../" + page.noteHref);
       context.appendChild(note);
     }
+    var sourcePrefix = isNoteView ? "../../../" : "../../";
     var source = node("a", "context-action context-action-sub", "markdown 源文件");
-    source.href = "../../" + (page && page.sourceHref ? page.sourceHref : "wiki/papers/" + pageIdFromPath() + ".md");
+    source.href = sourcePrefix + (page && page.sourceHref ? page.sourceHref : "wiki/papers/" + pageIdFromPath() + ".md");
     context.appendChild(source);
 
-    if (page && (page.id === "2026-u-opsd" || page.id === "2026-s2vopd")) {
+    if (!isNoteView && page && (page.id === "2026-u-opsd" || page.id === "2026-s2vopd")) {
       var compare = node("button", "compare-trigger", "并排比较 U-OPSD / S²VOPD");
       compare.type = "button";
       compare.dataset.action = "compare";
@@ -525,7 +1259,6 @@
     if (!cover || !page) return;
     var insertionPoint = qs(".cover-meta", cover) || qs(".tagrow", cover);
     var takeaway = qs(".takeaway", deck);
-    // 专题导读页的 takeaway 本就在封面里，不再复制一份
     if (takeaway && !cover.contains(takeaway)) {
       var reminder = node("p", "mobile-cover-takeaway");
       reminder.innerHTML = takeaway.innerHTML;
@@ -574,7 +1307,7 @@
 
   /* ---------- 回忆模式: 只见标题 -> 显示问题 -> 逐题展开解答 ---------- */
 
-  function prepareRecall(deck, pageRoot) {
+  function prepareRecall(deck, pageRoot, onToggleCallbacks) {
     var pitfalls = qs("#pitfalls", deck);
     if (!pitfalls) return null;
     var list = qs(".qa-list", pitfalls);
@@ -633,6 +1366,10 @@
       bar.appendChild(exit);
     }
 
+    function notifyReset() {
+      (onToggleCallbacks || []).forEach(function (fn) { fn(); });
+    }
+
     function enterRecall() {
       pageRoot.classList.add("reader-recall");
       pageRoot.classList.remove("show-questions");
@@ -641,6 +1378,7 @@
         var toggle = qs(".qa-toggle", qa);
         if (toggle) toggle.hidden = false;
       });
+      notifyReset();
       renderBar("titles");
       syncRecallLinks(true);
       window.scrollTo({ top: 0, behavior: scrollBehavior() });
@@ -653,6 +1391,7 @@
         var toggle = qs(".qa-toggle", qa);
         if (toggle) toggle.hidden = true;
       });
+      notifyReset();
       renderBar("off");
       syncRecallLinks(false);
     }
@@ -670,7 +1409,7 @@
     };
   }
 
-  /* ---------- 并排比较: 原生 dialog, 每个值可回依据 ---------- */
+  /* ---------- 并排比较: U-OPSD / S²VOPD 精选弹窗 ---------- */
 
   var COMPARE_ROWS = [
     {
@@ -756,9 +1495,6 @@
 
     var opener = null;
     var pendingFocus = null;
-    // 同文档依据：关闭弹窗并落到目标问答，焦点跟到依据而不是触发按钮。
-    // 跨文档依据交给默认导航（弹窗随文档销毁），sameDocRef 返回 null 表示不拦截；
-    // 跨文档导航前补上来源条件，落地页返回首页时才能恢复原筛选。
     qsa("a.compare-ref", dialog).forEach(function (ref) {
       var resolved = new URL(ref.href, window.location.href);
       if (resolved.pathname !== window.location.pathname) {
@@ -791,11 +1527,68 @@
     };
   }
 
-  function updateReaderProgress() {
-    var progress = qs(".topbar-progress");
-    if (!progress) return;
-    var max = document.documentElement.scrollHeight - window.innerHeight;
-    progress.style.width = (max > 0 ? Math.min(100, Math.max(0, window.scrollY / max * 100)) : 0) + "%";
+  /* ---------- 阅读页键盘导航绑定 ---------- */
+
+  function bindReaderShortcuts(sections, opts) {
+    var options = opts || {};
+    var lastGTime = 0;
+    document.addEventListener("keydown", function (event) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (qs("dialog[open]")) return;
+      var active = document.activeElement;
+      if (active && (/^(input|textarea|select)$/i.test(active.tagName) || active.isContentEditable)) return;
+      var key = event.key;
+      var lower = key.toLowerCase();
+
+      if (key === "?") {
+        event.preventDefault();
+        openShortcutsModal("reader", active);
+        return;
+      }
+      if (lower === "t") {
+        event.preventDefault();
+        cycleTheme();
+        return;
+      }
+      if (lower === "r" && options.recall) {
+        event.preventDefault();
+        if (options.recall.isActive()) options.recall.exit();
+        else options.recall.enter();
+        return;
+      }
+      if (lower === "f" && options.lightbox) {
+        event.preventDefault();
+        options.lightbox.openNearest();
+        return;
+      }
+      if (lower === "g") {
+        var now = Date.now();
+        if (now - lastGTime < 450) {
+          event.preventDefault();
+          lastGTime = 0;
+          window.scrollTo({ top: 0, behavior: scrollBehavior() });
+          return;
+        }
+        lastGTime = now;
+        return;
+      }
+      lastGTime = 0;
+      if ((lower === "j" || key === "]" || lower === "k" || key === "[") && sections && sections.length) {
+        var visibleSections = sections.filter(function (s) { return s.offsetParent !== null; });
+        if (!visibleSections.length) return;
+        event.preventDefault();
+        var forward = lower === "j" || key === "]";
+        var threshold = 96;
+        var curIdx = 0;
+        visibleSections.forEach(function (sec, i) {
+          if (sec.getBoundingClientRect().top <= threshold) curIdx = i;
+        });
+        var nextIdx = forward
+          ? Math.min(visibleSections.length - 1, curIdx + 1)
+          : Math.max(0, curIdx - 1);
+        visibleSections[nextIdx].scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+      }
+    });
   }
 
   function enhanceReader() {
@@ -814,7 +1607,6 @@
       tag.replaceWith(link);
     });
 
-    // 文末关联等静态互链（同目录 *.html）也继承来源条件；标签链接已被替换为 ../index.html，不受影响
     if (fromQuery()) {
       qsa("a[href]", deck).forEach(function (link) {
         var href = link.getAttribute("href") || "";
@@ -823,7 +1615,7 @@
     }
 
     var built = buildOutline(deck);
-    var context = buildContext(deck, page);
+    var context = buildContext(page, { isNoteView: false });
     buildMobileCoverAccess(deck, page);
     var layout = node("div", "reader-layout");
     deck.parentNode.insertBefore(layout, deck);
@@ -831,7 +1623,10 @@
     layout.appendChild(deck);
     layout.appendChild(context);
 
-    var recall = prepareRecall(deck, pageRoot);
+    var visDemos = initVisibilityDemos(deck);
+    var resetCallbacks = visDemos.map(function (d) { return d.reset; });
+
+    var recall = prepareRecall(deck, pageRoot, resetCallbacks);
     var recallLink = qs('[data-action="recall"]');
     if (recall && recallLink) {
       recallLink.addEventListener("click", function (event) {
@@ -840,6 +1635,10 @@
         else recall.enter();
       });
     }
+
+    initCopyAndMermaid(deck);
+    var lightbox = initLightbox(deck);
+    if (isHub(page)) initHubInteractions(deck);
 
     var compareButtons = qsa('[data-action="compare"]');
     if (compareButtons.length) {
@@ -875,8 +1674,9 @@
       built.sections.forEach(function (section) { io.observe(section); });
     }
 
-    window.addEventListener("scroll", updateReaderProgress, { passive: true });
-    updateReaderProgress();
+    bindScrollProgress();
+    initBackToTop(qs(".cover", deck) || built.sections[0]);
+    bindReaderShortcuts(built.sections, { recall: recall, lightbox: lightbox });
 
     function openQa(qa) {
       qa.classList.add("is-open");
@@ -913,6 +1713,105 @@
     var count = qs("#idx-count");
     var stateLabel = qs("#idx-state-label");
     var clear = qs("#idx-clear");
+    var headerActions = qs("#idx-header-actions");
+    var toolbar = qs("#idx-toolbar");
+    var tagDrawer = qs("#idx-tag-drawer");
+    var kbIndex = -1;
+
+    if (headerActions) {
+      headerActions.appendChild(makeThemeButton());
+      headerActions.appendChild(makeHelpButton("index"));
+    }
+
+    // 专题按钮补充论文计数
+    var topicCounts = { all: paperPages.length };
+    paperPages.forEach(function (p) {
+      topicCounts[p.topic] = (topicCounts[p.topic] || 0) + 1;
+    });
+    topicButtons.forEach(function (btn) {
+      var id = btn.dataset.topic;
+      var n = topicCounts[id] || 0;
+      var baseText = btn.textContent.trim();
+      btn.dataset.topicLabel = baseText;
+      btn.textContent = "";
+      btn.appendChild(node("span", "", baseText));
+      btn.appendChild(node("span", "topic-count", String(n)));
+    });
+
+    // 统计标签计数并构建标签抽屉 + 排序切换栏
+    var tagCounts = {};
+    paperPages.forEach(function (p) {
+      (p.tags || []).forEach(function (tid) { tagCounts[tid] = (tagCounts[tid] || 0) + 1; });
+    });
+
+    var drawerBtn = null;
+    var sortButtons = [];
+    if (toolbar && tagDrawer && taxonomy.length) {
+      toolbar.hidden = false;
+      var activeTags = taxonomy.filter(function (t) { return (tagCounts[t.id] || 0) > 0; });
+      drawerBtn = node("button", "idx-tool-btn", "标签库 (" + activeTags.length + ") ▸");
+      drawerBtn.type = "button";
+      drawerBtn.setAttribute("aria-expanded", "false");
+      drawerBtn.addEventListener("click", function () {
+        var open = tagDrawer.hidden;
+        tagDrawer.hidden = !open;
+        drawerBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        drawerBtn.textContent = "标签库 (" + activeTags.length + ") " + (open ? "▾" : "▸");
+      });
+      toolbar.appendChild(drawerBtn);
+
+      var sortGroup = node("div", "idx-sort-group");
+      sortGroup.appendChild(node("span", "idx-sort-label", "排序:"));
+      [
+        ["default", "入库序"],
+        ["review", "复测优先"],
+        ["newest", "最新入库"]
+      ].forEach(function (pair) {
+        var sbtn = node("button", "idx-sort-btn", pair[1]);
+        sbtn.type = "button";
+        sbtn.dataset.sort = pair[0];
+        sbtn.setAttribute("aria-pressed", pair[0] === "default" ? "true" : "false");
+        sbtn.addEventListener("click", function () {
+          var st = readState();
+          st.sort = pair[0] === "default" ? "" : pair[0];
+          writeState(st, "push");
+        });
+        sortButtons.push(sbtn);
+        sortGroup.appendChild(sbtn);
+      });
+      toolbar.appendChild(sortGroup);
+
+      [
+        ["mechanism", "机制"],
+        ["goal", "目标"]
+      ].forEach(function (dimPair) {
+        var dimTags = activeTags.filter(function (t) { return t.dim === dimPair[0]; });
+        if (!dimTags.length) return;
+        var group = node("div", "idx-tag-group");
+        group.appendChild(node("span", "idx-tag-group-label", dimPair[1]));
+        var list = node("div", "idx-tag-list");
+        dimTags.forEach(function (t) {
+          var b = node("button", "idx-tag");
+          b.type = "button";
+          b.dataset.tag = t.id;
+          b.appendChild(node("span", "", t.label));
+          b.appendChild(node("span", "tag-count", String(tagCounts[t.id] || 0)));
+          list.appendChild(b);
+        });
+        group.appendChild(list);
+        tagDrawer.appendChild(group);
+      });
+
+      tagDrawer.addEventListener("click", function (event) {
+        var tagBtn = event.target.closest ? event.target.closest("[data-tag]") : null;
+        if (!tagBtn) return;
+        var st = readState();
+        st.tag = st.tag === tagBtn.dataset.tag ? "" : tagBtn.dataset.tag;
+        writeState(st, "push");
+      });
+    }
+
+    initBackToTop(qs(".idx-header"));
 
     function readState() {
       var params = new URLSearchParams(window.location.search);
@@ -920,7 +1819,8 @@
         q: params.get("q") || "",
         topic: params.get("topic") || "all",
         tag: resolveTag(params.get("tag") || "") || "",
-        review: params.get("review") || ""
+        review: params.get("review") || "",
+        sort: params.get("sort") || ""
       };
     }
 
@@ -930,10 +1830,12 @@
       if (state.topic && state.topic !== "all") params.set("topic", state.topic);
       if (state.tag) params.set("tag", state.tag);
       if (state.review) params.set("review", state.review);
+      if (state.sort && state.sort !== "default") params.set("sort", state.sort);
       return params.toString();
     }
 
     function writeState(next, mode) {
+      kbIndex = -1;
       var query = stateQuery(next);
       var url = window.location.pathname + (query ? "?" + query : "");
       window.history[mode === "push" ? "pushState" : "replaceState"]({}, "", url);
@@ -964,8 +1866,6 @@
       });
     }
 
-    // 专题导读卡：选中专题时为完整入口（问题、范围、两个动作），其余场景为紧凑卡，
-    // 搜索时排在论文命中之后，不让长导读卡把论文推出首屏。
     function hubCard(hub, state, recallOn, tokens, compact) {
       var card = node("article", "idx-card idx-hub" + (compact ? " idx-hub-compact" : ""));
       card.appendChild(node("p", "idx-hub-kicker", "专题导读"));
@@ -974,8 +1874,11 @@
       card.appendChild(link);
       var members = (hub.members || []).length;
       var refs = (hub.refs || []).length;
-      card.appendChild(node("p", "idx-card-meta", (topics[hub.topic] || "") + "  ·  主线 " + members + " 篇" +
-        (refs ? "  ·  跨专题引用 " + refs + " 篇" : "") + "  ·  " + reviewLabel(hub)));
+      var meta = node("p", "idx-card-meta");
+      meta.appendChild(node("span", "", (topics[hub.topic] || "") + "  ·  主线 " + members + " 篇" +
+        (refs ? "  ·  跨专题引用 " + refs + " 篇  ·  " : "  ·  ")));
+      meta.appendChild(reviewBadge(hub));
+      card.appendChild(meta);
       var essence = node("p", "idx-card-essence");
       essence.innerHTML = tokens.length ? highlight(hub.essence, tokens) : escapeHtml(hub.essence);
       card.appendChild(essence);
@@ -996,12 +1899,30 @@
       return card;
     }
 
+    function syncKbSelection() {
+      var cards = qsa(".idx-card", results);
+      cards.forEach(function (c, i) { c.classList.toggle("is-kb-active", i === kbIndex); });
+      if (kbIndex >= 0 && cards[kbIndex]) {
+        cards[kbIndex].scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
+      }
+    }
+
     function render() {
       var state = readState();
       filter.value = state.q;
       topicButtons.forEach(function (button) {
         button.setAttribute("aria-pressed", button.dataset.topic === state.topic ? "true" : "false");
       });
+      var effectiveSort = state.review === "due" ? "review" : (state.sort || "default");
+      sortButtons.forEach(function (sbtn) {
+        sbtn.setAttribute("aria-pressed", sbtn.dataset.sort === effectiveSort ? "true" : "false");
+      });
+      if (tagDrawer) {
+        qsa("[data-tag]", tagDrawer).forEach(function (b) {
+          b.classList.toggle("is-active", b.dataset.tag === state.tag);
+        });
+      }
+
       var tokens = tokensFor(state.q);
       var recallOn = document.documentElement.classList.contains("idx-recall");
       function matches(page) {
@@ -1015,6 +1936,11 @@
       if (tokens.length) {
         filtered.sort(function (a, b) { return scorePage(b, tokens) - scorePage(a, tokens); });
         matchedHubs.sort(function (a, b) { return scorePage(b, tokens) - scorePage(a, tokens); });
+      } else if (effectiveSort === "review") {
+        filtered.sort(compareReviewPriority);
+        matchedHubs.sort(compareReviewPriority);
+      } else if (effectiveSort === "newest") {
+        filtered.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
       }
 
       results.innerHTML = "";
@@ -1024,7 +1950,6 @@
         (matchedHubs.length ? "  ·  专题导读 " + matchedHubs.length + " / " + hubPages.length : "")));
       results.appendChild(heading);
 
-      // 无搜索词：专题导读入口排在论文列表前；选中该专题时展开为完整入口，其余场景保持紧凑
       if (!tokens.length && matchedHubs.length) {
         var hubBlock = node("div", "idx-hub-list" + (state.topic !== "all" ? " is-focus" : ""));
         matchedHubs.forEach(function (hub) {
@@ -1036,17 +1961,18 @@
       filtered.forEach(function (page) {
         var card = node("article", "idx-card");
         var link = node("a", "idx-card-title", page.title);
-        // 标题入口 = 本篇阅读入口（回忆模式进速览回忆流程）；精确定位由下方命中片段负责。
-        // 不跟随首条命中，避免「先回忆」把人带进不处理 recall 的完整笔记页。
         link.href = cardHref(page.href, state, recallOn);
         card.appendChild(link);
-        card.appendChild(node("p", "idx-card-meta", (topics[page.topic] || "") + "  ·  " + page.date + "  ·  " + reviewLabel(page)));
+        var meta = node("p", "idx-card-meta");
+        meta.appendChild(node("span", "", (topics[page.topic] || "") + "  ·  " + page.date + "  ·  "));
+        meta.appendChild(reviewBadge(page));
+        card.appendChild(meta);
         var essence = node("p", "idx-card-essence");
         essence.innerHTML = tokens.length ? highlight(page.essence, tokens) : escapeHtml(page.essence);
         card.appendChild(essence);
         var tags = node("div", "idx-card-tags");
-        page.tags.slice(0, 3).forEach(function (id) {
-          var button = node("button", "idx-tag", tagLabel(id));
+        page.tags.slice(0, 4).forEach(function (id) {
+          var button = node("button", "idx-tag" + (state.tag === id ? " is-active" : ""), tagLabel(id));
           button.type = "button";
           button.dataset.tag = id;
           tags.appendChild(button);
@@ -1056,7 +1982,6 @@
         results.appendChild(card);
       });
 
-      // 搜索中：专题作为标明「专题导读」的紧凑结果排在论文命中之后
       if (tokens.length && matchedHubs.length) {
         var hubResults = node("div", "idx-hub-list is-search");
         matchedHubs.forEach(function (hub) {
@@ -1078,13 +2003,16 @@
         if (state.q) labels.push("搜索: " + state.q);
         if (state.topic !== "all") {
           var activeTopic = topicButtons.filter(function (button) { return button.dataset.topic === state.topic; })[0];
-          if (activeTopic) labels.push(activeTopic.textContent);
+          if (activeTopic) labels.push(activeTopic.dataset.topicLabel || activeTopic.textContent);
         }
         if (state.tag) labels.push("标签: " + tagLabel(state.tag));
         if (state.review === "due") labels.push("今天待复测");
+        else if (state.sort === "review") labels.push("按复测优先");
+        else if (state.sort === "newest") labels.push("按最新入库");
         stateLabel.textContent = labels.join("  /  ");
       }
-      if (clear) clear.hidden = !(state.q || state.topic !== "all" || state.tag || state.review);
+      if (clear) clear.hidden = !(state.q || state.topic !== "all" || state.tag || state.review || state.sort);
+      syncKbSelection();
     }
 
     filter.addEventListener("input", function () {
@@ -1104,22 +2032,24 @@
       var tag = event.target.closest ? event.target.closest("[data-tag]") : null;
       if (!tag) return;
       var state = readState();
-      state.tag = tag.dataset.tag;
+      state.tag = state.tag === tag.dataset.tag ? "" : tag.dataset.tag;
       writeState(state, "push");
     });
-    if (clear) clear.addEventListener("click", function () { writeState({ q: "", topic: "all", tag: "", review: "" }, "push"); });
-    // 回忆开关与待复测入口在桌面侧栏与手机紧凑条各有一份，状态必须同步
+    if (clear) clear.addEventListener("click", function () { writeState({ q: "", topic: "all", tag: "", review: "", sort: "" }, "push"); });
+
     var recallToggles = qsa(".idx-recall-toggle");
-    recallToggles.forEach(function (toggle) {
-      toggle.addEventListener("click", function () {
-        var on = document.documentElement.classList.toggle("idx-recall");
-        recallToggles.forEach(function (item) {
-          item.textContent = on ? "结束回忆模式" : "先回忆";
-          item.setAttribute("aria-pressed", on ? "true" : "false");
-        });
-        render();
+    function toggleIndexRecall() {
+      var on = document.documentElement.classList.toggle("idx-recall");
+      recallToggles.forEach(function (item) {
+        item.textContent = on ? "结束回忆模式" : "先回忆";
+        item.setAttribute("aria-pressed", on ? "true" : "false");
       });
+      render();
+    }
+    recallToggles.forEach(function (toggle) {
+      toggle.addEventListener("click", toggleIndexRecall);
     });
+
     var dueCount = pages.filter(reviewDue).length;
     if (dueCount) {
       var desktopDue = qs("#idx-due-entry");
@@ -1129,27 +2059,72 @@
         link.textContent = "今天待复测（" + dueCount + " 篇）";
         link.addEventListener("click", function (event) {
           event.preventDefault();
-          writeState({ q: "", topic: "all", tag: "", review: "due" }, "push");
+          writeState({ q: "", topic: "all", tag: "", review: "due", sort: "" }, "push");
         });
       });
     }
-    // 键盘快捷键: / 或 Cmd/Ctrl+K 聚焦搜索; Esc 先清词、再失焦
+
     document.addEventListener("keydown", function (event) {
+      if (qs("dialog[open]")) return;
       var active = document.activeElement;
       var typing = active && (/^(input|textarea|select)$/i.test(active.tagName) || active.isContentEditable);
-      var key = event.key.toLowerCase();
-      if ((event.key === "/" && !typing) || ((event.metaKey || event.ctrlKey) && key === "k")) {
+      var key = event.key;
+      var lower = key.toLowerCase();
+
+      if ((key === "/" && !typing) || ((event.metaKey || event.ctrlKey) && lower === "k")) {
         event.preventDefault();
         filter.focus();
         filter.select();
-      } else if (event.key === "Escape" && active === filter) {
-        if (filter.value) {
+        return;
+      }
+      if (key === "Escape") {
+        if (active === filter && filter.value) {
+          event.preventDefault();
           var state = readState();
           state.q = "";
           filter.value = "";
           writeState(state, "replace");
-        } else {
+        } else if (active === filter) {
+          event.preventDefault();
           filter.blur();
+          kbIndex = -1;
+          syncKbSelection();
+        } else if (kbIndex >= 0) {
+          event.preventDefault();
+          kbIndex = -1;
+          syncKbSelection();
+        }
+        return;
+      }
+      if (key === "ArrowDown" || key === "ArrowUp") {
+        var cards = qsa(".idx-card", results);
+        if (!cards.length) return;
+        event.preventDefault();
+        if (key === "ArrowDown") kbIndex = Math.min(cards.length - 1, kbIndex + 1);
+        else kbIndex = Math.max(0, kbIndex <= 0 ? 0 : kbIndex - 1);
+        syncKbSelection();
+        return;
+      }
+      if (key === "Enter" && kbIndex >= 0) {
+        var allCards = qsa(".idx-card", results);
+        var activeCard = allCards[kbIndex];
+        var titleLink = activeCard ? qs(".idx-card-title", activeCard) : null;
+        if (titleLink) {
+          event.preventDefault();
+          window.location.href = titleLink.href;
+          return;
+        }
+      }
+      if (!typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (key === "?") {
+          event.preventDefault();
+          openShortcutsModal("index", active);
+        } else if (lower === "t") {
+          event.preventDefault();
+          cycleTheme();
+        } else if (lower === "r") {
+          event.preventDefault();
+          toggleIndexRecall();
         }
       }
     });
@@ -1157,7 +2132,7 @@
     render();
   }
 
-  /* ---------- 完整笔记: 全文命中直接落到匹配段落 ---------- */
+  /* ---------- 完整笔记页：桌面三栏对齐、目录跟随、复制与精确命中定位 ---------- */
 
   function topbarOffset() {
     var raw = getComputedStyle(document.documentElement).getPropertyValue("--topbar-h");
@@ -1165,9 +2140,6 @@
     return (isNaN(height) ? 0 : height) + 24;
   }
 
-  // strong/em/code/a 等行内标签会把一句话切成多个 Text 节点。
-  // 因此在"叶子块"（不再含更小块的 p/li/td 等）的规范化 textContent 上匹配，
-  // 再把命中区间映射回跨节点的 DOM Range：按用户看到的连续文本定位，原文不动。
   function contentBlocks(section) {
     var selector = "p, li, blockquote, pre, h1, h2, h3, h4, dt, dd, td, th, caption, figcaption, .qa-q";
     var blocks = qsa(selector, section).filter(function (el) { return !el.querySelector(selector); });
@@ -1185,7 +2157,6 @@
     return nodes;
   }
 
-  // 归一化连续文本（小写、空白折叠），map 记录每个归一化字符在原文里的下标（-1 为补的空格）
   function normIndex(raw) {
     var text = "";
     var map = [];
@@ -1216,11 +2187,6 @@
     return { node: last.node, offset: last.node.nodeValue.length };
   }
 
-  // 匹配阶梯提升到整个章节的候选块之间（与首页片段的 matchSelection 同一语义）：
-  // ① 先扫全部块的完整短语，按文档序取第一个；
-  // ② 没有完整短语，再比较覆盖全部查询词的局部窗口，按跨度选最小（不按 DOM 顺序接受第一个）；
-  // ③ 最后才降级到块内第一个查询词。
-  // 这样前面块的宽窗口不可能压过后面块的完整短语。
   function locateHitRange(section, tokens) {
     var datas = [];
     contentBlocks(section).forEach(function (block) {
@@ -1305,14 +2271,54 @@
         headingTop = top;
       }
     });
-    // 所属小标题与命中文字在同一屏内时对齐小标题; 长章节深处则直接落到命中文字本身
     var targetTop = matchTop;
     if (heading && matchTop - headingTop <= viewport * 0.7) targetTop = headingTop;
     window.scrollTo({ top: Math.max(0, targetTop - offset), behavior: "auto" });
   }
 
+  function buildNoteOutline(noteWrap) {
+    var sections = qsa(".note-sec", noteWrap);
+    var outline = document.createElement("details");
+    outline.className = "reader-outline";
+    outline.id = "reader-outline";
+    outline.open = !window.matchMedia("(max-width: 720px)").matches;
+    outline.appendChild(node("summary", "", "本页目录"));
+    var nav = document.createElement("nav");
+    sections.forEach(function (sec, idx) {
+      var id = sec.id;
+      if (!id) return;
+      var h2 = qs("h2", sec);
+      var link = node("a", "", h2 ? h2.textContent.trim() : id);
+      link.href = "#" + id;
+      link.dataset.sectionLink = id;
+      if (idx === 0) link.setAttribute("aria-current", "true");
+      nav.appendChild(link);
+    });
+    outline.appendChild(nav);
+    if (window.matchMedia) {
+      var mq = window.matchMedia("(max-width: 720px)");
+      var syncOpen = function () { outline.open = !mq.matches; };
+      if (mq.addEventListener) mq.addEventListener("change", syncOpen);
+    }
+    return { outline: outline, sections: sections };
+  }
+
   function initNote() {
+    var noteWrap = qs(".note-wrap");
+    if (!noteWrap) return;
+    noteWrap.dataset.enhanced = "true";
+    var page = getPage(pageIdFromPath());
     var from = fromQuery();
+
+    var topbarNav = qs(".topbar-nav");
+    if (topbarNav) {
+      var outlineJump = node("a", "topbar-link", "目录");
+      outlineJump.href = "#reader-outline";
+      topbarNav.insertBefore(outlineJump, topbarNav.firstChild);
+      topbarNav.appendChild(makeThemeButton());
+      topbarNav.appendChild(makeHelpButton("reader"));
+    }
+
     if (from) {
       var home = qs(".topbar-home");
       if (home) home.href = addQuery("../../index.html", from);
@@ -1321,15 +2327,41 @@
         if (href.indexOf("../../papers/") < 0 && href.indexOf("../../topics/") < 0) return;
         link.href = addQuery(href, "from=" + encodeURIComponent(from));
       });
-      // markdown 互链投影出的同目录笔记互链同样继承来源
-      qsa("a[href]", qs(".note-wrap")).forEach(function (link) {
+      qsa("a[href]", noteWrap).forEach(function (link) {
         var href = link.getAttribute("href") || "";
         if (isLocalReaderHtml(href)) link.href = withFrom(href);
       });
     }
-    // 搜索词定位只在「从搜索进入」的第一次落地生效；之后用户点目录、跳到正文都遵循
-    // 锚点本身，不再被旧查询词拉走。from 参数保留，仅用于返回首页时恢复筛选。
-    // 浏览器对 URL 锚点滚动发生在 load 时机、晚于脚本执行；等它落地后再定位命中段落。
+
+    // 桌面三栏对齐：左侧常驻章节目录 + 中栏完整正文 + 右侧上下文旁栏
+    var built = buildNoteOutline(noteWrap);
+    var context = buildContext(page, { isNoteView: true });
+    var layout = node("div", "note-layout");
+    noteWrap.parentNode.insertBefore(layout, noteWrap);
+    layout.appendChild(built.outline);
+    layout.appendChild(noteWrap);
+    layout.appendChild(context);
+
+    var sectionLinks = qsa("[data-section-link]", built.outline);
+    if ("IntersectionObserver" in window && built.sections.length) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          sectionLinks.forEach(function (link) {
+            link.setAttribute("aria-current", link.dataset.sectionLink === entry.target.id ? "true" : "false");
+          });
+        });
+      }, { rootMargin: "-18% 0px -68% 0px", threshold: 0 });
+      built.sections.forEach(function (sec) { io.observe(sec); });
+    }
+
+    initCopyAndMermaid(noteWrap);
+    initVisibilityDemos(noteWrap);
+    var lightbox = initLightbox(noteWrap);
+    bindScrollProgress();
+    initBackToTop(qs(".note-header", noteWrap) || built.sections[0]);
+    bindReaderShortcuts(built.sections, { recall: null, lightbox: lightbox });
+
     if (document.readyState === "complete") window.setTimeout(locateHitText, 0);
     else window.addEventListener("load", function () { window.setTimeout(locateHitText, 0); });
   }

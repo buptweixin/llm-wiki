@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DAPO · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -183,10 +183,11 @@
           <h2>卡壳点与解答</h2>
           <span class="slide-no">06</span>
         </div>
+        <div class="qa-list">
         <div class="qa" id="qa-clip-higher"><p class="qa-q">Q1：为什么朴素对称 Clip 会引发熵坍缩？Clip-Higher 如何对症下药？</p><div class="qa-a"><ul>
 <li><strong>正优势的目标平台</strong>：对正优势 token，概率比超过上侧阈值后，该样本目标不再奖励继续提高概率。低概率但有用的 token 需要更大的相对增幅，放宽上侧阈值可延后平台。论文消融支持本设置下保住更多策略熵，不保证任意任务都出现相同变化。</li>
-<li><strong>实际概率不被硬截断</strong>：clip 只改变目标中一个候选项，再由外层 min 选较小者。给定 <span class="note-math">$A=1,r=1.25$</span>，上阈值从 1.2 提到 1.28 后，未裁剪项为 1.25，目标不再处于上侧平台；实际比率仍可超过 1.28。</li>
-<li><strong>改变优势符号的反例（教学假设）</strong>：令 <span class="note-math">$A=-1,r=1.4$</span>，clip 区间为 [0.8,1.28]。未裁剪项 <span class="note-math">$rA=-1.4$</span>，裁剪项为 -1.28，min 选 -1.4。坏动作概率升高时，目标继续提供惩罚，不会因为超过上阈值就变平。</li>
+<li><strong>实际概率不被硬截断</strong>：clip 只改变目标中一个候选项，再由外层 min 选较小者。给定 <code>A=1, r=1.25</code>，上阈值从 1.2 提到 1.28 后，未裁剪项为 1.25，目标不再处于上侧平台；实际比率仍可超过 1.28。</li>
+<li><strong>改变优势符号的反例（教学假设）</strong>：令 <code>A=-1, r=1.4</code>，clip 区间为 [0.8, 1.28]。未裁剪项 <code>rA=-1.4</code>，裁剪项为 -1.28，min 选 -1.4。坏动作概率升高时，目标继续提供惩罚，不会因为超过上阈值就变平。</li>
 <li><strong>2026-10-25 补讲与表现</strong>：首次记得提高上界，但混称梯度裁剪。补讲概率比与目标平台后，正优势变式答对；进一步澄清实际概率不被硬截断后，负优势变式正确选未裁剪项。</li>
 </ul>
 </div></div>
@@ -229,8 +230,9 @@
 <li><strong>软长度惩罚的补充边界</strong>：正确性奖励与长度扣分相加。即使最终答对，进入软长度缓冲区后也可能扣分；这是长度控制信号，不能据此判定中间步骤错误。Overlong Filtering 则屏蔽截断样本损失，用于减少未完成回答带来的奖励噪声。</li>
 <li><strong>2026-10-25 补讲与表现</strong>：场景首答重建了保留有对有错组的条件，补讲后进一步答出补满有效批次和总时间不保证。最后变式正确指出答对也可扣长度分，且与中间推理正误不同。</li>
 </ul>
-<p>依据：<a href="https://arxiv.org/html/2503.14476v2">DAPO §2.3、§3.1：3.4</a>。</p>
+<p>依据：<a href="https://arxiv.org/html/2503.14476v2">DAPO §2.3、§3.1~3.4</a>。</p>
 </div></div>
+        </div>
       </div>
     </section>
 
@@ -241,30 +243,28 @@
           <h2>关联与来源</h2>
           <span class="slide-no">07</span>
         </div>
-        <div class="rel-cards">
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">前置演进</span><h3>DeepSeekMath</h3></div>
-            <p>算法源头与痛点修复：DeepSeekMath 提出了首个免 Critic 的 GRPO 算法，但在上万 token 长思维链下暴露了四大暗礁；DAPO 是针对 Long-CoT 的直接升级系统。</p>
+        <div class="link-groups">
+          <div class="link-group">
+            <h3>RELATED</h3>
+            <div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2024-deepseekmath.html">DeepSeekMath：GRPO 的提出者；DAPO 针对上万 token 长思维链场景下的熵坍缩、零方差组与长度稀释做升级。</a></div>
+            <div class="link-item"><span class="link-rel">extends · <span class="evidence is-reported">原文报告</span></span><a href="../papers/2017-ppo.html">PPO：将对称裁剪解耦为非对称 Clip-Higher（0.8 / 1.28），延后正优势平台以保留低概率探索词增长空间。</a></div>
+            <div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2025-gspo.html">GSPO：DAPO 保留逐 token 比率并做全批 token 归约；GSPO 直接将比率与裁剪提升至整条序列几何平均似然比。</a></div>
+            <div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-sao.html">SAO：DAPO 在同步组采样下动态补满批次；SAO 改为单 Rollout 异步即采即训并用强 Critic 与 DIS 控滞后。</a></div>
+            <div class="link-item"><span class="link-rel">compare · <span class="evidence is-synthesis">库内对照</span></span><a href="../papers/2026-open-mopd.html">Open-MOPD：同样关注长短回答带来的 token 权重倾斜，Open-MOPD 在多教师蒸馏中按域平衡 token 份额。</a></div>
           </div>
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">裁剪理论</span><h3>PPO</h3></div>
-            <p>裁剪边界的非对称改造：PPO 确立了经典对称裁剪目标（1±ε），DAPO 在其长推理实验中检验了非对称 Clip-Higher 对维持策略熵的作用。</p>
-          </div>
-          <div class="rel-card">
-            <div class="rel-card-head"><span class="rel-tag">长度预算对照</span><h3>Open-MOPD</h3></div>
-            <p>长度与预算失衡的同源对照：Open-MOPD 揭示长短回答 25× 差距会导致 token 梯度严重倾斜；DAPO 的 Token-level 损失改为每个有效 token 使用相同归一化系数，长回答得到更大总份额。</p>
+          <div class="link-group">
+            <h3>SOURCE</h3>
+            <div class="link-item"><span class="link-rel">完整笔记</span><span><a href="../notes/papers/2025-dapo.html">notes/papers/2025-dapo.html</a>（markdown 的完整静态投影）</span></div>
+            <div class="link-item"><span class="link-rel">源文件</span><span><a href="../../wiki/papers/2025-dapo.md">wiki/papers/2025-dapo.md</a></span></div>
+            <div class="link-item"><span class="link-rel">原文</span><span><a href="zotero://select/items/QUHVNNHR">Zotero</a>（yuDAPOOpenSourceLLM2025）· AI Butler 预读笔记 itemKey <code>NXVAD9J7</code></span></div>
           </div>
         </div>
-        <dl class="cover-meta" style="margin-top:1.5rem">
-          <dt>完整笔记</dt><dd><a href="../notes/papers/2025-dapo.html">notes/papers/2025-dapo.html</a></dd>
-          <dt>源文件</dt><dd><code>wiki/papers/2025-dapo.md</code></dd>
-          <dt>Zotero 深链接</dt><dd><a href="zotero://select/items/QUHVNNHR">zotero://select/items/QUHVNNHR</a>（citekey: <code>yuDAPOOpenSourceLLM2025</code>）</dd>
-        </dl>
       </div>
     </section>
 
   </main>
 </div>
-<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

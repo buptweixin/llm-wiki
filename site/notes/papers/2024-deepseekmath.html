@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeepSeekMath · 完整笔记 · llm-wiki</title>
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -70,19 +70,19 @@
 </li>
 <li><strong>强化学习（PPO）在大模型推理对齐时的资源与估计瓶颈</strong>：<ul>
 <li><strong>显存开销巨大</strong>：传统 <a href="2017-ppo.html">PPO</a> 是典型的 Actor-Critic 结构，除了策略模型（Actor）和参考模型（Ref），还必须在显存中维护一个同等参数量级的价值模型（Critic），增加显存和训练成本，限制了模型尺寸与上下文长度；具体成本取决于模型共享、卸载与训练实现；</li>
-<li><strong>稀疏奖励与逐 token 价值估计的矛盾</strong>：数学题通常只有在完整推导结束时才能检验最终答案的对错（Outcome Supervision）。让 Critic 模型去预测长链推理中每一个中间 token 的绝对期望收益 <span class="note-math">$V(s_t)$</span>，不仅拟合极其困难，而且估计方差巨大、噪声极高；</li>
+<li><strong>稀疏奖励与逐 token 价值估计的矛盾</strong>：数学题通常只有在完整推导结束时才能检验最终答案的对错（Outcome Supervision）。让 Critic 模型去预测长链推理中每一个中间 token 的绝对期望收益 <span class="note-math" data-tex="V(s_t)"><math><mrow><mi>V</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>s</mi><mi>t</mi></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></span>，不仅拟合极其困难，而且估计方差巨大、噪声极高；</li>
 <li><strong>离线微调（RFT / DPO）缺乏动态探索与惩罚机制</strong>：拒绝采样微调（RFT）只挑选旧模型碰巧做对的样本做 SFT，不仅无法惩罚做错的路径，而且脱离了模型参数更新后的在线探索；DPO 则难以处理多步复杂推理中的动态长轨迹探索。</li>
 </ul>
 </li>
 </ol>
 </section>
-<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3 id="类比：开除特聘名师，改成班级自评">类比：开除特聘名师，改成班级自评</h3>
+<section class="note-sec" id="intuition"><h2>大白话讲解</h2><h3>类比：开除特聘名师，改成班级自评</h3>
 <ul>
-<li><strong>传统 PPO 的做法</strong>：请了一位极其昂贵的特聘名师（Critic 价值模型）。学生（Actor）每写下一个公式、每推导一步，名师都必须在旁边打一个绝对预估分（估算当前状态的长期期望回报 <span class="note-math">$V(s_t)$</span>）。<ul>
+<li><strong>传统 PPO 的做法</strong>：请了一位极其昂贵的特聘名师（Critic 价值模型）。学生（Actor）每写下一个公式、每推导一步，名师都必须在旁边打一个绝对预估分（估算当前状态的长期期望回报 <span class="note-math" data-tex="V(s_t)"><math><mrow><mi>V</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>s</mi><mi>t</mi></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></span>）。<ul>
 <li><strong>痛点</strong>：雇名师的开销（显存）跟学生自己一样大；而且题目还没做完前，名师往往也只能瞎猜，打出来的中间分噪声极大，反而带偏了学生。</li>
 </ul>
 </li>
-<li><strong>GRPO 的做法</strong>：<strong>把特聘名师直接开除</strong>。面对同一道数学难题，让学生自己连续做 64 遍（生成 <span class="note-math">$G=64$</span> 份不同的解题草稿）。<ul>
+<li><strong>GRPO 的做法</strong>：<strong>把特聘名师直接开除</strong>。面对同一道数学难题，让学生自己连续做 64 遍（生成 <span class="note-math" data-tex="G=64"><math><mrow><mi>G</mi><mo>=</mo><mn>64</mn></mrow></math></span> 份不同的解题草稿）。<ul>
 <li>做完后，判卷人（规则或奖励模型）给每份草稿评一个最终分数。</li>
 <li>计算这 64 份草稿的<strong>平均分</strong>与<strong>标准差</strong>；</li>
 <li>高于平均分的草稿算「优秀变体」，赋予正优势值（向此轨迹学习）；低于平均分的草稿算「劣质变体」，赋予负优势值（抑制该推导路径）；</li>
@@ -90,34 +90,34 @@
 </ul>
 </li>
 </ul>
-<figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig4.png" alt="PPO 与 GRPO 架构对比" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 <span class="note-math">$G$</span> 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。</figcaption></figure>
+<figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig4.png" alt="PPO 与 GRPO 架构对比" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 4）：PPO（左）需要同时加载策略、参考、奖励以及庞大的价值模型（Value Model），通过 GAE 逐 token 计算优势；GRPO（右）彻底丢弃价值模型，同一个问题采样 G 个候选回答，利用组内平均与标准差归一化直接得到相对优势，省去独立价值网络的成本；总体显存收益取决于实现。</figcaption></figure>
 </section>
-<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3 id="1-从-ppo-到-grpo-的目标函数重构">1. 从 PPO 到 GRPO 的目标函数重构</h3>
-<p>传统 <a href="2017-ppo.html">PPO</a> 将 token 级的 KL 散度直接塞入奖励函数中（<span class="note-math">$r_t - \beta \log \frac{\pi_\theta}{\pi_{ref}}$</span>），导致价值模型还需要额外拟合策略漂移惩罚。GRPO 彻底理清这一结构，将 KL 散度独立移入损失函数外层，形式如下：</p>
-<pre class="note-pre">$$\mathcal{J}_{GRPO}(\theta) = \mathbb{E}\left[ q \sim \mathcal{P}(Q), \{o_i\}_{i=1}^G \sim \pi_{\theta_{old}}(O|q) \right] \frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} \left[ \min\left( \frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}\hat{A}_{i,t}, \text{clip}\left(\frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}, 1-\varepsilon, 1+\varepsilon\right)\hat{A}_{i,t} \right) - \beta D_{KL}(\pi_\theta \parallel \pi_{ref}) \right]$$</pre>
+<section class="note-sec" id="mechanism"><h2>关键机制</h2><h3>1. 从 PPO 到 GRPO 的目标函数重构</h3>
+<p>传统 <a href="2017-ppo.html">PPO</a> 将 token 级的 KL 散度直接塞入奖励函数中（<span class="note-math" data-tex="r_t - \beta \log \frac{\pi_\theta}{\pi_{ref}}"><math><mrow><msub><mi>r</mi><mi>t</mi></msub><mo>−</mo><mi>β</mi><mrow><mspace width="0.1667em"></mspace><mi>log</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><mfrac><msub><mi>π</mi><mi>θ</mi></msub><msub><mi>π</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub></mfrac></mrow></math></span>），导致价值模型还需要额外拟合策略漂移惩罚。GRPO 彻底理清这一结构，将 KL 散度独立移入损失函数外层，形式如下：</p>
+<div class="note-math-block" data-tex="\mathcal{J}_{GRPO}(\theta) = \mathbb{E}\left[ q \sim \mathcal{P}(Q), \{o_i\}_{i=1}^G \sim \pi_{\theta_{old}}(O|q) \right] \frac{1}{G}\sum_{i=1}^G \frac{1}{|o_i|}\sum_{t=1}^{|o_i|} \left[ \min\left( \frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}\hat{A}_{i,t}, \text{clip}\left(\frac{\pi_\theta(o_{i,t})}{\pi_{\theta_{old}}(o_{i,t})}, 1-\varepsilon, 1+\varepsilon\right)\hat{A}_{i,t} \right) - \beta D_{KL}(\pi_\theta \parallel \pi_{ref}) \right]"><math display="block" class="tml-display"><mrow><msub><mi class="mathcal">𝒥</mi><mrow><mi>G</mi><mi>R</mi><mi>P</mi><mi>O</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><mi>𝔼</mi><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mi>q</mi><mo>∼</mo><mi class="mathcal">𝒫</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>Q</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo separator="true">,</mo><msubsup><mrow><mo fence="true" form="prefix" stretchy="false">{</mo><msub><mi>o</mi><mi>i</mi></msub><mo fence="true" form="postfix" stretchy="false">}</mo></mrow><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></msubsup><mo>∼</mo><msub><mi>π</mi><msub><mi>θ</mi><mrow><mi>o</mi><mi>l</mi><mi>d</mi></mrow></msub></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>O</mi><mi>|</mi><mi>q</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo fence="true" form="postfix" stretchy="true">]</mo></mrow><mfrac><mn>1</mn><mi>G</mi></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>G</mi></munderover></mrow><mfrac><mn>1</mn><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><msub><mi>o</mi><mi>i</mi></msub><mi>|</mi></mrow></munderover></mrow><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mrow><mi>min</mi><mo>⁡</mo></mrow><mrow><mo fence="true" form="prefix" stretchy="true">(</mo><mfrac><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><msub><mi>θ</mi><mrow><mi>o</mi><mi>l</mi><mi>d</mi></mrow></msub></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo separator="true">,</mo><mtext>clip</mtext><mrow><mo fence="true" form="prefix" stretchy="true">(</mo><mfrac><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><msub><mi>θ</mi><mrow><mi>o</mi><mi>l</mi><mi>d</mi></mrow></msub></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><mo separator="true">,</mo><mn>1</mn><mo>−</mo><mi>ε</mi><mo separator="true">,</mo><mn>1</mn><mo>+</mo><mi>ε</mi><mo fence="true" form="postfix" stretchy="true">)</mo></mrow><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="true">)</mo></mrow><mo>−</mo><mi>β</mi><msub><mi>D</mi><mrow><mi>K</mi><mi>L</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>π</mi><mi>θ</mi></msub><mo>∥</mo><msub><mi>π</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo fence="true" form="postfix" stretchy="true">]</mo></mrow></mrow></math></div>
 <p>其中采用 Schulman (2020) 提出的非负无偏 KL 散度估计器：</p>
-<pre class="note-pre">$$D_{KL}(\pi_\theta \parallel \pi_{ref}) = \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - \log \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - 1$$</pre>
-<h3 id="2-优势函数估计（advantage-estimation）">2. 优势函数估计（Advantage Estimation）</h3>
-<p>对于输入问题 <span class="note-math">$q$</span>，采样一组输出 <span class="note-math">$\{o_1, \dots, o_G\}$</span>，得到各输出的得分 <span class="note-math">$\{r_1, \dots, r_G\}$</span>：</p>
+<div class="note-math-block" data-tex="D_{KL}(\pi_\theta \parallel \pi_{ref}) = \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - \log \frac{\pi_{ref}(o_{i,t})}{\pi_\theta(o_{i,t})} - 1"><math display="block" class="tml-display"><mrow><msub><mi>D</mi><mrow><mi>K</mi><mi>L</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>π</mi><mi>θ</mi></msub><mo>∥</mo><msub><mi>π</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><mfrac><mrow><msub><mi>π</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><mo>−</mo><mrow><mi>log</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><mfrac><mrow><msub><mi>π</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac><mo>−</mo><mn>1</mn></mrow></math></div>
+<h3>2. 优势函数估计（Advantage Estimation）</h3>
+<p>对于输入问题 <span class="note-math" data-tex="q"><math><mi>q</mi></math></span>，采样一组输出 <span class="note-math" data-tex="\{o_1, \dots, o_G\}"><math><mrow><mo fence="true" form="prefix" stretchy="false">{</mo><msub><mi>o</mi><mn>1</mn></msub><mo separator="true">,</mo><mi>…</mi><mo separator="true">,</mo><msub><mi>o</mi><mi>G</mi></msub><mo fence="true" form="postfix" stretchy="false">}</mo></mrow></math></span>，得到各输出的得分 <span class="note-math" data-tex="\{r_1, \dots, r_G\}"><math><mrow><mo fence="true" form="prefix" stretchy="false">{</mo><msub><mi>r</mi><mn>1</mn></msub><mo separator="true">,</mo><mi>…</mi><mo separator="true">,</mo><msub><mi>r</mi><mi>G</mi></msub><mo fence="true" form="postfix" stretchy="false">}</mo></mrow></math></span>：</p>
 <ul>
 <li><strong>结果监督（Outcome Supervision, OS）</strong>：
-若仅在回答末尾打分（如规则判定最终数值答案对错，对=1，错=0），将整个组内的得分做标准化：<pre class="note-pre">$$\tilde{r}_i = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r})}$$</pre>
-该输出轨迹上的所有 token 共享相同的优势值：<span class="note-math">$\hat{A}_{i,t} = \tilde{r}_i$</span>。</li>
+若仅在回答末尾打分（如规则判定最终数值答案对错，对=1，错=0），将整个组内的得分做标准化：<div class="note-math-block" data-tex="\tilde{r}_i = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r})}"><math display="block" class="tml-display"><mrow><msub><mover><mi>r</mi><mo stretchy="false" class="chr-sml wbk-sml tml-depth-0">~</mo></mover><mi>i</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>r</mi><mi>i</mi></msub><mo>−</mo><mtext>mean</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>𝐫</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow><mrow><mtext>std</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>𝐫</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></mfrac></mrow></math></div>
+该输出轨迹上的所有 token 共享相同的优势值：<span class="note-math" data-tex="\hat{A}_{i,t} = \tilde{r}_i"><math><mrow><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo>=</mo><msub><mover><mi>r</mi><mo stretchy="false" class="chr-sml wbk-sml tml-depth-0">~</mo></mover><mi>i</mi></msub></mrow></math></span>。</li>
 <li><strong>过程监督（Process Supervision, PS）</strong>：
-若配备过程奖励模型（PRM）对推导步骤打分，第 <span class="note-math">$i$</span> 个输出的第 <span class="note-math">$j$</span> 步得分归一化为 <span class="note-math">$\tilde{r}_{i}^{(j)}$</span>，则 token <span class="note-math">$t$</span> 的优势值为其后续各步骤归一化得分的前向累加：<pre class="note-pre">$$\hat{A}_{i,t} = \sum_{\text{step } j \ge t} \tilde{r}_{i}^{(j)}$$</pre>
+若配备过程奖励模型（PRM）对推导步骤打分，第 <span class="note-math" data-tex="i"><math><mi>i</mi></math></span> 个输出的第 <span class="note-math" data-tex="j"><math><mi>j</mi></math></span> 步得分归一化为 <span class="note-math" data-tex="\tilde{r}_{i}^{(j)}"><math><msubsup><mover><mi>r</mi><mo stretchy="false" class="chr-sml wbk-sml tml-depth-0">~</mo></mover><mi>i</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>j</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></msubsup></math></span>，则 token <span class="note-math" data-tex="t"><math><mi>t</mi></math></span> 的优势值为其后续各步骤归一化得分的前向累加：<div class="note-math-block" data-tex="\hat{A}_{i,t} = \sum_{\text{step } j \ge t} \tilde{r}_{i}^{(j)}"><math display="block" class="tml-display"><mrow><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><mo>=</mo><mrow><munder><mo movablelimits="false">∑</mo><mrow><mtext>step </mtext><mi>j</mi><mo>≥</mo><mi>t</mi></mrow></munder></mrow><msubsup><mover><mi>r</mi><mo stretchy="false" class="chr-sml wbk-sml tml-depth-0">~</mo></mover><mi>i</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>j</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></msubsup></mrow></math></div>
 </li>
 </ul>
-<h3 id="3-统一梯度范式：统一理解-sft、rft、dpo、ppo-与-grpo">3. 统一梯度范式：统一理解 SFT、RFT、DPO、PPO 与 GRPO</h3>
+<h3>3. 统一梯度范式：统一理解 SFT、RFT、DPO、PPO 与 GRPO</h3>
 <p>论文在参数梯度更新的宏观框架下给出了统一表达式：</p>
-<pre class="note-pre">$$\nabla_\theta \mathcal{J}(\theta) = \mathbb{E}_{(q, o) \sim \mathcal{D}} \left[ \frac{1}{|o|}\sum_{t=1}^{|o|} GC(q, o, t, \pi_{rf}) \cdot \nabla_\theta \log \pi_\theta(o_t | q, o_{&lt;t}) \right]$$</pre>
-<p>任何对齐算法均由三个要素决定：**数据源 <span class="note-math">$\mathcal{D}$</span><strong>（离线 vs 在线）、</strong>奖励函数 <span class="note-math">$\pi_{rf}$</span><strong>（规则 vs 模型）、</strong>梯度系数 <span class="note-math">$GC$</span>**（如何把信号映射为更新步长）。</p>
+<div class="note-math-block" data-tex="\nabla_\theta \mathcal{J}(\theta) = \mathbb{E}_{(q, o) \sim \mathcal{D}} \left[ \frac{1}{|o|}\sum_{t=1}^{|o|} GC(q, o, t, \pi_{rf}) \cdot \nabla_\theta \log \pi_\theta(o_t | q, o_{&lt;t}) \right]"><math display="block" class="tml-display"><mrow><msub><mo form="prefix" stretchy="false">∇</mo><mi>θ</mi></msub><mi class="mathcal">𝒥</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>θ</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><mrow><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>q</mi><mo separator="true">,</mo><mi>o</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>∼</mo><mi class="mathcal">𝒟</mi></mrow></msub><mrow><mo fence="true" form="prefix" stretchy="true">[</mo><mfrac><mn>1</mn><mrow><mi>|</mi><mi>o</mi><mi>|</mi></mrow></mfrac><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>|</mi><mi>o</mi><mi>|</mi></mrow></munderover></mrow><mi>G</mi><mi>C</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>q</mi><mo separator="true">,</mo><mi>o</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><msub><mi>π</mi><mrow><mi>r</mi><mi>f</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>⋅</mo><msub><mo form="prefix" stretchy="false">∇</mo><mi>θ</mi></msub><mrow><mi>log</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><msub><mi>π</mi><mi>θ</mi></msub><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>o</mi><mi>t</mi></msub><mi>|</mi><mi>q</mi><mo separator="true">,</mo><msub><mi>o</mi><mrow><mo lspace="0em" rspace="0em">&lt;</mo><mi>t</mi></mrow></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo fence="true" form="postfix" stretchy="true">]</mo></mrow></mrow></math></div>
+<p>任何对齐算法均由三个要素决定：<strong>数据源 <span class="note-math" data-tex="\mathcal{D}"><math><mi class="mathcal">𝒟</mi></math></span></strong>（离线 vs 在线）、<strong>奖励函数 <span class="note-math" data-tex="\pi_{rf}"><math><msub><mi>π</mi><mrow><mi>r</mi><mi>f</mi></mrow></msub></math></span></strong>（规则 vs 模型）、<strong>梯度系数 <span class="note-math" data-tex="GC"><math><mrow><mi>G</mi><mi>C</mi></mrow></math></span></strong>（如何把信号映射为更新步长）。</p>
 <table class="dtable">
 <thead>
 <tr>
 <th>算法</th>
-<th>数据源 <span class="note-math">$\mathcal{D}$</span></th>
+<th>数据源 <span class="note-math" data-tex="\mathcal{D}"><math><mi class="mathcal">𝒟</mi></math></span></th>
 <th>奖励形式</th>
-<th>梯度系数 <span class="note-math">$GC$</span> 特点</th>
+<th>梯度系数 <span class="note-math" data-tex="GC"><math><mrow><mi>G</mi><mi>C</mi></mrow></math></span> 特点</th>
 <th>本质缺陷 / 优势</th>
 </tr>
 </thead>
@@ -125,68 +125,68 @@
 <td><strong>SFT</strong></td>
 <td>离线人类标注</td>
 <td>无</td>
-<td>恒等于 <span class="note-math">$1$</span></td>
+<td>恒等于 <span class="note-math" data-tex="1"><math><mn>1</mn></math></span></td>
 <td>只能盲目拟合演示数据，无探索</td>
 </tr>
 <tr>
 <td><strong>RFT</strong></td>
-<td>离线 <span class="note-math">$\pi_{sft}$</span> 采样</td>
+<td>离线 <span class="note-math" data-tex="\pi_{sft}"><math><msub><mi>π</mi><mrow><mi>s</mi><mi>f</mi><mi>t</mi></mrow></msub></math></span> 采样</td>
 <td>规则（答对/错）</td>
-<td>答对为 <span class="note-math">$1$</span>，答错为 <span class="note-math">$0$</span></td>
+<td>答对为 <span class="note-math" data-tex="1"><math><mn>1</mn></math></span>，答错为 <span class="note-math" data-tex="0"><math><mn>0</mn></math></span></td>
 <td>只有正向更新，不惩罚错误，无在线探索</td>
 </tr>
 <tr>
 <td><strong>DPO</strong></td>
-<td>离线 <span class="note-math">$\pi_{sft}$</span> 采样对</td>
+<td>离线 <span class="note-math" data-tex="\pi_{sft}"><math><msub><mi>π</mi><mrow><mi>s</mi><mi>f</mi><mi>t</mi></mrow></msub></math></span> 采样对</td>
 <td>成对偏好/规则</td>
 <td>基于隐式奖励的 Sigmoid 权重</td>
 <td>离线数据，随模型变强后无法产生新分布难例</td>
 </tr>
 <tr>
 <td><strong>Online RFT</strong></td>
-<td><strong>在线 <span class="note-math">$\pi_\theta$</span> 采样</strong></td>
+<td><strong>在线 <span class="note-math" data-tex="\pi_\theta"><math><msub><mi>π</mi><mi>θ</mi></msub></math></span> 采样</strong></td>
 <td>规则（答对/错）</td>
-<td>答对为 <span class="note-math">$1$</span>，答错为 <span class="note-math">$0$</span></td>
+<td>答对为 <span class="note-math" data-tex="1"><math><mn>1</mn></math></span>，答错为 <span class="note-math" data-tex="0"><math><mn>0</mn></math></span></td>
 <td>有在线探索，但依然无负向梯度惩罚</td>
 </tr>
 <tr>
 <td><strong>PPO</strong></td>
-<td><strong>在线 <span class="note-math">$\pi_\theta$</span> 采样</strong></td>
+<td><strong>在线 <span class="note-math" data-tex="\pi_\theta"><math><msub><mi>π</mi><mi>θ</mi></msub></math></span> 采样</strong></td>
 <td>奖励模型 + Critic</td>
-<td>逐 token GAE 优势值 <span class="note-math">$A_t$</span></td>
+<td>逐 token GAE 优势值 <span class="note-math" data-tex="A_t"><math><msub><mi>A</mi><mi>t</mi></msub></math></span></td>
 <td>在线探索 + 动态正负梯度，但 Critic 显存沉重</td>
 </tr>
 <tr>
 <td><strong>GRPO</strong></td>
-<td><strong>在线 <span class="note-math">$\pi_\theta$</span> 组采样</strong></td>
+<td><strong>在线 <span class="note-math" data-tex="\pi_\theta"><math><msub><mi>π</mi><mi>θ</mi></msub></math></span> 组采样</strong></td>
 <td>奖励模型 / 规则</td>
-<td><strong>组内标准化相对优势 <span class="note-math">$\hat{A}_{i,t}$</span></strong></td>
+<td><strong>组内标准化相对优势 <span class="note-math" data-tex="\hat{A}_{i,t}"><math><msub><mover><mi>A</mi><mo stretchy="false" class="chr-lrg wbk-lrg-acc tml-depth-0">ˆ</mo></mover><mrow><mi>i</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub></math></span></strong></td>
 <td><strong>在线探索 + 动态正负梯度 + 零 Critic 显存开销</strong></td>
 </tr>
 </tbody></table>
 <figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig2.png" alt="Common Crawl 数学网页挖掘流水线" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 2）：DeepSeekMath 数据挖掘引擎——以 OpenWebMath 为种子训练 FastText 分类器，从 40B 去重网页中召回数学候选页，再通过域名与 URL 路径分析迭代扩充高质量域名，最终沉淀出 120B token 的 DeepSeekMath Corpus。</figcaption></figure>
-<h3 id="4-预训练基座与数据发现">4. 预训练基座与数据发现</h3>
+<h3>4. 预训练基座与数据发现</h3>
 <ul>
 <li><strong>代码基座的数学迁移力</strong>：以代码模型 DeepSeek-Coder-Base-v1.5 7B 作为初始化，在数学评测上全方位压倒直接以通用语言模型初始化的版本，验证了“代码训练能显著强化结构化逻辑推理”的假说；</li>
 <li><strong>arXiv 数据迷思破除</strong>：在 1.3B 和 7B 模型上，仅用 arXiv 论文训练均未见数学推理能力提升，甚至轻微下降；而 Common Crawl 中清洗出的论坛讨论（如 MathOverflow）、教学博客、问答等含有更丰富直白的人类思维过程。</li>
 </ul>
 </section>
-<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3 id="1-评测表现">1. 评测表现</h3>
+<section class="note-sec" id="evidence"><h2>结果与代价</h2><h3>1. 评测表现</h3>
 <ul>
-<li><strong>MATH 基准</strong>：DeepSeekMath 7B 在无外挂代码解释器、无多数投票的单次生成（Top-1）下达到 **51.7%**，超过闭源的 Gemini Pro（32.6%）与 540B 的 Minerva（33.6%），逼近 GPT-4（52.9%）；</li>
-<li><strong>自一致性投票（Maj@64）</strong>：在 64 次采样投票下，MATH 准确率进一步跃升至 **60.9%**；</li>
+<li><strong>MATH 基准</strong>：DeepSeekMath 7B 在无外挂代码解释器、无多数投票的单次生成（Top-1）下达到 <strong>51.7%</strong>，超过闭源的 Gemini Pro（32.6%）与 540B 的 Minerva（33.6%），逼近 GPT-4（52.9%）；</li>
+<li><strong>自一致性投票（Maj@64）</strong>：在 64 次采样投票下，MATH 准确率进一步跃升至 <strong>60.9%</strong>；</li>
 <li><strong>中文数学泛化</strong>：CMATH 达到 88.8%，大幅领先同期开源模型。</li>
 </ul>
 <figure class="paper-fig"><img src="../../assets/figures/2024-deepseekmath/fig7.png" alt="Maj@K 与 Pass@K 对比" loading="lazy"><figcaption>图 4 费曼图解（论文 Figure 7）：核心洞察——经过 GRPO 强化学习后，Maj@K（多数投票准确率）随着 K 显著上移；但 Pass@K（覆盖上限）曲线几乎与 SFT 模型完全重叠。该实验支持 GRPO 在这里主要重塑采样分布、提高已有正确解的采样概率；不是所有 RL 的普遍边界。</figcaption></figure>
-<h3 id="2-强化学习的真相：passk-vs-majk-的深层启示">2. 强化学习的真相：Pass@K vs Maj@K 的深层启示</h3>
+<h3>2. 强化学习的真相：Pass@K vs Maj@K 的深层启示</h3>
 <p>论文在第 5.2.2 节给出了极为深刻的实验发现：</p>
 <ul>
 <li><strong>Pass@K 几乎没变</strong>：这是论文特定模型、数据与有限 K 下的观察。有限次未采到正确解，不等于其概率严格为零，也不能推出所有题在 RL 后仍必然答不对；</li>
 <li><strong>Maj@K 和 Top-1 大幅提升</strong>：该实验支持 RL 提高已有正确回答的采样概率。它没有证明正确路径原先恰好占 1%，也没有证明错误路径或逻辑幻觉已被消除；不能把该观察推广为 GRPO 无法形成新能力的定律。</li>
 </ul>
-<h3 id="3-代价与局限性">3. 代价与局限性</h3>
+<h3>3. 代价与局限性</h3>
 <ul>
-<li><strong>零方差失效边界</strong>：若采样组对难题全错（均为 0）或对送分题全对（均为 1），组内标准差 <span class="note-math">$\text{std}(\mathbf{r}) \to 0$</span>，相对优势归零，该组的任务奖励 surrogate 不提供梯度；KL 正则仍可能产生梯度。有效的任务学习信号依赖组内有奖励差异的题目；</li>
+<li><strong>零方差失效边界</strong>：若采样组对难题全错（均为 0）或对送分题全对（均为 1），组内标准差 <span class="note-math" data-tex="\text{std}(\mathbf{r}) \to 0"><math><mrow><mtext>std</mtext><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>𝐫</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>→</mo><mn>0</mn></mrow></math></span>，相对优势归零，该组的任务奖励 surrogate 不提供梯度；KL 正则仍可能产生梯度。有效的任务学习信号依赖组内有奖励差异的题目；</li>
 <li><strong>几何与形式化证明短板</strong>：因纯文本预训练与网页数据偏差，模型在涉及三角形、椭圆等连续空间几何图形的感知与推导上显著弱于通用超大模型；</li>
 <li><strong>Few-shot 上限受限于 7B 参数量</strong>：相比 GPT-4 随提示词示例数增加准确率明显上升，7B 尺度的 DeepSeekMath 在 Few-shot 与 Zero-shot 之间提升不明显。</li>
 </ul>
@@ -194,7 +194,7 @@
 <section class="note-sec" id="ai-notes"><h2>AI 预读备注</h2><p>Zotero AI Butler 预读笔记 <code>8CYDI7ER</code>（AI 总结）与 <code>RK4Y6U8L</code>（文献表格）提供了完整的架构提炼与背景梳理。经费曼核验，对 AI 预读补充两处关键盲点：</p>
 <ol>
 <li><strong>AI 预读漏检 Pass@K 的本质结论</strong>：AI 总结仅列举了 GSM8K 和 MATH 的绝对涨分，遗漏了论文第 5.2.2 节 Figure 7 揭示的「Pass@K 恒定、Maj@K 飙升」的核心理论发现（RL 究竟改变了能力还是改变了分布）；</li>
-<li><strong>统一梯度系数框架的深化</strong>：AI 预读将 GRPO 视作孤立算法，缺少了原论文 Appendix A.1 将 SFT/RFT/DPO/PPO/GRPO 统一为 <span class="note-math">$GC$</span> 梯度系数对比的宏观视角。本笔记已予全量补齐。</li>
+<li><strong>统一梯度系数框架的深化</strong>：AI 预读将 GRPO 视作孤立算法，缺少了原论文 Appendix A.1 将 SFT/RFT/DPO/PPO/GRPO 统一为 <span class="note-math" data-tex="GC"><math><mrow><mi>G</mi><mi>C</mi></mrow></math></span> 梯度系数对比的宏观视角。本笔记已予全量补齐。</li>
 </ol>
 </section>
 <section class="note-sec" id="restatement"><h2>我的复述</h2><p><em>费曼检验时 XinLi 自己的原话：</em></p>
@@ -205,7 +205,7 @@
 <li>当前的强化学习并没有教模型学会原本在知识盲区里的新定理，而是重塑了输出分布——把分布中那 1% 零星被采到的正确答案推成高概率候选，抑制错误的幻觉路径。</li>
 </ol>
 </blockquote>
-<h3 id="2026-10-25-首轮复测原话">2026-10-25 首轮复测原话</h3>
+<h3>2026-10-25 首轮复测原话</h3>
 <p>首次独立重讲：</p>
 <blockquote class="note-quote">
 <p>GRPO 利用多个 rollout 奖励平均和方差，通过和平均值比对作为轨迹好坏的标记同时归一化奖励以替代 PPO 的 critc model ， 降低了资源用量</p>
@@ -221,15 +221,15 @@
 </section>
 <section class="note-sec" id="pitfalls"><h2>卡壳点与解答</h2><p>2026-10-25 复测记录：首次独立重讲抓住组采样和省 Critic，但把标准差说成方差。首答混淆评分与价值预测，把零优势误推为总目标无梯度，并将分布重塑解释推广成 GRPO 的绝对能力边界。第一轮补讲后，KL 边界迁移题答对；角色分工与有限采样证据仍需第二轮解释，最终两道复验答对。PPO 的数值机制已补讲，本轮未另出无提示迁移题，不记为独立掌握。下次优先独立检验 PPO 基线和能力结论的证据范围。</p>
 <div class="qa" id="qa-grpo-advantage"><p class="qa-q">Q1：为什么丢弃 Critic 改用组相对打分，不仅省显存，而且天然契合奖励模型的本质？</p><div class="qa-a"><ul>
-<li><strong>评分与预测的分工</strong>：Reward Model 或程序规则给已生成的回答评分；Outcome 模式可以读完整答案后返回 0 或 1，Process 模式也可以逐推理步骤评分。Critic 则读取当前前缀，预测从这里继续生成的预期回报 <span class="note-math">$V(s_t)$</span>。它预测价值，优势由奖励与价值基线进一步计算。区别不在于局部 token 与整条轨迹。</li>
+<li><strong>评分与预测的分工</strong>：Reward Model 或程序规则给已生成的回答评分；Outcome 模式可以读完整答案后返回 0 或 1，Process 模式也可以逐推理步骤评分。Critic 则读取当前前缀，预测从这里继续生成的预期回报 <span class="note-math" data-tex="V(s_t)"><math><mrow><mi>V</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><msub><mi>s</mi><mi>t</mi></msub><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></span>。它预测价值，优势由奖励与价值基线进一步计算。区别不在于局部 token 与整条轨迹。</li>
 <li><strong>GRPO 替代的是基线估计</strong>：用同题回答的奖励均值作基线，再除以组标准差得到优势；它省掉独立 Critic，仍需要评分来源。程序能判分时，不需要神经奖励模型。</li>
 <li><strong>显存与奖励尺度</strong>：省去 Critic 的参数、优化器与反向图成本，实际总显存收益取决于实现。组相对比较与同题候选偏好评分相契合，但奖励噪声仍会存在，不能说组内标准化消除一切校准误差。</li>
 <li><strong>2026-10-25 补讲方法与表现</strong>：用「完整答案判卷」对照「半截推导预测得分」。第一次迁移回答仍把两者混在一起；第二次给组件识别题，正确区分评分与 Critic，并指出 GRPO 省掉后者。</li>
 </ul>
 </div></div><div class="qa" id="qa-zero-variance"><p class="qa-q">Q2：在 Outcome 模式下全对或全错时，GRPO 与传统 PPO 的梯度行为有何不同？</p><div class="qa-a"><ul>
-<li><strong>GRPO</strong>：组内奖励全相同时，<span class="note-math">$r_i-\mathrm{mean}(\mathbf r)=0$</span>。实现用微小稳定项避免除零后，优势全为零。该组的任务奖励 surrogate 没有梯度；原版 GRPO 的 KL 正则仍可能产生梯度。若关闭 KL 且没有其他损失，这组回答才没有该训练目标的更新信号。所有回答都得 0.6 分时同理，不限于全对或全错。</li>
+<li><strong>GRPO</strong>：组内奖励全相同时，<span class="note-math" data-tex="r_i-\mathrm{mean}(\mathbf r)=0"><math><mrow><msub><mi>r</mi><mi>i</mi></msub><mo>−</mo><mpadded lspace="0"><mi>mean</mi></mpadded><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>𝐫</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow><mo>=</mo><mn>0</mn></mrow></math></span>。实现用微小稳定项避免除零后，优势全为零。该组的任务奖励 surrogate 没有梯度；原版 GRPO 的 KL 正则仍可能产生梯度。若关闭 KL 且没有其他损失，这组回答才没有该训练目标的更新信号。所有回答都得 0.6 分时同理，不限于全对或全错。</li>
 <li><strong>PPO</strong>：优势依赖奖励与 Critic 预测，不直接以本组奖励均值作比较。因此，组内回报相同不会强制其优势归零；也不能反过来说 PPO 总有非零梯度。</li>
-<li><strong>终止步骤例子（教学简化）</strong>：忽略额外奖励、优势归一化和裁剪，终止后的价值为零，最后一步优势可写成 <span class="note-math">$A=R-V(s)$</span>。两条回答都错，<span class="note-math">$R=0$</span>；若 Critic 在最后动作前预测为 0.8 和 0.2，优势分别为 -0.8 和 -0.2。若 Critic 准确预测二者回报为零，优势也可以为零。实际 PPO 通常用 GAE 汇总多步 TD 误差；价值估计非零不保证每步 TD 误差、最终优势或参数梯度都非零，也不保证更新有益。</li>
+<li><strong>终止步骤例子（教学简化）</strong>：忽略额外奖励、优势归一化和裁剪，终止后的价值为零，最后一步优势可写成 <span class="note-math" data-tex="A=R-V(s)"><math><mrow><mi>A</mi><mo>=</mo><mi>R</mi><mo>−</mo><mi>V</mi><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>s</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></span>。两条回答都错，<span class="note-math" data-tex="R=0"><math><mrow><mi>R</mi><mo>=</mo><mn>0</mn></mrow></math></span>；若 Critic 在最后动作前预测为 0.8 和 0.2，优势分别为 -0.8 和 -0.2。若 Critic 准确预测二者回报为零，优势也可以为零。实际 PPO 通常用 GAE 汇总多步 TD 误差；价值估计非零不保证每步 TD 误差、最终优势或参数梯度都非零，也不保证更新有益。</li>
 <li><strong>2026-10-25 补讲方法与表现</strong>：用上述终止步骤例子解释「结果一样，仍可能低于预期」。用户随后在全得 0.6 分的迁移题中正确区分关闭 KL 与开启 KL 的行为。PPO 对比已讲解，尚未单独做无提示迁移检验。</li>
 </ul>
 </div></div><div class="qa" id="qa-passk-essence"><p class="qa-q">Q3：如何看待「Pass@K 几乎没变，Maj@K 大幅跃升」这一现象？</p><div class="qa-a"><ul>
@@ -243,7 +243,9 @@
 <section class="note-sec" id="open"><h2>还没搞懂</h2><p><em>2026-10-25：角色分工、KL 边界和低概率反例在补讲后收敛。PPO 对比与能力结论的证据范围仍待下次无提示独立检验，不把本次提示后答对记为独立掌握。</em></p>
 </section>
 <section class="note-sec" id="relations"><h2>关联</h2><ul>
+<li><a href="2026-sao.html">SAO</a> — 异步长时程智能体对 GRPO 的反思与演进：SAO 揭示了 GRPO 组采样在长轨迹、多轮交互任务中的木桶同步等待屏障（Straggler 瓶颈）与跨版本数据污染，在异步架构中重构了单 Rollout 即采即训、强 Critic（冻结注意力）与双侧硬门控（DIS），实现超千步稳训。</li>
 <li><a href="2025-dapo.html">DAPO</a> — GRPO 在长思维链（Long-CoT）下的直接工业级演进：针对朴素 GRPO 在长逻辑场景下暴露的四大病根（对称裁剪导致的熵坍缩、全对/全错样本造成的有效批次萎缩、样本级平均导致的长度被稀释、超长硬截断噪声），提出非对称 Clip-Higher、动态重采样、Token-level 损失与软惩罚，将 Qwen2.5-32B 在 AIME 2024 上拉升至 50 分。</li>
+<li><a href="2025-gspo.html">GSPO</a> — GRPO 比率粒度的序列级重构：继承本文去 Critic 的组内相对优势架构，将逐 token 重要性比率与逐 token 裁剪提升为整条序列的长度归一化几何平均似然比，消除长链条逐字撕裂并使 MoE 训练无需 Routing Replay 稳定收敛。</li>
 <li><a href="2017-ppo.html">PPO</a> — GRPO 的直接理论前身：继承了重要性采样裁剪目标（Clipped Surrogate Objective）以防止策略过激更新，但 GRPO 彻底剪除了 Critic 模型与 GAE，改用组内相对优势估计，并将 KL 惩罚从奖励解耦到外层损失。</li>
 <li><a href="2026-geoanchor.html">GeoAnchor</a> — 空间推理下游应用：GeoAnchor 在第四阶段强化学习中，直接采用了 GRPO + pattern reward 算法来端到端优化模型对不同空间潜变量模式的选择策略。</li>
 <li><a href="2026-u-opsd.html">U-OPSD</a> — 自生成监督的另一演进路线：U-OPSD 是在自蒸馏训练阶段通过采样 8 遍做多数投票构建伪解教师进行前向 KL 蒸馏，而 GRPO 是直接在在线采样组内用相对奖励计算优势进行策略梯度强化。</li>
@@ -251,8 +253,9 @@
 </ul>
 </section>
 <footer class="note-foot"><a href="../../papers/2024-deepseekmath.html">← 返回阅读页</a><a href="../../../wiki/papers/2024-deepseekmath.md">markdown 源文件（唯一真源）</a><span>本页是完整笔记的静态投影，保留原话、限定与假说标记。</span></footer>
-</main>
+  </main>
 </div>
-<script src="../../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

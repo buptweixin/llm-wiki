@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TSPO · llm-wiki 速览</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="../assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="page">
@@ -76,11 +76,11 @@
           <p class="fig-note">训练时同一问题采样多组帧，组内比较奖励；推理时去掉 Gumbel 噪声做确定性选帧。</p>
         </div>
         <p>Gumbel 噪声负责探索不同的离散帧组合；GRPO 式目标负责根据相对奖励提高更好的选帧方案概率。冻结 MLLM 后，语言策略比率约掉，只更新 temporal sampling policy。</p>
+        <figure class="paper-fig"><img src="../assets/figures/2026-tspo/fig2.png" alt="TSPO 框架总览" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。</figcaption></figure>
       </div>
     </section>
 
-<figure class="paper-fig"><img src="../assets/figures/2026-tspo/fig2.png" alt="TSPO 框架总览" loading="lazy"><figcaption>图 2 费曼图解（论文 Figure 2）：TSPO 框架。长视频按 1 FPS 出候选帧，temporal agent 结合帧级与事件级相似度打分，Gumbel Top-K 采样多组关键帧分别交给冻结 MLLM 回答；组内按答案对错与目标片段命中比例算相对奖励，只更新约 3.5M 参数的采样策略。</figcaption></figure>
-          <section class="slide" id="slide-4" data-section="mechanism-2">
+    <section class="slide" id="slide-4" data-section="mechanism-2">
       <div class="slide-inner">
         <div class="slide-head"><h2>关键机制: 双数据与双奖励</h2><span class="slide-no">04</span></div>
         <div class="fig">
@@ -88,11 +88,11 @@
           <p class="fig-note">答案正确率解决「能不能答对」，目标片段内选帧比例解决「是否夹带大量无关帧」。</p>
         </div>
         <table class="dtable"><thead><tr><th>信号</th><th>含义</th><th>边界</th></tr></thead><tbody><tr><td>R_A</td><td>回答是否正确</td><td>组级弱监督，不归因到单帧</td></tr><tr data-hi><td>R_T</td><td>选中目标片段的帧数 / 总选帧数</td><td>precision-like，不是完整 IoU</td></tr></tbody></table>
+        <figure class="paper-fig"><img src="../assets/figures/2026-tspo/fig4.png" alt="TSPO 双数据构建流程" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 4）：双风格训练数据。Comprehensive Temporal Data 过滤过易/过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱，保留目标片段伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。</figcaption></figure>
       </div>
     </section>
 
-<figure class="paper-fig"><img src="../assets/figures/2026-tspo/fig4.png" alt="TSPO 双数据构建流程" loading="lazy"><figcaption>图 3 费曼图解（论文 Figure 4）：双风格训练数据。Comprehensive Temporal Data 过滤过易/过难样本、保留需要多帧联合理解的问答；Video Needle-in-a-Haystack 把目标片段与无关视频拼接打乱，保留目标片段伪标签，为 R_T（选中帧落入目标片段的比例）提供粗粒度定位信号。</figcaption></figure>
-          <section class="slide" id="slide-5" data-section="evidence">
+    <section class="slide" id="slide-5" data-section="evidence">
       <div class="slide-inner">
         <div class="slide-head"><h2>证据与边界</h2><span class="slide-no">05</span></div>
         <div class="metrics"><div class="metric" data-hi><div class="metric-value">+6.0<small>%</small></div><div class="metric-label">MLVU，LLaVA-Video-7B</div><div class="metric-why">均匀 64 帧基线 70.3，TSPO 为 76.3</div></div><div class="metric"><div class="metric-value">+1.1<small>%</small></div><div class="metric-label">Video-MME</div><div class="metric-why">整体理解任务不完全依赖局部定位</div></div><div class="metric"><div class="metric-value">1.1<small>s</small></div><div class="metric-label">128 候选到 32 选帧</div><div class="metric-why">关键帧提取时间，CoS 为 28.4s</div></div></div>
@@ -104,7 +104,7 @@
       <div class="slide-inner">
         <div class="slide-head"><h2>卡壳点</h2><span class="slide-no">06</span></div>
         <div class="qa-list">
-          <div class="qa" id="qa-signal"><p class="qa-q">Q：答对的那组帧是否就意味着每一帧都真正有用？（2026-09-14 首测）</p><div class="qa-a"><p>不意味着。$R_A$ 只说明这组帧整体足以让冻结 MLLM 答对，而且不同帧组合可能都包含了足够证据。组内相对奖励只能偏好「更容易得到正确答案」的采样方案，不能把功劳精确分配到某一帧。needle 数据的 $R_T$ 用目标片段内选帧比例进一步偏好更集中的方案，但它是粗粒度的 precision-like 信号，不是 IoU。</p>
+          <div class="qa" id="qa-signal"><p class="qa-q">Q：答对的那组帧是否就意味着每一帧都真正有用？（2026-09-14 首测）</p><div class="qa-a"><p>不意味着。<code>R_A</code> 只说明这组帧整体足以让冻结 MLLM 答对，而且不同帧组合可能都包含了足够证据。组内相对奖励只能偏好「更容易得到正确答案」的采样方案，不能把功劳精确分配到某一帧。needle 数据的 <code>R_T</code> 用目标片段内选帧比例进一步偏好更集中的方案，但它是粗粒度的 precision-like 信号，不是 IoU。</p>
 </div></div>
           <div class="qa" id="qa-rt"><p class="qa-q">Q：Video-MME 上 TSPO 是否失效？</p><div class="qa-a"><p>不是完全失效，而是收益较小。Video-MME 更偏整体视频理解，问题不一定对应一个很窄的关键片段；TSPO 的 query-aware 局部采样优势因此不容易发挥。</p>
 </div></div>
@@ -123,7 +123,7 @@
     </section>
   </main>
 </div>
-<script src="../assets/wiki-index.js?v=20261004-4"></script>
-<script src="../assets/wiki-slides.js?v=20261004-4"></script>
+<script src="../assets/wiki-index.js?v=20261118-1"></script>
+<script src="../assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>

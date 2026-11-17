@@ -52,6 +52,20 @@ const KINDS = {
     sourceHref: id => `wiki/papers/${id}.md`,
     sectionId: paperSectionId
   },
+  concept: {
+    dir: "wiki/concepts",
+    href: id => `concepts/${id}.html`,
+    noteHref: id => `notes/concepts/${id}.html`,
+    sourceHref: id => `wiki/concepts/${id}.md`,
+    sectionId: conceptSectionId
+  },
+  code: {
+    dir: "wiki/code",
+    href: id => `code/${id}.html`,
+    noteHref: id => `notes/code/${id}.html`,
+    sourceHref: id => `wiki/code/${id}.md`,
+    sectionId: codeSectionId
+  },
   synthesis: {
     dir: "wiki/syntheses",
     href: id => `topics/${id}.html`,
@@ -91,6 +105,39 @@ function synthesisSectionId(heading) {
   if (heading === "带着问题读论文") return "path";
   if (heading === "跨篇卡壳点") return "pitfalls";
   if (heading === "证据边界与来源") return "boundaries";
+  return undefined;
+}
+
+function conceptSectionId(heading, state) {
+  if (heading === "五分钟重建") return "rebuild";
+  if (heading === "为什么需要它") return "problem";
+  if (heading === "大白话讲解") return "intuition";
+  if (heading === "类比") return "analogy";
+  if (heading === "关键机制 / 数学直觉" || heading === "关键机制") {
+    state.mechanism = (state.mechanism || 0) + 1;
+    return state.mechanism === 1 ? "mechanism" : `mechanism-${state.mechanism}`;
+  }
+  if (heading === "常见误解") return "evidence";
+  if (heading === "我的复述") return "restatement";
+  if (heading === "卡壳点与解答") return "pitfalls";
+  if (heading === "还没搞懂") return "open";
+  if (heading === "关联") return "relations";
+  return undefined;
+}
+
+function codeSectionId(heading, state) {
+  if (heading === "五分钟重建") return "rebuild";
+  if (heading === "在整个系统中的位置") return "problem";
+  if (heading === "大白话讲解：数据怎么流") return "intuition";
+  if (heading === "核心代码走读") {
+    state.mechanism = (state.mechanism || 0) + 1;
+    return state.mechanism === 1 ? "mechanism" : `mechanism-${state.mechanism}`;
+  }
+  if (heading === "设计取舍") return "evidence";
+  if (heading === "我的复述") return "restatement";
+  if (heading === "卡壳点与解答") return "pitfalls";
+  if (heading === "还没搞懂") return "open";
+  if (heading === "关联") return "relations";
   return undefined;
 }
 
@@ -539,7 +586,7 @@ for (const { id, kind } of manifest) {
       next: reviewRow.next,
       last: reviewRow.last,
       count,
-      result: old && old.review ? old.review.result : ""
+      result: count > 0 ? "pass" : ""
     },
     relations
   };
@@ -628,8 +675,8 @@ for (const { id, kind } of manifest) {
   pages.push(page);
 }
 
-// 页面顺序：论文在前、综合页在后；组内沿用既有索引（入库序），新页面按文件名序追加
-const kindOrder = { paper: 0, synthesis: 1 };
+// 页面顺序：知识页在前、综合页在后；组内沿用既有索引（入库序），新页面按文件名序追加
+const kindOrder = { paper: 0, concept: 0, code: 0, synthesis: 1 };
 pages.sort((a, b) => {
   if (kindOrder[a.type] !== kindOrder[b.type]) return kindOrder[a.type] - kindOrder[b.type];
   const ai = oldById.has(a.id) ? oldPages.findIndex(page => page.id === a.id) : oldPages.length;
@@ -637,7 +684,7 @@ pages.sort((a, b) => {
   return ai - bi || (a.id < b.id ? -1 : 1);
 });
 
-for (const dir of ["papers", "notes/papers", "topics", "notes/syntheses"]) {
+for (const dir of ["papers", "notes/papers", "concepts", "notes/concepts", "code", "notes/code", "topics", "notes/syntheses"]) {
   const full = path.join(root, "site", dir);
   if (!fs.existsSync(full)) continue;
   for (const file of fs.readdirSync(full).filter(item => item.endsWith(".html"))) {
@@ -677,5 +724,24 @@ if (process.env.CHECK_DRY_RUN) {
   process.stdout.write(output);
 } else {
   fs.writeFileSync(indexPath, output);
+  const homeHtmlPath = path.join(root, "site/index.html");
+  if (fs.existsSync(homeHtmlPath)) {
+    const escapeHtml = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const hubItems = pages.filter(p => p.type === "synthesis");
+    const entryItems = pages.filter(p => p.type !== "synthesis");
+    const noscriptLines = [
+      `        <div class="idx-result-heading"><h2>专题导读</h2><span>${hubItems.length} 篇</span></div>`,
+      ...hubItems.map(h => `        <article class="idx-card idx-hub"><p class="idx-hub-kicker">专题导读</p><a class="idx-card-title" href="${h.href}">${escapeHtml(h.title)}</a><p class="idx-card-essence">${escapeHtml(h.essence)}</p></article>`),
+      `        <div class="idx-result-heading"><h2>按研究问题阅读</h2><span>${entryItems.length} 篇</span></div>`,
+      ...entryItems.map(p => `        <article class="idx-card"><a class="idx-card-title" href="${p.href}">${escapeHtml(p.title)}</a><p class="idx-card-essence">${escapeHtml(p.essence)}</p></article>`)
+    ].join("\n");
+    let homeHtml = fs.readFileSync(homeHtmlPath, "utf8");
+    homeHtml = homeHtml
+      .replace(/<noscript>[\s\S]*?<\/noscript>/, `<noscript>\n${noscriptLines}\n      </noscript>`)
+      .replace(/<span id="idx-count">[^<]*<\/span>/, `<span id="idx-count">${entryItems.length} 篇论文 · ${hubItems.length} 篇专题导读</span>`)
+      .replace(/<span>\d+ 篇论文 · \d+ 篇专题导读 · 静态离线可用 · Markdown 是唯一真源<\/span>/,
+        `<span>${entryItems.length} 篇论文 · ${hubItems.length} 篇专题导读 · 静态离线可用 · Markdown 是唯一真源</span>`);
+    fs.writeFileSync(homeHtmlPath, homeHtml);
+  }
   console.log(`索引已重建: ${indexPath}（${pages.length} 页，${pages.reduce((sum, page) => sum + page.entries.length, 0)} 条目）`);
 }

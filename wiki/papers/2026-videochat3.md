@@ -178,6 +178,8 @@ A：
 
 - [VST](2026-vst.md) — **思路正交、可互补**。VideoChat3 管「视觉编码器里压 token + 状态机自适应分辨率/响应时机」=**感知效率**；VST 管「推理时机前移 + 文本长期记忆」=**认知时机**。VST 的文本记忆「与视觉记忆机制正交」（VST 论文 limitation 自述），组合是未来方向。
 - [GenLIP](2026-genlip.md) — **正交**。VideoChat3 的 I3D-ViT 是把图像 ViT「撑成 3D」处理视频，但没讨论 ViT 本身怎么预训练；GenLIP 回答的正是「这个 ViT 怎么训」——让 ViT 直接做生成式预训练（Prefix-LM + Gated Attention）。将 GenLIP 的 ViT 接入 I3D-ViT 是组合设想（待验证），本库没有该替换实验。
+- [Video-o3](2026-video-o3.md) — **视觉策略互补**。本文靠编码器内时空压缩与状态机决定「看多少像素」，Video-o3 靠查询后多轮工具调用决定「看哪里」；一个管感知效率，一个管检索精度（库内对照，无联合实验）。
+- [TSPO](2026-tspo.md) — **选择时间点 vs 压缩视觉 token 的不同维度**。TSPO 在进入冻结 MLLM 前按 query 概率化选择关键帧，本文在视觉编码器内部做 16× 时空压缩并控制下一窗口预算；两者组合尚无实验。
 - 待建概念页：`visual tokenizer` / `ViT` / `self-attention`（二次方开销） / `Video MLLM` / `streaming video understanding` / `inflate（2D→3D，致敬 I3D CNN）`
 - 同领域可对比的 Video MLLM：Qwen3-VL-4B、Molmo2-4B、VideoChat-Flash-7B、InternVideo2.5-8B（均为此文主要 baseline）
 - 同系列前作：VideoChat-Flash（层级压缩）、VideoChat-R1（RL 微调）

@@ -509,3 +509,17 @@
 - 清华大学与 Z.AI 团队 2026 年 7 月论文入库（arXiv:2607.07508）。提出 Single-Rollout Asynchronous Optimization（SAO），废除 GRPO 组采样改用单轨迹即采即训，配合冻结注意力的强 Critic、Skip-Observation GAE 与双侧硬门控裁剪（DIS），彻底解决长时程多轮智能体在异步流水线中的木桶等待与策略滞后崩溃瓶颈，并已部署于开源 750B-A40B 大模型 GLM-5.2。
 - 完整走完费曼 Phase 0→1→2→3：3 道检验题（请回 Critic 的方差与 Prompt 多样性权衡、DIS 双侧硬门控置零与 PPO 软截断本质差异、Skip-Observation 隔离环境回包噪声）全部精准作答收敛；保留用户原话与三大核心卡壳点。
 - 提取 4 张重点论文原图（系统架构对比、基准表现、千步稳训曲线、训练动态与消融特征），同步建立 Markdown 真源、速览页、完整笔记投影与静态索引；`review.md` 排入首轮复测（+3 天至 2026-11-02）。
+
+
+## [2026-11-18] lint | 全库体检、阅读层修复与工程门禁加固
+
+- 完成全库交叉体检，修复 4 篇 RL 速览页漏引 `wiki-index.js`、缺失 `.qa-list` 致回忆模式失效、非标关联块与内联样式问题，修复 `2026-tspo` 公式控制符与游离 `<figure>`、更新 `distillation` 复测状态栏，并补齐 `.note-math` 样式与全站缓存版本 `20261117-1`。
+- 补齐 9 篇论文双向关联互链与索引关系卡，打通 `sync-note-pages.mjs` / `build-wiki-index.mjs` 对 `concepts`/`code` 的类型支持与首页计数自动同步，并在 `check-site.mjs` 新增 C17 阅读页交互与样式契约门禁（C1~C17 与 S4-a~g 全绿）。
+- 收拢 `index.md` 历史维护文档至 `docs/README.md`，优化复测到期分层优先级（待首测优先），清理 `.gitignore` 并从 Git 索引解绑 `.claudian`/`.omo` 客户端会话文件。
+
+
+## [2026-11-18] query | HTML 生成管线、静态数学排版与阅读交互升级
+
+- **生成管线升级**：[sync-note-pages.mjs](scripts/sync-note-pages.mjs) 接入构建期静态原生 MathML 编译（246 处公式零运行时依赖、零内联样式排版，附带 `data-tex` 一键复制）、专题完整笔记自动内嵌 SVG 关系图并折叠 Mermaid 源码、统一全量完整笔记页顶底栏与 `wiki-index.js` / `wiki-slides.js` 脚本壳；更新 4 篇 RL 速览页核心公式为原生 MathML 并复核回填 `distillation` 4 处依据指纹。
+- **瑞士编辑风视觉与双模主题**：[wiki-slides.css](site/assets/wiki-slides.css) 新增 `Auto / Light / Dark` 手动外观切换与持久化、等宽数字对齐（`tabular-nums`）、GPU `scaleX` 阅读进度条、桌面端完整笔记三栏常驻目录与上下文旁栏（`.note-layout`）、移动端长引用断词与弹窗单滚动条收口，全站版本升至 `20261118-1`。
+- **阅读与主动探索交互**：[wiki-slides.js](site/assets/wiki-slides.js) 与 [index.html](site/index.html) 新增专题计数、机制/目标分类标签抽屉、排序切换（入库序/复测优先/最新入库）、键盘选卡与全站快捷键面板（`?`）、图片与 SVG 关系图原生 `<dialog>` 灯箱（支持纸白/夜读底色切换与左右翻图）、专题图谱悬停联动与多列筛选对比弹窗，以及 VST 流式掩码可见性实时探索器（进入回忆模式自动隐藏并重置，不改复测记录）；`C1~C17`、`S4-a~g` 及桌面/手机双主题浏览器实测全通过。

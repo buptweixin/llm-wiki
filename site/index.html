@@ -6,12 +6,15 @@
   <meta name="description" content="llm-wiki 的费曼式知识阅读库：按研究问题查找论文、读专题导读理解一组论文的分工、重建机制、回看卡壳点。">
   <title>llm-wiki · 知识阅读库</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-  <link rel="stylesheet" href="assets/wiki-slides.css?v=20261004-4">
+  <link rel="stylesheet" href="assets/wiki-slides.css?v=20261118-1">
 </head>
 <body>
 <div class="idx-wrap">
   <header class="idx-header">
-    <p class="idx-kicker">LLM-WIKI / READING LIBRARY</p>
+    <div class="idx-header-top">
+      <p class="idx-kicker">LLM-WIKI / READING LIBRARY</p>
+      <div class="idx-header-actions" id="idx-header-actions"></div>
+    </div>
     <h1>找到一个知识点，接着往下读</h1>
     <p class="idx-sub">按研究问题、机制或曾经卡住的地方查找。选中一个专题会先看到它的导读：这组论文分别解决哪一部分问题。文章为连续阅读；速览未收录的细节有完整笔记页兜底。</p>
   </header>
@@ -27,14 +30,16 @@
       <button class="topic-filter" type="button" data-topic="reinforcement-learning" aria-pressed="false">强化学习与对齐</button>
       <button class="topic-filter" type="button" data-topic="spatial-reasoning" aria-pressed="false">3D 空间推理</button>
     </div>
+    <div class="idx-toolbar" id="idx-toolbar" hidden></div>
+    <div class="idx-tag-drawer" id="idx-tag-drawer" hidden></div>
     <div class="idx-mobile-cue">
       <a class="idx-due-link" id="idx-due-mobile" href="?review=due" hidden>今天待复测</a>
       <button class="idx-recall-toggle" type="button" aria-pressed="false">先回忆</button>
     </div>
     <div class="idx-state">
-    <span id="idx-count">16 篇论文 · 2 篇专题导读</span>
+      <span id="idx-count">16 篇论文 · 2 篇专题导读</span>
       <span id="idx-state-label"></span>
-      <span class="idx-search-hint">按 <kbd>/</kbd> 搜索 · <kbd>Esc</kbd> 清除</span>
+      <span class="idx-search-hint">按 <kbd>/</kbd> 搜索 · <kbd>↑</kbd><kbd>↓</kbd> 选卡 · <kbd>Esc</kbd> 清除</span>
       <button class="idx-clear" id="idx-clear" type="button" hidden>清除筛选</button>
     </div>
   </section>
@@ -43,25 +48,25 @@
     <section class="idx-results" aria-live="polite">
       <noscript>
         <div class="idx-result-heading"><h2>专题导读</h2><span>2 篇</span></div>
-        <article class="idx-card idx-hub"><p class="idx-hub-kicker">专题导读</p><a class="idx-card-title" href="topics/distillation.html">蒸馏与训练预算</a><p class="idx-card-essence">教师凭什么能教，多个教师又该怎样分配训练预算？主线 3 篇（U-OPSD、S²VOPD、Open-MOPD），跨专题引用 PPO。</p></article>
-        <article class="idx-card idx-hub"><p class="idx-hub-kicker">专题导读</p><a class="idx-card-title" href="topics/video-understanding.html">视频理解与响应</a><p class="idx-card-essence">看多少、何时想、怎样找证据？主线 4 篇（VideoChat3、VST、TSPO、Video-o3），跨专题引用 GenLIP。</p></article>
+        <article class="idx-card idx-hub"><p class="idx-hub-kicker">专题导读</p><a class="idx-card-title" href="topics/distillation.html">蒸馏与训练预算</a><p class="idx-card-essence">本专题把三篇论文分成两个问题：U-OPSD 与 S²VOPD 构造自蒸馏信息差，Open-MOPD 分配多教师训练预算。</p></article>
+        <article class="idx-card idx-hub"><p class="idx-hub-kicker">专题导读</p><a class="idx-card-title" href="topics/video-understanding.html">视频理解与响应</a><p class="idx-card-essence">本专题按感知成本、思考时机和证据获取组织四篇视频论文，帮助比较它们各自解决的瓶颈。</p></article>
         <div class="idx-result-heading"><h2>按研究问题阅读</h2><span>16 篇</span></div>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-videochat3.html">VideoChat3</a><p class="idx-card-essence">4B 全开源 Video MLLM：在视觉编码器里压缩视频 token，再用状态机自适应处理流式视频。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-vst.html">VST</a><p class="idx-card-essence">把 CoT 推理塞进视频流的等待空档，查询时直接读取 FIFO 文本记忆。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-genlip.html">GenLIP</a><p class="idx-card-essence">让 ViT 直接预测文本 token，用生成式预训练改善视觉表示。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-last-vit.html">LaSt-ViT</a><p class="idx-card-essence">用频域稳定性减少 ViT 的懒惰聚合，让 CLS 回到前景 patch。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-video-o3.html">Video-o3</a><p class="idx-card-essence">像侦探一样主动找线索、裁剪放大并连接长视频证据。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-tspo.html">TSPO</a><p class="idx-card-essence">用答案奖励训练 temporal agent 选择 query 相关关键帧，联合选帧与生成回答。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-geoanchor.html">GeoAnchor</a><p class="idx-card-essence">3D 空间推理用文本与三类潜变量（位置/方向/几何）交错，不让连续几何量经过词表。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-u-opsd.html">U-OPSD</a><p class="idx-card-essence">模型自己投票造出教师轨迹，再用逐 token 前向 KL 做无监督自蒸馏。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-open-mopd.html">Open-MOPD</a><p class="idx-card-essence">多教师蒸馏的核心问题是训练预算错配，而不是教师冲突。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-s2vopd.html">S²VOPD</a><p class="idx-card-essence">故意弄坏学生输入，让看清原图的 EMA 教师提供免费不对称。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-locateanything.html">LocateAnything</a><p class="idx-card-essence">把整个框当固定长块并行解码，减少坐标 token 的逐个等待。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2017-ppo.html">PPO</a><p class="idx-card-essence">用截断的重要性比率限制策略偏离，在同一批样本上安全跑多轮更新。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2024-deepseekmath.html">DeepSeekMath</a><p class="idx-card-essence">丢弃 Critic 价值模型，用组内多采样输出的相对归一化打分估计优势，显存省半且在竞赛级 MATH 达 51.7%。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2025-dapo.html">DAPO</a><p class="idx-card-essence">针对 Long-CoT 极长推理强化学习，非对称放宽裁剪上界并动态剔除零梯度题，Qwen2.5-32B 在 AIME 2024 达 50 分。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2025-gspo.html">GSPO</a><p class="idx-card-essence">把策略比率与裁剪提升到序列级几何平均似然比，消除粒度错位，MoE 无需 Routing Replay 稳定收敛。</p></article>
-        <article class="idx-card"><a class="idx-card-title" href="papers/2026-sao.html">SAO</a><p class="idx-card-essence">用单 rollout 采样替代组采样消除异步等待瓶颈，配合冻结注意力的强 Critic 与双侧硬裁剪（DIS），实现智能体异步 RL 千步稳训。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-videochat3.html">VideoChat3</a><p class="idx-card-essence">VideoChat3 先在视觉编码器里压缩时空 token，再用状态决定回复时机与下一窗口的分辨率。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-vst.html">VST</a><p class="idx-card-essence">VST 在视频片段之间先思考、写入有限文本记忆，查询到达后用已完成的记忆回答，以降低查询延迟。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-genlip.html">GenLIP</a><p class="idx-card-essence">GenLIP 让同一个 Transformer 看图并生成描述，用下一词预测训练视觉表示，之后取出它作为视觉编码器。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-last-vit.html">LaSt-ViT</a><p class="idx-card-essence">LaSt-ViT 按特征通道的频域稳定性选择 patch 来构成 CLS，减轻背景聚合造成的定位偏差。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-video-o3.html">Video-o3</a><p class="idx-card-essence">Video-o3 拿到问题后，在同一上下文里交替推理与裁剪视频，让新找到的证据继续参与回答。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-u-opsd.html">U-OPSD</a><p class="idx-card-essence">U-OPSD 用模型自己投票形成的完整解题轨迹给教师增加上下文，再沿学生的反对轨迹做分布蒸馏。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-open-mopd.html">Open-MOPD</a><p class="idx-card-essence">Open-MOPD 按 token 份额、奖励幅度和奖励新鲜度分配多教师蒸馏的训练预算，缓解各域优化失衡。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-s2vopd.html">S²VOPD</a><p class="idx-card-essence">S²VOPD 让教师看清晰图、学生看退化图，在学生自己生成的前缀上对齐分布，以视觉信息差提供自蒸馏信号。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-locateanything.html">LocateAnything</a><p class="idx-card-essence">LocateAnything 把一个框对齐成固定长 token 块，在框内并行生成坐标，必要时只对不可靠的块退回逐词解码。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2017-ppo.html">PPO</a><p class="idx-card-essence">PPO-Clip 修改策略更新的评分规则，减弱把采样动作概率继续推远的激励，让一批近期轨迹可以做有限轮更新。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-tspo.html">TSPO</a><p class="idx-card-essence">TSPO 根据问题从候选帧中选择一组关键帧，用冻结 MLLM 的回答奖励训练选帧策略。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-geoanchor.html">GeoAnchor</a><p class="idx-card-essence">GeoAnchor 在文本推理之间插入位置、方向和场景结构三类连续潜变量，用它们辅助回答 3D 空间问题。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2024-deepseekmath.html">DeepSeekMath</a><p class="idx-card-essence">DeepSeekMath 用数学数据预训练、监督微调和 GRPO 提升数学推理；GRPO 用同题多次作答的相对奖励代替独立 Critic。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2025-dapo.html">DAPO</a><p class="idx-card-essence">DAPO 用四项改动改善长推理 RL：保住探索、补充有区分的题、按 token 分配损失权重，并缓和接近长度上限时的惩罚。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2025-gspo.html">GSPO</a><p class="idx-card-essence">GSPO 把强化学习策略比率与裁剪边界从逐 Token 提升到整条序列的长度归一化似然，消除优化与奖励的粒度错位，使 MoE 与长推理 RL 训练无需 Routing Replay 即可稳定收敛。</p></article>
+        <article class="idx-card"><a class="idx-card-title" href="papers/2026-sao.html">SAO</a><p class="idx-card-essence">SAO 用单 rollout 采样替代组采样消除长时程智能体异步训练的木桶等待瓶颈，配合冻结注意力的强 Critic、Skip-Observation GAE 与双侧硬门控裁剪（DIS），实现兼顾吞吐与千步稳训的智能体异步强化学习。</p></article>
       </noscript>
     </section>
 
@@ -90,7 +95,7 @@
     <span><a href="../docs/specs/site-reading-redesign.md">阅读改造说明</a> · <a href="../docs/specs/site-topic-hubs.md">专题导读说明</a></span>
   </footer>
 </div>
-<script src="assets/wiki-index.js?v=20261004-4"></script>
-<script src="assets/wiki-slides.js?v=20261004-4"></script>
+<script src="assets/wiki-index.js?v=20261118-1"></script>
+<script src="assets/wiki-slides.js?v=20261118-1"></script>
 </body>
 </html>
